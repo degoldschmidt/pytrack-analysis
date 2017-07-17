@@ -15,10 +15,14 @@ Give examples
 ```
 -->
 ### Installing
-Install the package manually by typing
-```
-python setup.py install
-```
+The package can be installed via pip (`pip` might need to be replaced by `pip3`)
+
+    pip install pytrack-analysis
+    
+Install the package manually by typing (`python` might need to be replaced by `python3`)
+
+    python setup.py install
+
 <!---
 ## Running the tests
 
