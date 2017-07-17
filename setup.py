@@ -17,7 +17,7 @@ setup(
     description=("Toolbox for analyzing object centroid data with Python."),
     license="GPLv3",
     keywords=['tracking', 'data analysis', 'fly'],
-    # url="http://packages.python.org/pycircstat",
+    url="https://pypi.python.org/pypi/pytrack-analysis",
     packages=['pytrack_analysis', 'tests'],
     python_requires='>=3.6',
     long_description=read('README.md'),
