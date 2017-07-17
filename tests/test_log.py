@@ -1,6 +1,7 @@
 ### Standard Python modules
 import os
-from pytrack_analysis.profile import *
+from pytrack_analysis.profile import get_profile
+from pytrack_analysis.logger import Logger
 
 if __name__ == '__main__':
     # filename of this script
@@ -14,3 +15,5 @@ if __name__ == '__main__':
     """
     # close logging
     log.close()
+    # print last entry
+    log.show()

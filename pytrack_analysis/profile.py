@@ -50,6 +50,7 @@ def get_profile( _name, _user, script=""):
             systems = project["systems"]
             if NAME not in systems.keys():
                 if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
+                    profile["activesys"] = NAME
                     systems[NAME] = {}
                     system = systems[NAME]
                     system["os"] = OS
@@ -68,6 +69,7 @@ def get_profile( _name, _user, script=""):
                 else:
                     pass
             else:
+                profile["activesys"] = NAME
                 system = systems[NAME]
                 system["python"] = sys.version
         except (AttributeError, TypeError):
