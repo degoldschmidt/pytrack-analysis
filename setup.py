@@ -1,5 +1,6 @@
 import os
 from setuptools import setup
+import distutils.util
 
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
@@ -11,7 +12,7 @@ def read(fname):
 
 setup(
     name="pytrack_analysis",
-    version="0.0.1.1",
+    version="0.0.1.2",
     author="Dennis Goldschmidt",
     author_email="dennis.goldschmidt@neuro.fchampalimaud.org",
     description=("Toolbox for analyzing object centroid data with Python."),
@@ -28,6 +29,6 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.6",
     ],
-    platforms=['Windows 10 Pro', 'MacOS X El Capitan'],
+    platforms=['Windows10Pro', 'MacOSX-ElCapitan'],
     setup_requires=['numpy', 'pyyaml', 'pandas', 'scipy'],
 )

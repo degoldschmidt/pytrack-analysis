@@ -50,7 +50,7 @@ def get_globals():
         OS = os.environ["OS"]
     else:
         homedir = os.environ['HOME']
-        NAME = platform.uname()[1]+'_'+os.environ["LOGNAME"]
+        NAME = platform.uname()[1].split(".")[0]+'_'+platform.uname()[4]+'_'+os.environ["LOGNAME"]
         OS = os.name
     ### define user data directory
     user_data_dir = os.path.join(homedir, "tracking_user_data")

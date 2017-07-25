@@ -151,7 +151,10 @@ def set_database(forced=False):
         asksave = messagebox.askquestion("Set database path", "Are you sure you want to set a new path for the database?", icon='warning')
         if asksave == "no":
             return None, None
+    print("Set database...")
     dbfile = filedialog.askopenfilename(title="Load database")
+
+    print("Set raw videos location...")
     viddir = filedialog.askdirectory(title="Load directory with raw video files")
     return dbfile, viddir
 
@@ -161,6 +164,7 @@ def set_output(forced=False):
         asksave = messagebox.askquestion("Set output path", "Are you sure you want to set a new path for the output/logging?", icon='warning')
         if asksave == "no":
             return None, None, None
+    print("Set output location...")
     outfolder = filedialog.askdirectory(title="Load directory for output")
     ### IF ANYTHING GIVEN
     if len(outfolder) > 0:
