@@ -1,12 +1,9 @@
-import os, sys
+import os, sys, time
 import numpy as np
 import pandas as pd
-from . import data_integrity
-import yaml
-import json
+import yaml, json
 from collections.abc import Mapping
 from asciitree import draw_tree
-import time
 
 """
 DataFileFormats IO
@@ -202,8 +199,8 @@ class Database(object):
     """
     def __init__(self, _filename):
         dictstruct, timestamps = self.load_db(_filename)
-        data_integrity.test(os.path.dirname(_filename), dictstruct, timestamps)
-        self.struct = graphdict.GraphDict(dictstruct)
+        test(os.path.dirname(_filename), dictstruct, timestamps)
+        self.struct = GraphDict(dictstruct)
         self.dir = os.path.dirname(_filename)
         self.name = os.path.basename(_filename).split(".")[0]
         basename = os.path.basename(_filename)
