@@ -1,16 +1,15 @@
 import os
 from pytrack_analysis.profile import *
 from pytrack_analysis.database import *
+from pytrack_analysis.logger import Logger
 import pytrack_analysis.preprocessing as prep
 from pytrack_analysis.kinematics import Kinematics, get_path
 get_path("Kinematics log path:")
 
-def main(script):
-    # load 'Vero eLife 2016' as user 'degoldschmidt'
-    PROFILE = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
-    DB = Database(get_db(PROFILE)) # database from file
+
+def main(db):
     # load session
-    this_session = DB.experiment("CANS").session("005")
+    this_session = db.experiment("CANS").session("005")
     # load data
     raw_data, meta_data = this_session.load()
     #arena_env = {}
@@ -34,4 +33,9 @@ def main(script):
 if __name__ == '__main__':
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
-    main(thisscript)
+    profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
+    db = Database(get_db(profile)) # database from file
+    log = Logger(profile, scriptname=thisscript)
+    main(db)
+    log.close()
+    log.show()

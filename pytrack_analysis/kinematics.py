@@ -10,6 +10,8 @@ import traceback
 import inspect, itertools
 from functools import wraps
 from ._globals import *
+from pkg_resources import get_distribution
+__version__ = get_distribution('pytrack_analysis').version
 
 ###
 # GLOBAL CONSTANTS (based on OS)
@@ -92,7 +94,10 @@ class Kinematics(object):
         """
         ## overrides path-to-file and hash of last file-modified commit (version)
         self.filepath = os.path.realpath(__file__)
-        self.vcommit = sub.check_output(["git", "log", "-n 1", "--pretty=format:%H", "--", self.filepath]).decode('UTF-8')
+        try:
+            self.vcommit = sub.check_output(["git", "log", "-n 1", "--pretty=format:%H", "--", self.filepath]).decode('UTF-8')
+        except:
+            self.vcommit = __version__
         self.dt = 1/_metadata["framerate"]
 
         ## logging
