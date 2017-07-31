@@ -211,6 +211,10 @@ class Database(object):
             jfile = os.path.join(self.dir, key)
             self.experiments.append(Experiment(jfile))
 
+    def show_data(self):
+        for exp in self.experiments:
+            exp.show_data()
+
     def experiment(self, identifier):
         """
         identifier: int or string identifying the experiment
@@ -275,6 +279,10 @@ class Experiment(object):
     def __str__(self):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
 
+    def show_data(self):
+        for session in self.sessions:
+            session.show_data()
+
     def session(self, identifier):
         """
         identifier: int or string identifying the experiment
@@ -304,12 +312,29 @@ class Session(object):
         self.dict = _dict
         self.file = _file
         self.name = _key
+        self.data = {}
+        self.datdescr = {}
 
     def __getattr__(self, name):
         return self.dict[name]
 
     def __str__(self):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
+
+    def add_data(self, title, data, descr=""):
+        self.data[title] = data
+        self.datdescr[title] = descr
+
+    def show_data(self):
+        for key in self.data:
+            print()
+            print(key)
+            print("-----")
+            print(self.datdescr[key])
+            print("-----")
+            print(self.data[key].head(10))
+            print("...\n" + str(self.data[key].count()))
+            print("-----")
 
     def keys(self):
         str = ""
@@ -318,6 +343,16 @@ class Session(object):
             str += "({:})\t{:}\n".format(i,k,self.dict[k])
         str += "\n"
         return str
+
+    def patches(self):
+        out = []
+        for i, pos in enumerate(self.dict["PatchPositions"]):
+            out.append({})
+            out[-1]["position"] = [xy * self.dict["px2mm"] for xy in pos]
+            out[-1]["substrate"] = self.dict["SubstrateType"][i]
+            out[-1]["radius"] = self.dict["patch_radius"] * self.dict["px2mm"]
+        return out
+
 
     def load(self, load_as="pd"):
         meta_data = self

@@ -94,19 +94,22 @@ class Kinematics(object):
         """
         ## overrides path-to-file and hash of last file-modified commit (version)
         self.filepath = os.path.realpath(__file__)
-        try:
-            self.vcommit = sub.check_output(["git", "log", "-n 1", "--pretty=format:%H", "--", self.filepath]).decode('UTF-8')
-        except:
-            self.vcommit = __version__
+        self.vcommit = __version__
         self.dt = 1/_metadata["framerate"]
 
         ## logging
         logger = get_log(self, get_func(), LOG_PATH)
         logger.info( "initialized Kinematics pipeline (version: "+str(self)+")")
 
-    #@Pipeline.logged
-    def angular_speed(self, _X):
-        pass
+    @logged_f(LOG_PATH)
+    def angular_speed(self, _X, _meta):
+        angle = np.array(_X["heading"])
+        speed = np.diff(angle)
+        speed[speed>180] -= 360.  ## correction for circularity
+        speed[speed<-180] += 360.  ## correction for circularity
+        speed *= _meta.dict["framerate"]
+        df = pd.DataFrame({"speed": np.append(0,speed)})
+        return df
 
     @logged_f(LOG_PATH)
     def distance(self, _X, _Y):
@@ -119,22 +122,102 @@ class Kinematics(object):
         return df
 
     @logged_f(LOG_PATH)
-    def distance_to_patch(self, _X, _patch_pos):
-        return 0
+    def distance_to_patch(self, _X, _meta):
+        xfly, yfly = np.array(_X["head_x"]), np.array(_X["head_y"])
+        dist = {}
+        for ip, patch in enumerate(_meta.patches()):
+            xp, yp = patch["position"][0], patch["position"][1]
+            dist_sq = np.square(xfly - xp) + np.square(yfly - yp)
+            key = "dist_patch_"+str(ip) # column header
+            dist[key] = np.sqrt(dist_sq)
+            #dist[key][dist[key]==np.nan] = -1 # NaNs to -1
+        df = pd.DataFrame(dist)
+        return df
 
-    #@logged("woo")
+    @logged_f(LOG_PATH)
+    def ethogram(self, _X, _Y, _Z, _meta):
+        ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
+        ## 2) body speed, angular speed: sharp turn
+        ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
+        ## 4) rest of frames >> micromovement
+
+        speed = np.array(_X["head"])
+        bspeed = np.array(_X["body"])
+        smoother = np.array(_X["smoother_head"])
+        turn = np.array(_Y["speed"])
+        Neach = int(len(_Z.columns)/2) ## number of only yeast/sucrose patches
+        yps = np.zeros((Neach, speed.shape[0])) ## yeast patches distances
+        sps = np.zeros((Neach, speed.shape[0])) ## sucrose patches distances
+        yc = 0 # counter
+        sc = 0 # counter
+        for i,col in enumerate(_Z.columns):
+            idc = int(col.split("_")[2])
+            if _meta.dict["SubstrateType"][idc] == 1:
+                yps[yc,:] = np.array(_Z[col])
+                yc += 1
+            if _meta.dict["SubstrateType"][idc] == 2:
+                sps[sc,:] = np.array(_Z[col])
+                sc += 1
+        ymin = np.amin(yps, axis=0) # yeast minimum distance
+        smin = np.amin(sps, axis=0) # sucrose minimum distance
+
+        out = np.zeros(speed.shape) - 1
+        print(out)
+        #out[speed <= 0.2] = 0   ## resting
+        #out[speed > 0.2] = 1    ## micromovement
+        out[speed > 2] = 2      ## walking
+
+        mask = (out == 2) & (bspeed < 4) & (np.abs(turn) >= 125.)
+        out[mask] = 3           ## sharp turn
+
+        out[smoother <= 0.2] = 0 # new resting
+
+        out[out == -1] = 1 # new micromovement
+
+        visits = np.zeros(out.shape)
+        for i in range(ymin.shape[0]):
+            if ymin[i] <= 2.5:
+                visits[i] = 1
+            if smin[i] <= 2.5:
+                visits[i] = 2
+
+            if visits[i-1] == 1 and ymin[i] <= 5.0:
+                visits[i] = 1
+            if visits[i-1] == 2 and smin[i] <= 5.0:
+                visits[i] = 2
+
+        mask_yeast = (out == 1) & (visits == 1)
+        mask_sucrose = (out == 1) & (visits == 2)
+        out[mask_yeast] = 4     ## yeast micromovement
+        out[mask_sucrose] = 5   ## sucrose micromovement
+
+        return pd.DataFrame({"etho": out}), pd.DataFrame({"visits": visits})
+
+    #@logged(TODO)
     def forward_speed(self, _X):
         pass
 
-    #@logged
+    @logged_f(LOG_PATH)
     def head_angle(self, _X):
-        pass
+        xb, yb = np.array(_X["body_x"]), np.array(_X["body_y"])
+        xh, yh = np.array(_X["head_x"]), np.array(_X["head_y"])
+        dx, dy = xh-xb, yh-yb
+        angle = np.arctan2(dy,dx)
+        angle = np.degrees(angle)
 
-    #@logged
-    def linear_speed(self, _X):
-        pass
+        df = pd.DataFrame({"heading": angle})
+        return df
 
-    #@logged
+    @logged_f(LOG_PATH)
+    def linear_speed(self, _X, _meta):
+        xfly, yfly = np.array(_X[_X.columns[0]]), np.array(_X[_X.columns[1]])
+        xdiff = np.diff(xfly)
+        ydiff = np.diff(yfly)
+        speed = np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"]
+        df = pd.DataFrame({"speed": np.append(0,speed)})
+        return df
+
+    #@logged(TODO)
     def sideward_speed(self, _X):
         pass
 
