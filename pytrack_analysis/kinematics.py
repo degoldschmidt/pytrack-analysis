@@ -162,7 +162,6 @@ class Kinematics(object):
         smin = np.amin(sps, axis=0) # sucrose minimum distance
 
         out = np.zeros(speed.shape) - 1
-        print(out)
         #out[speed <= 0.2] = 0   ## resting
         #out[speed > 0.2] = 1    ## micromovement
         out[speed > 2] = 2      ## walking
@@ -199,6 +198,14 @@ class Kinematics(object):
 
     @logged_f(LOG_PATH)
     def head_angle(self, _X):
+        """
+        Returns angular heading for given body and head positions.
+
+        args:
+        - _X [pd.DataFrame] : contains body and head positions.
+        return:
+        - df [pd.DataFrame] : heading angle (column title: 'heading')
+        """
         xb, yb = np.array(_X["body_x"]), np.array(_X["body_y"])
         xh, yh = np.array(_X["head_x"]), np.array(_X["head_y"])
         dx, dy = xh-xb, yh-yb
@@ -227,12 +234,3 @@ class Kinematics(object):
 
     def __str__(self):
         return self.vcommit
-## ** FUNC: distance_from_patch ** (Inputs: fly pos [tuple], patch_id [int] >> look-up from meta OR patch_pos [tuple])
-
-## ** FUNC: linear_speed ** (Inputs: old fly pos [tuple], new fly pos [tuple], px2mm, framerate)
-
-## ** FUNC: angular_speed ** (Inputs: old fly pos [tuple], new fly pos [tuple], px2mm, framerate)
-
-## ** FUNC: detect_jumps **
-
-## ** FUNC: clear_jumps **

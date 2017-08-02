@@ -4,6 +4,7 @@ import pandas as pd
 import yaml, json
 from collections.abc import Mapping
 from asciitree import draw_tree
+from ._globals import *
 
 """
 DataFileFormats IO
@@ -312,7 +313,7 @@ class Session(object):
         self.dict = _dict
         self.file = _file
         self.name = _key
-        self.data = {}
+        self.data = None    # this is supposed to be a pandas dataframe
         self.datdescr = {}
 
     def __getattr__(self, name):
@@ -322,7 +323,27 @@ class Session(object):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
 
     def add_data(self, title, data, descr=""):
-        self.data[title] = data
+        if title in self.datdescr.keys():
+            if not query_yn("Data \'{:}\' does seem to exist in the dataframe. Do you want to overwrite the data?".format(title)):
+                return None
+        if self.data is None:
+            self.data = data
+            if len(data.columns) == 1:
+                self.data.rename(inplace=True, columns = {data.columns[0] : title})
+                #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
+            #else:
+                #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
+        else:
+            try:
+                self.data = pd.concat([self.data, data], axis=1)
+                if len(data.columns) == 1:
+                    self.data.rename(inplace=True, columns = {data.columns[0] : title})
+                    #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
+                #else:
+                    #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
+            except:
+                print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
+
         self.datdescr[title] = descr
 
     def show_data(self):
