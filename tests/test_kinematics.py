@@ -107,7 +107,7 @@ def fig_test(data, meta):
     ax.vlines(x[a==2],-dy,dy, colors='#5bd5ff', lw=_lw)
     ax.vlines(x[a==3],-dy,dy, colors='#04bf11', lw=_lw)
     ax.vlines(x[a==4],-dy,dy, colors='#f0e442', lw=_lw)
-    ax.vlines(x[a==5],-dy,dy, colors='k', lw=_lw)
+    ax.vlines(x[a==5],-dy,dy, colors='#000000', lw=_lw)
     #ax.imshow(a.T)
     ax.set_ylim([-dy,dy])
     return f, ax
