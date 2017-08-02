@@ -112,6 +112,9 @@ def fig_test(data, meta):
     ax.set_ylim([-dy,dy])
     return f, ax
 
+def fig_1c_all(data, meta):
+    pass
+
 """
 PLOTTING FIG 1Ci-iii
 """
