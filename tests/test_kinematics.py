@@ -4,6 +4,7 @@ from pytrack_analysis.database import *
 from pytrack_analysis.logger import Logger
 import pytrack_analysis.preprocessing as prep
 from pytrack_analysis.kinematics import Kinematics, get_path
+from pytrack_analysis.benchmark import multibench
 get_path("Kinematics log path:")
 
 import matplotlib
@@ -57,6 +58,7 @@ def analysis(db, _experiment="CANS", _session="005"):
     etho_vector, visits = kinematics.ethogram(speeds, angular_speed, distance_patch, meta_data)
 
     ## data to add to db
+    """
     this_session.add_data("head_pos", head_pos, descr="Head positions of fly in [mm].")
     this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
     this_session.add_data("head_speed", smooth_head_speed, descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
@@ -66,6 +68,7 @@ def analysis(db, _experiment="CANS", _session="005"):
     this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
     this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
     this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
+    """
 
 def plotting(db, _experiment="CANS", _session="005"):
     ### PLOTTING
@@ -414,21 +417,24 @@ def fig_1d(data, meta):
     ax.set_aspect('equal', 'datalim')
     return f, ax
 
-
-
-if __name__ == '__main__':
-    # filename of this script
+def main():
     thisscript = os.path.basename(__file__).split('.')[0]
     profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
     db = Database(get_db(profile)) # database from file
     log = Logger(profile, scriptname=thisscript)
-    #for session in db.sessions():
-    #    this_exp = session.name.split("_")[0]
-    #    print(this_exp, session.name)
-    #    analysis(db, _experiment=this_exp, _session=session.name)
-    analysis(db)
+    for session in db.sessions():
+        this_exp = session.name.split("_")[0]
+        print(this_exp, session.name)
+        analysis(db, _experiment=this_exp, _session=session.name)
+    #analysis(db)
     #db.show_data()
     log.close()
     #log.show()
+    #plotting(db)
 
-    plotting(db)
+
+if __name__ == '__main__':
+    # filename of this script
+    test = multibench()
+    test(main)
+    del test
