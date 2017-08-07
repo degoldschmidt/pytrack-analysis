@@ -58,8 +58,8 @@ def analysis(db, _experiment="CANS", _session="005"):
     etho_vector, visits = kinematics.ethogram(speeds, angular_speed, distance_patch, meta_data)
 
     ## data to add to db
-    """
     this_session.add_data("head_pos", head_pos, descr="Head positions of fly in [mm].")
+    this_session.add_data("body_pos", body_pos, descr="Body positions of fly in [mm].")
     this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
     this_session.add_data("head_speed", smooth_head_speed, descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
     this_session.add_data("body_speed", smooth_body_speed, descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
@@ -68,7 +68,6 @@ def analysis(db, _experiment="CANS", _session="005"):
     this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
     this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
     this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
-    """
 
 def plotting(db, _experiment="CANS", _session="005"):
     ### PLOTTING
@@ -79,18 +78,9 @@ def plotting(db, _experiment="CANS", _session="005"):
     meta = this_session
     data = this_session.data.loc[start:end]
     fig_1c_all(data, meta)
-    data = this_session.data.loc[start:end,['dist_patch_0']]
-    fci, axci = fig_1c(data, meta, 0)
-    data = this_session.data.loc[start:end,['head_speed', 'body_speed']]
-    fcii, axcii = fig_1c(data, meta, 1)
-    data = this_session.data.loc[start:end, ['angle', 'angular_speed'] ]
-    fciii, axciii = fig_1c(data, meta, 2)
-    data = this_session.data.loc[start:end, ['etho'] ]
-    fciv, axciv = fig_1c(data, meta, 3)
-    data = this_session.data.loc[start:end, ['visits'] ]
-    fciv, axciv = fig_1c(data, meta, 4)
-    data = this_session.data.loc[start:end,['head_x', 'head_y']]
+    data = this_session.data.loc[start:end+370]
     fd, axd = fig_1d(data, meta)
+
 
     fciname = './fci.pdf'
     #fci.savefig(fciname, dpi=fci.dpi)
@@ -105,9 +95,9 @@ def fig_1c_all(data, meta):
     f, axes = plt.subplots( 5,
                             num="Fig. 1C",
                             sharex=True,
-                            figsize=(4.5, 6.5),
+                            figsize=(5.5, 5),
                             dpi=150,
-                            gridspec_kw={'height_ratios':[3,3,3,2,2]})
+                            gridspec_kw={'height_ratios':[3,3,3,1,1]})
     submeta = { "xlabel" : ["", "", "", "", "Time [s]"],
                 "ylabel": [ "Distance\nto patch\n[mm]",
                             "Linear\nspeed\n[mm/s]",
@@ -115,9 +105,49 @@ def fig_1c_all(data, meta):
                             "Etho-\ngram",
                             "Food\npatch\nvisits"],
                 "keep_spines": ["L", "L", "L", "", "B"],
-                "plot": [[''],[],[],[],[]]
+                "keys": [['dist_patch_0'], ['head_speed', 'body_speed'],['angular_speed'],['etho'],['visits']],
+                "types": ['line', 'line', 'line', 'discrete', 'discrete']
+    }
+    """
+    These are the styles defined for each piece of data [TODO: this should be a class in the niceplot wrapper]
+    """
+    styles = {  "dist_patch_0":   {
+                                    "c":    'k',
+                                    "ls":   '-',
+                                    "lw":   1,
+                                    "z":    1,
+                                },
+                "head_speed":   {
+                                    "c":    'b',
+                                    "ls":   '-',
+                                    "lw":   1,
+                                    "z":    1,
+                                },
+                "body_speed":   {
+                                    "c":    'k',
+                                    "ls":   '-',
+                                    "lw":   1,
+                                    "z":    2,
+                                },
+                "angular_speed":   {
+                                    "c":    'k',
+                                    "ls":   '-',
+                                    "lw":   1,
+                                    "z":    2,
+                                },
+                "etho":         {
+                                    "c":    ['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000'],
+                                    "lw":   0.1,
+                                },
+                "visits":       {
+                                    "c":    ['#ffffff', '#ffc04c', '#4c8bff'],
+                                    "lw":   0.1,
+                                },
     }
     ### go through each ax
+    datakeys = submeta['keys']
+    types = submeta['types']
+    lx = (data.first_valid_index(), data.first_valid_index()+9000)
     for ix,ax in enumerate(axes):
         ### labeling
         ax.set_xlabel(submeta["xlabel"][ix])
@@ -128,22 +158,165 @@ def fig_1c_all(data, meta):
             ax.tick_params(labeltop='off')  # don't put tick labels at the top
         if "B" not in submeta["keep_spines"][ix]:
             ax.spines['bottom'].set_visible(False)
+            ax.get_xaxis().set_visible(False)
             ax.set_xticks([])
+            ax.set_xticklabels([])
         if "L" not in submeta["keep_spines"][ix]:
             ax.spines['left'].set_visible(False)
             ax.set_yticks([])
         if "R" not in submeta["keep_spines"][ix]:
             ax.spines['right'].set_visible(False)
 
+        if "B" in submeta["keep_spines"][ix]:
+            ax.set_xticks(np.arange(lx[0], lx[1]+1, 50*60))
+            ax.set_xticklabels(["0", "60", "120", "180"])
+
+        ### data limits
+        ax.set_xlim([lx[0],lx[1]])
 
         ### data plotting
+        for key in datakeys[ix]:
+            try:
+                sty = styles[key]
+                if types[ix] == 'line':
+                    ax.plot(data[key], c=sty['c'], ls=sty['ls'], lw=sty['lw'], zorder=sty['z'])
+                elif types[ix] == 'discrete':
+                    a = np.array(data[key])
+                    dy = 0.5
+                    x = np.arange(lx[0],lx[1]+1)
+                    for ic, col in enumerate(sty['c']):
+                        ax.vlines(x[a==ic],-dy,dy, colors=col, lw=sty['lw'])
+            except KeyError:
+                print('You need to define a style dictionary for \'{:}\''.format(key))
+        #ax.set_ylim([break_at, end_at[0]])
+
+        ### annotation
+        if ix == 0:
+            ax.hlines(5, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
+            ax.hlines(2.5, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
+            ax.text(lx[1]+100, 5-0.5, "5 mm", color='#bbbbbb', fontsize=8)
+            ax.text(lx[1]+100, 2.5-0.5, "2.5 mm", color='#bbbbbb', fontsize=8)
+            ax.set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=1.05)
+        if ix == 1:
+            ax.hlines(2., lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
+            ax.hlines(0.2, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
+            ax.text(lx[1]+100, 2-0.4, "2 mm", color='#bbbbbb', fontsize=8)
+            ax.text(lx[1]+100, 0.2-0.4, "0.2 mm", color='#bbbbbb', fontsize=8)
+
+
+        ax.yaxis.set_label_coords(-0.1, 0.5)
 
     plt.tight_layout()
     return f, axes
 
 """
-PLOTTING FIG 1C
+PLOTTING FIG 1D
 """
+def fig_1d(data, meta):
+    ### figure itself
+    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(5, 5), dpi=150)
+    ax = f.gca()
+    ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
+    # no axes
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    plt.axis('off')
+    # visible range
+    ax.set_xlim([-12, 22])
+    ax.set_ylim([-20, 14])
+
+    ### trajectory data
+    subsampl=3 # subsampling, if needed
+    hx, hy = np.array(data['head_x']), np.array(data['head_y'])
+    bx, by = np.array(data['body_x']), np.array(data['body_y'])
+    hx, hy = hx[::subsampl], hy[::subsampl]
+    bx, by = bx[::subsampl], by[::subsampl]
+    dx, dy = hx-bx, hy-by
+    etho = np.array(data['etho'])
+    etho = etho[::subsampl]
+    colors =  ['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']
+    zs =  [1, 4, 3, 2, 10, 10]
+    for ix, col in enumerate(colors):
+        currbx, currby = bx.copy(), by.copy()
+        currdx, currdy = dx.copy(), dy.copy()
+        currbx[etho != ix] = np.nan
+        currby[etho != ix] = np.nan
+        currdx[etho != ix] = np.nan
+        currdy[etho != ix] = np.nan
+        ax.plot(currbx, currby, lw=1, color=col, zorder=zs[ix])
+        ax.quiver(currbx, currby, currdx, currdy, units='xy', width=0.15,
+                   scale=1, color=col, zorder=zs[ix])
+    ax.plot(hx, hy, ls='-', lw=1.5, color="#888888", zorder=11)
+    #ax.scatter(x[::subsampl], y[::subsampl], s=0.25, alpha=0.5)
+
+    ### arena objects
+    patch_color = {1: '#ffc04c', 2: '#4c8bff', 3: '#ffffff'}
+    allowed = [0,2,3,4,5,6,12,13]
+    zoom = False
+    for i, patch in enumerate(meta.patches()):
+        c = patch_color[patch["substrate"]]
+        pos = (patch["position"][0], patch["position"][1]) # convert to tuple
+        rad = patch["radius"]
+        #plt.text(pos[0],pos[1], str(i))
+        #ax.plot(pos[0], pos[1], "ro", markersize=2)
+        ### plot only certain patches
+        if zoom:
+                ax.set_xlim([pos[0]-2.5, pos[0]+5])
+                ax.set_ylim([pos[1]-2.5, pos[1]+5])
+                circle = plt.Circle(pos, 2.5, edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=2)
+                circle.set_zorder(0)
+                ax.add_artist(circle)
+        if i in allowed:
+            circle = plt.Circle(pos, rad, color=c, alpha=0.5)
+            circle.set_zorder(0)
+            ax.add_artist(circle)
+        if i == 6:
+            circle = plt.Circle(pos, 5., edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=2)
+            circle.set_zorder(0)
+            ax.add_artist(circle)
+
+    ### post adjustments & presentation
+    ax.set_aspect('equal', 'datalim')
+    return f, ax
+
+def main():
+    thisscript = os.path.basename(__file__).split('.')[0]
+    profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
+    db = Database(get_db(profile)) # database from file
+    log = Logger(profile, scriptname=thisscript)
+
+    mated, virgin = 0, 0
+    for session in db.sessions():
+        this_exp = session.name.split("_")[0]
+        mate = session.dict["Mating"]
+        metab = session.dict["Metabolic"]
+        gene = session.dict["Genotype"]
+        if metab == 3 and gene == 1:
+            if mate == 1:
+                mated += 1
+            if mate == 2:
+                virgin += 1
+            print(this_exp, session.name, mate)
+    print(mated, virgin)
+        #analysis(db, _experiment=this_exp, _session=session.name, NO_ADD=True)
+
+    #analysis(db)
+    #print(db.experiment("CANS").dict)
+    #print(db.experiment("CANS").session("005").keys())
+    log.close()
+    #log.show()
+    #plotting(db)
+    #plotting_many(db)
+
+if __name__ == '__main__':
+    # filename of this script
+    test = multibench()
+    test(main)
+    del test
+
+
+""" ARCHIVE
+PLOTTING FIG 1C
 def fig_1c(data, meta, index):
     figlabels = {
                 0: "i: Distance to Patch",
@@ -363,78 +536,4 @@ def fig_1c(data, meta, index):
         #print(currpos)
 
     return f, axes
-
-
 """
-PLOTTING FIG 1D
-"""
-def fig_1d(data, meta):
-    ### figure itself
-    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(3.1, 3.1), dpi=300)
-    ax = f.gca()
-    ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
-    # no axes
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    plt.axis('off')
-    # visible range
-    ax.set_xlim([-12, 22])
-    ax.set_ylim([-20, 14])
-
-    ### trajectory data
-    subsampl=1 # subsampling, if needed
-    x, y = np.array(data[data.columns[0]]), np.array(data[data.columns[1]])
-    ax.plot(x[::subsampl], y[::subsampl], ls='-', lw=1, color="#888888")
-    #ax.scatter(x[::subsampl], y[::subsampl], s=0.25, alpha=0.5)
-
-    ### arena objects
-    patch_color = {1: '#ffc04c', 2: '#4c8bff', 3: '#ffffff'}
-    allowed = [0,2,3,4,5,6,12,13]
-    zoom = False
-    for i, patch in enumerate(meta.patches()):
-        c = patch_color[patch["substrate"]]
-        pos = (patch["position"][0], patch["position"][1]) # convert to tuple
-        rad = patch["radius"]
-        #plt.text(pos[0],pos[1], str(i))
-        #ax.plot(pos[0], pos[1], "ro", markersize=2)
-        ### plot only certain patches
-        if zoom:
-                ax.set_xlim([pos[0]-2.5, pos[0]+5])
-                ax.set_ylim([pos[1]-2.5, pos[1]+5])
-                circle = plt.Circle(pos, 2.5, edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=2)
-                circle.set_zorder(0)
-                ax.add_artist(circle)
-        if i in allowed:
-            circle = plt.Circle(pos, rad, color=c, alpha=0.5)
-            circle.set_zorder(0)
-            ax.add_artist(circle)
-        if i == 6:
-            circle = plt.Circle(pos, 5., edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=2)
-            circle.set_zorder(0)
-            ax.add_artist(circle)
-
-    ### post adjustments & presentation
-    ax.set_aspect('equal', 'datalim')
-    return f, ax
-
-def main():
-    thisscript = os.path.basename(__file__).split('.')[0]
-    profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
-    db = Database(get_db(profile)) # database from file
-    log = Logger(profile, scriptname=thisscript)
-    for session in db.sessions():
-        this_exp = session.name.split("_")[0]
-        print(this_exp, session.name)
-        analysis(db, _experiment=this_exp, _session=session.name)
-    #analysis(db)
-    #db.show_data()
-    log.close()
-    #log.show()
-    #plotting(db)
-
-
-if __name__ == '__main__':
-    # filename of this script
-    test = multibench()
-    test(main)
-    del test
