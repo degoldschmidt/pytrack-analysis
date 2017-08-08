@@ -82,13 +82,14 @@ def get_func():
     out = traceback.extract_stack(None, 2)[0][2]
     return out
 
+
 """
 Kinematics class: loads centroid data and metadata >> processes and returns kinematic data
 """
 class Kinematics(object):
 
     #@Logger.logged
-    def __init__(self, _data, _metadata):
+    def __init__(self, _metadata):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """

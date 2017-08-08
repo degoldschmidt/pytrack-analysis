@@ -205,12 +205,24 @@ class Database(object):
         self.dir = os.path.dirname(_filename)
         self.name = os.path.basename(_filename).split(".")[0]
         basename = os.path.basename(_filename)
+        self.last = {}
 
         ### set up experiments
         self.experiments = []
         for key in dictstruct[basename].keys():
             jfile = os.path.join(self.dir, key)
             self.experiments.append(Experiment(jfile))
+
+        # count genotypes, mating and metabolic
+        lens = []
+        for each in ['Genotype', 'Mating', 'Metabolic']:
+            lens.append(len(self.experiments[-1].dict[each].keys()))
+        self.counts = np.zeros((lens[0], lens[1], lens[2]))
+        for ses in self.sessions():
+            this_gen = int(ses.Genotype)-1
+            this_mate = int(ses.Mating)-1
+            this_metab = int(ses.Metabolic)-1
+            self.counts[this_gen, this_mate, this_metab] += 1.0
 
     def show_data(self):
         for exp in self.experiments:
@@ -246,15 +258,43 @@ class Database(object):
                     lstr.append(ses.name)
         return lstr
 
+    def count(self, genotype, mating, metabolic):
+        out = []
+        for gene in genotype:
+            for mate in mating:
+                for metab in metabolic:
+                    igene = self.experiment("CANS").name2int("Genotype", gene)
+                    imate = self.experiment("CANS").name2int("Mating", mate)
+                    imetab = self.experiment("CANS").name2int("Metabolic", metab)
+                    out.append(self.counts[igene, imate, imetab])
+        return (i for i in out)
+
+    def last_select(self, arg):
+        if arg in self.last:
+            return self.last[arg][0]
+        else:
+            return None
+
     def load_db(self, _file):
         filestruct, timestamps = load_yaml(_file)
         return filestruct, timestamps
 
-    def sessions(self):
+    def sessions(self, genotype=[], mating=[], metabolic=[]):
+        # TODO: use **kwargs
         outlist = []
+        self.last["Genotype"] = genotype
+        self.last["Mating"] = mating
+        self.last["Metabolic"] = metabolic
+
         for exp in self.experiments:
             for ses in exp.sessions:
-                outlist.append(ses)
+                this_gen = exp.int2name("Genotype", ses.Genotype)
+                this_mate = exp.int2name("Mating", ses.Mating)
+                this_metab = exp.int2name("Metabolic", ses.Metabolic)
+                if (this_gen in genotype) or len(genotype) == 0:
+                    if (this_mate in mating) or len(mating) == 0:
+                        if (this_metab in metabolic) or len(metabolic) == 0:
+                            outlist.append(ses)
         return outlist
 
     def __str__(self):
@@ -266,12 +306,14 @@ class Experiment(object):
         self.dict = json2dict(_file)
         self.file = _file
         self.name = _file.split(os.sep)[-1].split(".")[0]
+        self.data = None    # this is supposed to be a pandas dataframe
+        self.datdescr = {}
 
         ### set up sessions inside experiment
         self.sessions = []
         for key, val in self.dict.items():
             if self.name in key:
-                self.sessions.append(Session(val, _file, key))
+                self.sessions.append(Session(val, _file, key, self.name))
         #print(self.sessions[-1])
 
     def __getattr__(self, name):
@@ -280,9 +322,54 @@ class Experiment(object):
     def __str__(self):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
 
+    def add_data(self, title, data, descr=""):
+        if title in self.datdescr.keys():
+            if not query_yn("Data \'{:}\' does seem to exist in the dataframe. Do you want to overwrite the data?".format(title)):
+                return None
+        if self.data is None:
+            self.data = data
+            if len(data.columns) == 1:
+                self.data.rename(inplace=True, columns = {data.columns[0] : title})
+                #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
+            #else:
+                #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
+        else:
+            try:
+                self.data = pd.concat([self.data, data], axis=1)
+                if len(data.columns) == 1:
+                    self.data.rename(inplace=True, columns = {data.columns[0] : title})
+                    #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
+                #else:
+                    #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
+            except:
+                print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
+        self.datdescr[title] = descr
+
+    def int2name(self, key, arg):
+        if type(arg) is int:
+            return self.dict[key][str(arg)]
+        else:
+            return self.dict[key][arg]
+
+    def name2int(self, key, arg):
+        for ix, val in enumerate(self.dict[key].values()):
+            if val == arg:
+                return ix
+
     def show_data(self):
-        for session in self.sessions:
-            session.show_data()
+        print()
+        print("=====")
+        print(self.name, '[EXPERIMENT]')
+        if self.data is None:
+            print("EMPTY data")
+        else:
+            print("-----")
+            print("Found {} columns:".format(len(self.data.columns)) )
+            print("...\n" + str(self.data.count()))
+            print("-----")
+        if query_yn("Want to print out session data?"):
+            for session in self.sessions:
+                session.show_data()
 
     def session(self, identifier):
         """
@@ -309,10 +396,11 @@ class Session(object):
     """
     Session class creates an object that hold meta-data of single session and has the functionality to load data into pd.DataFrame or np.ndarray
     """
-    def __init__(self, _dict, _file, _key):
+    def __init__(self, _dict, _file, _key, _exp):
         self.dict = _dict
         self.file = _file
         self.name = _key
+        self.exp = _exp
         self.data = None    # this is supposed to be a pandas dataframe
         self.datdescr = {}
 
@@ -343,18 +431,19 @@ class Session(object):
                     #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
             except:
                 print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
-
         self.datdescr[title] = descr
 
     def show_data(self):
-        for key in self.data:
-            print()
-            print(key)
+        print()
+        print("=====")
+        print(self.name, '[SESSION]')
+        if self.data is None:
+            print("EMPTY data")
             print("-----")
-            print(self.datdescr[key])
+        else:
             print("-----")
-            print(self.data[key].head(10))
-            print("...\n" + str(self.data[key].count()))
+            print("Found {} columns:".format(len(self.data.columns)) )
+            print("...\n" + str(self.data.count()))
             print("-----")
 
     def keys(self):
