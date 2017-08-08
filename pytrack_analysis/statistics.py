@@ -69,6 +69,8 @@ def logged_f(_logfile):
                 logger.info("takes kwarg: "+str(None))
             out = func(*args, **kwargs)
             logger.info("returns: "+str(type(out)))
+            for handler in logger.handlers:
+                handler.close()
             return out
         return func_wrapper
     return wrapper
@@ -102,10 +104,15 @@ class Statistics(object):
 
     @logged_f(LOG_PATH)
     def durations_micromovements(self, _X):
+        test = np.array([3,3,3,1,1,0,0,0,0,0,4,4,4,4,4,4,4,4]) ### [3,2,5,8]; [0,3,5,10]; [2,4,9,17]
+        length,start,end = self.rle(test)
+        print(length)
+        print(start)
+        print(end)
         pass
 
     @logged_f(LOG_PATH)
-    def rle(inarray):
+    def rle(self, inarray):
             """ run length encoding. Partial credit to R rle function.
                 Multi datatype arrays catered for including non Numpy
                 returns: tuple (runlengths, startpositions, values) """
@@ -122,4 +129,8 @@ class Statistics(object):
 
     @logged_f(LOG_PATH)
     def total_durations_micromovements(self, _X):
-        pass
+        test = np.array([3,3,3,1,1,0,0,0,0,0,4,4,4,4,4,4,4,4]) ### [3,2,5,8]; [0,3,5,10]; [2,4,9,17]
+        length,start,end = self.rle(test)
+        print(length)
+        print(start)
+        print(end)

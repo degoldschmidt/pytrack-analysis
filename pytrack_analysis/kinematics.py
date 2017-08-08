@@ -69,6 +69,8 @@ def logged_f(_logfile):
                 logger.info("takes kwarg: "+str(None))
             out = func(*args, **kwargs)
             logger.info("returns: "+str(type(out)))
+            for handler in logger.handlers:
+                handler.close()
             return out
         return func_wrapper
     return wrapper

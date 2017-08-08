@@ -16,6 +16,7 @@ DO_IT = ["Fig1"]
 
 def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     # load session
+    print(_experiment, _session)
     this_session = db.experiment(_experiment).session(_session)
     # load data
     raw_data, meta_data = this_session.load()
@@ -61,6 +62,9 @@ def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     etho_vector, visits = kinematics.ethogram(speeds, angular_speed, distance_patch, meta_data)
 
     ## STEP 8: Food patch encounters (TODO)
+
+    ## DESTROY object
+    del kinematics
 
     ## data to add to db
     if not MULTI:
