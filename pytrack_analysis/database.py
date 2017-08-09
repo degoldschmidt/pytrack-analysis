@@ -279,6 +279,13 @@ class Database(object):
         filestruct, timestamps = load_yaml(_file)
         return filestruct, timestamps
 
+    def session(self, arg):
+        for exp in self.experiments:
+            for ses in exp.sessions:
+                if arg == ses.name:
+                    return ses
+        return None
+
     def sessions(self, genotype=[], mating=[], metabolic=[]):
         # TODO: use **kwargs
         outlist = []
@@ -476,6 +483,9 @@ class Session(object):
         else:
             print("[ERROR]: session not found.")                  ### TODO
         return data, meta_data
+
+    def meta(self):
+        return self.dict
 
     def nice(self):
         str = """

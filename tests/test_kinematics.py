@@ -11,15 +11,16 @@ from example_figures import fig_1c, fig_1d
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
+import seaborn as sns; sns.set(color_codes=True)
 
 DO_IT = ["Fig1"]
 
 def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     # load session
-    print(_experiment, _session)
     this_session = db.experiment(_experiment).session(_session)
     # load data
     raw_data, meta_data = this_session.load()
+    print(_experiment, _session, meta_data.Mating)
     #arena_env = {}
 
     ## STEP 1: NaN removal + interpolation + px-to-mm conversion
@@ -91,10 +92,30 @@ def stats_analysis(db, _only=[]):
         etho_data[session.name] = session.data['etho']
     etho_data = pd.DataFrame(etho_data)
 
-    stats = Statistics()
+    stats = Statistics(db)
 
-    ### STEP 1: Total durations of micromovements
-    tot_dur_micromov = stats.total_durations_micromovements(etho_data)
+    ### STEP 1: Get etho sequence data (lengths, total lengths, cumulative lengths)
+    sequence_data = stats.sequence(etho_data)
+    print(len(sequence_data))
+    virgin_data = sequence_data.query('mating == 2')
+    virgin_data = virgin_data.query('behavior == 4 or behavior == 5')
+    virgin_data = virgin_data.drop_duplicates('total_length [s]')
+    print(len(virgin_data))
+    mated_data = sequence_data.query('mating == 1')
+    mated_data = mated_data.query('behavior == 4 or behavior == 5')
+    mated_data = mated_data.drop_duplicates('total_length [s]')
+    print(len(mated_data))
+
+
+    ## plot testing
+    f, axes = plt.subplots( 2, num="Fig. 1E")
+    data = [virgin_data, mated_data]
+    for ix,ax in enumerate(axes):
+        ax = sns.boxplot(x="behavior", y="total_length [s]", data=data[ix], ax=ax)
+        ax = sns.swarmplot(x="behavior", y="total_length [s]", data=data[ix], color='#3d3d3d', ax=ax)
+        ax.set_xticklabels(["Yeast", "Sucrose"])
+    plt.show()
+
 
 
 def plotting(db, _experiment="CANS", _session="005"):
@@ -116,7 +137,6 @@ def plotting(db, _experiment="CANS", _session="005"):
     ## G
     ## H
 
-    ## Fig 2
 
 
     figs = {
@@ -141,11 +161,12 @@ def main():
         ### Fig. E-H
         only_metab =  ["AA+ rich"]
         only_gene = ["Canton S"]
-        for session in db.sessions(genotype=only_gene, metabolic=only_metab):
+        group = db.sessions(genotype=only_gene, metabolic=only_metab)[:]
+        for session in group:
             kine_analysis(db, _experiment=session.exp, _session=session.name, MULTI=True)
         num_mated, num_virgins = db.count(only_gene, ['Mated', 'Virgin'], only_metab)
         print( "Analyzed {1} mated {0} females and {2} virgin {0} females".format(db.last_select('Metabolic'), int(num_mated), int(num_virgins)) )
-        stats_analysis(db, _only=db.sessions(genotype=only_gene, metabolic=only_metab))
+        stats_analysis(db, _only=group)
 
     log.close()
     #log.show()

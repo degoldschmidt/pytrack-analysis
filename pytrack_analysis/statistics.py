@@ -91,25 +91,18 @@ Statistics class: loads centroid data and metadata >> processes and returns kine
 class Statistics(object):
 
     #@Logger.logged
-    def __init__(self):
+    def __init__(self, _db):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         ## overrides path-to-file and hash of last file-modified commit (version)
         self.filepath = os.path.realpath(__file__)
         self.vcommit = __version__
+        ##
+        self.db = _db
         ## logging
         logger = get_log(self, get_func(), LOG_PATH)
         logger.info( "initialized Kinematics pipeline (version: "+str(self)+")")
-
-    @logged_f(LOG_PATH)
-    def durations_micromovements(self, _X):
-        test = np.array([3,3,3,1,1,0,0,0,0,0,4,4,4,4,4,4,4,4]) ### [3,2,5,8]; [0,3,5,10]; [2,4,9,17]
-        length,start,end = self.rle(test)
-        print(length)
-        print(start)
-        print(end)
-        pass
 
     @logged_f(LOG_PATH)
     def rle(self, inarray):
@@ -128,9 +121,37 @@ class Statistics(object):
                 return(z, p, ia[i])
 
     @logged_f(LOG_PATH)
-    def total_durations_micromovements(self, _X):
-        test = np.array([3,3,3,1,1,0,0,0,0,0,4,4,4,4,4,4,4,4]) ### [3,2,5,8]; [0,3,5,10]; [2,4,9,17]
-        length,start,end = self.rle(test)
-        print(length)
-        print(start)
-        print(end)
+    def sequence(self, _X):
+        """
+        Returns sequence information (duration of sequences, total duration and cumulative length) from state vectors 
+        TESTED
+        """
+        outdict = {
+                    'session': [],
+                    'mating': [],
+                    'behavior': [],
+                    'length [s]': [],
+                    'total_length [s]': [],
+                    'cumulative_length [s]': [],
+        }
+        for col in _X.columns:
+            session = col # session name is column name
+            mating = self.db.session(col).dict['Mating'] # read out mating state of session from database
+            dt = 1/self.db.session(col).dict['framerate'] # read out framerate of session from database
+
+            lengths, pos, behavior_class = self.rle(_X[col])
+            sums = []
+            cums = np.zeros(len(lengths))
+            for each_class in np.sort(np.unique(behavior_class)): ## find unique behavioral class values
+                sums.append(np.sum(lengths[behavior_class == each_class]))
+                cums[behavior_class == each_class] = np.cumsum(lengths[behavior_class == each_class])
+
+            for index, each_len in enumerate(lengths):
+                this_behavior = int(behavior_class[index])
+                outdict['session'].append(session)
+                outdict['mating'].append(mating)
+                outdict['behavior'].append(this_behavior)
+                outdict['length [s]'].append(each_len*dt)
+                outdict['total_length [s]'].append(sums[this_behavior]*dt)
+                outdict['cumulative_length [s]'].append(cums[index]*dt)
+        return pd.DataFrame(outdict)
