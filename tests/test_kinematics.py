@@ -31,28 +31,23 @@ def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     window_len = 16 # = 0.32 s
     smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
 
-    ## STEP 3: regrouping data to body and head position
-    body_pos, head_pos = smoothed_data[['body_x', 'body_y']], smoothed_data[['head_x', 'head_y']]
-
-    ## STEP 4: Distance from patch
+    ## STEP 3: Distance from patch
     kinematics = Kinematics(meta_data.dict)
-    distance_patch = kinematics.distance_to_patch(head_pos, meta_data)
+    distance_patch = kinematics.distance_to_patch(smoothed_data[['head_x', 'head_y']], meta_data)
 
-    ## STEP 5: Linear Speed
-    head_speed = kinematics.linear_speed(head_pos, meta_data)
+    ## STEP 4: Linear Speed
+    speed = kinematics.linear_speed(smoothed_data, meta_data)
     window_len = 60 # = 1.2 s
-    smooth_head_speed = prep.gaussian_filter(head_speed, _len=window_len, _sigma=window_len/10)
+    smooth_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
     window_len = 120 # = 1.2 s
-    smoother_head = prep.gaussian_filter(smooth_head_speed, _len=window_len, _sigma=window_len/10)
-    body_speed = kinematics.linear_speed(body_pos, meta_data)
-    smooth_body_speed = prep.gaussian_filter(body_speed, _len=window_len, _sigma=window_len/10)
-    speeds = pd.DataFrame({"head": smooth_head_speed["speed"], "body": smooth_body_speed["speed"], "smoother_head": smoother_head["speed"]})
+    smoother_speed = prep.gaussian_filter(smooth_speed, _len=window_len, _sigma=window_len/10)
+    speeds = pd.DataFrame({"head": smooth_speed["head_speed"], "body": smooth_speed["body_speed"], "smoother_head": smoother_speed["head_speed"]})
 
-    ## STEP 6: Angular Heading & Speed
+    ## STEP 5: Angular Heading & Speed
     angular_heading = kinematics.head_angle(smoothed_data)
     angular_speed = kinematics.angular_speed(angular_heading, meta_data)
 
-    ## STEP 7: Ethogram classification
+    ## STEP 6: Ethogram classification
     etho_dict = {   0: "resting",
                     1: "micromovement",
                     2: "walking",
@@ -62,19 +57,19 @@ def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     meta_data.dict["etho_class"] = etho_dict
     etho_vector, visits = kinematics.ethogram(speeds, angular_speed, distance_patch, meta_data)
 
-    ## STEP 8: Food patch encounters (TODO)
+    ## STEP 7: Food patch encounters (TODO)
 
     ## DESTROY object
     del kinematics
 
     ## data to add to db
     if not MULTI:
-        this_session.add_data("head_pos", head_pos, descr="Head positions of fly in [mm].")
-        this_session.add_data("body_pos", body_pos, descr="Body positions of fly in [mm].")
+        this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")
+        this_session.add_data("body_pos", smoothed_data[['body_x', 'body_y']], descr="Body positions of fly in [mm].")
         this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
-        this_session.add_data("head_speed", smooth_head_speed, descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
-        this_session.add_data("body_speed", smooth_body_speed, descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
-        this_session.add_data("smoother_head_speed", smoother_head, descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
+        this_session.add_data("head_speed", speeds['head'], descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
+        this_session.add_data("body_speed", speeds['body'], descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
+        this_session.add_data("smoother_head_speed", speeds['smoother_head'], descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
         this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
         this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
         this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")

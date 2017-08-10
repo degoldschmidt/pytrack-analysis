@@ -64,9 +64,8 @@ def check_base(_dict, _dir):
     """
     Checks and returns boolean, whether database is in given directory
     """
-    for key in _dict.keys():
-        print("[O.K.]" if key in os.listdir(_dir) else "[FAILED]")
-    return (key in os.listdir(_dir))
+    key = list(_dict.keys())[0]
+    return (key in os.listdir(_dir) )
 
 def check_meta(_dict, _dir):
     """
@@ -77,7 +76,6 @@ def check_meta(_dict, _dir):
         for expkeys in val.keys():
             if not expkeys in os.listdir(_dir):
                 flag = 1
-    print("[O.K.]" if flag == 0 else "[FAILED]")
     return (flag == 0)
 
 def check_data(_dict, _dir):
@@ -90,7 +88,6 @@ def check_data(_dict, _dir):
             for session in v2:
                 if not session in os.listdir(_dir):
                     flag = 1
-    print("[O.K.]" if flag == 0 else "[FAILED]")
     return (flag == 0)
 
 def check_time(_tstamps, _dir):
@@ -103,31 +100,37 @@ def check_time(_tstamps, _dir):
         cre = times["created"]
         if not cre == get_created(os.path.join(_dir, filename)) and mod == get_modified(os.path.join(_dir, filename)):
             flag = 1
-    print("[O.K.]" if flag == 0 else "[FAILED]")
     return (flag == 0)
 
 def test(_dir, _dict, _tstamps, _VERBOSE=True):
     """
     Returns flags of several data integrity tests for given file structure from database file
     """
+    """
     if _VERBOSE:
         sys.stdout = sys.__stdout__
     else:
         sys.stdout = open(os.devnull, 'w')
-
-    print("STARTING DATA INTEGRITY TEST...")
-    print("-------------------------------")
-    print("CHECKING DATABASE...\t\t\t", end='')
+    """
+    if _VERBOSE:
+        print("STARTING DATA INTEGRITY TEST...")
+        print("-------------------------------")
+        print("CHECKING DATABASE...\t\t\t", end='')
     basefl = check_base(_dict, _dir)
-    print("CHECKING METAFILES...\t\t\t", end='')
+    if _VERBOSE:
+        print("[O.K.]" if basefl else "[FAILED]")
+        print("CHECKING METAFILES...\t\t\t", end='')
     metafl = check_meta(_dict, _dir)
-    print("CHECKING DATAFILES...\t\t\t", end='')
+    if _VERBOSE:
+        print("[O.K.]" if metafl else "[FAILED]")
+        print("CHECKING DATAFILES...\t\t\t", end='')
     datafl = check_data(_dict, _dir)
-    print("CHECKING TIMESTAMPS...\t\t\t", end='')
+    if _VERBOSE:
+        print("[O.K.]" if datafl else "[FAILED]")
+        print("CHECKING TIMESTAMPS...\t\t\t", end='')
     timefl = check_time(_tstamps, _dir)
-    timefl = 0
+    if _VERBOSE: print("[O.K.]" if timefl else "[FAILED]")
 
-    sys.stdout = sys.__stdout__
     return [basefl, metafl, datafl, timefl]
 
 
@@ -487,6 +490,14 @@ class Session(object):
     def meta(self):
         return self.dict
 
+    def preview(self, subsampling=50):
+        filedir = os.path.dirname(self.file)
+        filename = filedir + os.sep + self.name +".csv"
+        data = pd.read_csv(filename, sep="\t", escapechar="#")
+        data = data.rename(columns = {" body_x":'body_x'})    ### TODO: fix this in data conversion
+        return data[::subsampling]
+
+
     def nice(self):
         str = """
 =================================
@@ -498,3 +509,6 @@ Meta-data for session {:}
             str += "({:})\t{:}:\n\t\t\t{:}\n\n".format(i,k,self.dict[k])
         str += "\n"
         return str
+
+    def __str__(self):
+        return self.nice()

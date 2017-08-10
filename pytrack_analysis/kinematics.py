@@ -220,12 +220,13 @@ class Kinematics(object):
 
     @logged_f(LOG_PATH)
     def linear_speed(self, _X, _meta):
-        xfly, yfly = np.array(_X[_X.columns[0]]), np.array(_X[_X.columns[1]])
-        xdiff = np.diff(xfly)
-        ydiff = np.diff(yfly)
-        speed = np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"]
-        df = pd.DataFrame({"speed": np.append(0,speed)})
-        return df
+        speeds = {}
+        for i, col_pair in enumerate(_X.columns[::2]):
+            xfly, yfly = np.array(_X[_X.columns[i]]), np.array(_X[_X.columns[i+1]])
+            xdiff = np.diff(xfly)
+            ydiff = np.diff(yfly)
+            speeds[col_pair.split('_')[0]+"_speed"] = np.append(0, np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"])
+        return pd.DataFrame(speeds)
 
     #@logged(TODO)
     def sideward_speed(self, _X):
