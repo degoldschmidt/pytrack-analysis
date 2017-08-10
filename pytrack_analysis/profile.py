@@ -203,7 +203,8 @@ def show_profile(profile):
             print(lines)
         sys.stdout.write(RESET)
     else:
-        current = profile['active']
+        current_proj = profile['active']
+        current_sys = profile['activesys']
         profile_dump = yaml.dump(profile, default_flow_style=False, allow_unicode=True)
         thisstr = profile_dump.split("\n")
         sys.stdout.write(RED)
@@ -212,7 +213,7 @@ def show_profile(profile):
                 sys.stdout.write(RED)
             elif lines.startswith("-"):
                 sys.stdout.write(CYAN)
-            elif current in lines and "active" not in lines:
+            elif (current_proj in lines or current_sys in lines) and "active" not in lines:
                 print()
                 sys.stdout.write(MAGENTA)
             else:

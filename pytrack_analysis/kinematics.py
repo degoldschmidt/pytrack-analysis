@@ -60,10 +60,10 @@ def logged_f(_logfile):
                 logger.info("takes arg: "+str(args_dict))
             if len(args) == 0:
                 logger.info("takes arg: "+str(None))
-
             if len(kwargs) > 0:
-                kwargs_name = inspect.getargspec(func)[2]
-                kwargs_dict = dict(zip(kwargs_name, type(kwargs)))
+                kwargs_name = list(kwargs.keys())
+                kwargs_values = [type(v) for v in kwargs.values()]
+                kwargs_dict = dict(zip(kwargs_name, kwargs_values))
                 logger.info("takes kwarg: "+str(kwargs_dict))
             if len(kwargs) == 0:
                 logger.info("takes kwarg: "+str(None))
@@ -91,14 +91,17 @@ Kinematics class: loads centroid data and metadata >> processes and returns kine
 class Kinematics(object):
 
     #@Logger.logged
-    def __init__(self, _metadata):
+    def __init__(self, _db):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         ## overrides path-to-file and hash of last file-modified commit (version)
         self.filepath = os.path.realpath(__file__)
         self.vcommit = __version__
-        self.dt = 1/_metadata["framerate"]
+        self.print_header = False
+
+        ## reference to database (not a copy!!!)
+        self.db = _db
 
         ## logging
         logger = get_log(self, get_func(), LOG_PATH)
@@ -227,6 +230,64 @@ class Kinematics(object):
             ydiff = np.diff(yfly)
             speeds[col_pair.split('_')[0]+"_speed"] = np.append(0, np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"])
         return pd.DataFrame(speeds)
+
+    @logged_f(LOG_PATH)
+    def run(self, _session, _VERBOSE=False):
+        """
+        returns ethogram and visits from running kinematics analysis for given session
+        """
+        ethos, visits = [], []
+        # this prints out header
+        if _VERBOSE and self.print_header:
+            self.print_header = False
+            header = "{0:10s}   {1:10s}   {2:10s}   {3:10s}".format("Session","Genotype", "Mating", "Metabolic")
+            print(header)
+            autolen = len(header)
+            print("-"*autolen)
+        # import preprocessing functions
+        import pytrack_analysis.preprocessing as prep
+        # load session
+        this_session = self.db.session(_session)
+        # load raw data and meta data
+        raw_data, meta_data = this_session.load()
+        # this prints out details of each session
+        if _VERBOSE:
+            print("{0:10s}   {1:10s}   {2:10s}   {3:10s}".format(this_session.name,
+             self.db.experiment("CANS").Genotype[str(this_session.Genotype)],
+             self.db.experiment("CANS").Mating[str(this_session.Mating)],
+             self.db.experiment("CANS").Metabolic[str(this_session.Metabolic)]) )
+        # get frame duration from framerate
+        dt = 1/meta_data.framerate
+        ## STEP 1: NaN removal + interpolation + px-to-mm conversion
+        clean_data = prep.interpolate(raw_data)
+        clean_data = prep.to_mm(clean_data, meta_data.px2mm)
+        ## STEP 2: Gaussian filtering
+        window_len = 16 # = 0.32 s
+        smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
+        ## STEP 3: Distance from patch
+        distance_patch = self.distance_to_patch(clean_data[['head_x', 'head_y']], meta_data)
+        ## STEP 4: Linear Speed
+        speed = self.linear_speed(smoothed_data, meta_data)
+        window_len = 60 # = 1.2 s
+        smooth_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
+        window_len = 120 # = 1.2 s
+        smoother_speed = prep.gaussian_filter(smooth_speed, _len=window_len, _sigma=window_len/10)
+        speeds = pd.DataFrame({"head": smooth_speed["head_speed"], "body": smooth_speed["body_speed"], "smoother_head": smoother_speed["head_speed"]})
+        ## STEP 5: Angular Heading & Speed
+        angular_heading = self.head_angle(smoothed_data)
+        angular_speed = self.angular_speed(angular_heading, meta_data)
+        ## STEP 6: Ethogram classification & visits
+        etho_dict = {   0: "resting",
+                        1: "micromovement",
+                        2: "walking",
+                        3: "sharp turn",
+                        4: "yeast micromovement",
+                        5: "sucrose micromovement"}
+        meta_data.dict["etho_class"] = etho_dict
+        etho_vector, visit_vector = self.ethogram(speeds, angular_speed, distance_patch, meta_data)
+        return etho_vector, visit_vector
+
+
 
     #@logged(TODO)
     def sideward_speed(self, _X):

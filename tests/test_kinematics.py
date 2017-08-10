@@ -32,7 +32,7 @@ def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
     smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
 
     ## STEP 3: Distance from patch
-    kinematics = Kinematics(meta_data.dict)
+    kinematics = Kinematics(db)
     distance_patch = kinematics.distance_to_patch(smoothed_data[['head_x', 'head_y']], meta_data)
 
     ## STEP 4: Linear Speed

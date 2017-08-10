@@ -208,7 +208,7 @@ class Database(object):
         self.dir = os.path.dirname(_filename)
         self.name = os.path.basename(_filename).split(".")[0]
         basename = os.path.basename(_filename)
-        self.last = {}
+        self.last = {"Genotype":[], "Mating":[], "Metabolic":[]}
 
         ### set up experiments
         self.experiments = []
@@ -221,11 +221,6 @@ class Database(object):
         for each in ['Genotype', 'Mating', 'Metabolic']:
             lens.append(len(self.experiments[-1].dict[each].keys()))
         self.counts = np.zeros((lens[0], lens[1], lens[2]))
-        for ses in self.sessions():
-            this_gen = int(ses.Genotype)-1
-            this_mate = int(ses.Mating)-1
-            this_metab = int(ses.Metabolic)-1
-            self.counts[this_gen, this_mate, this_metab] += 1.0
 
     def show_data(self):
         for exp in self.experiments:
@@ -256,12 +251,15 @@ class Database(object):
             key = eqs.split("=")[0]
             val = eqs.split("=")[1]
             lstr = []
-            for ses in self.sessions():
+            for ses in self.select():
                 if ses.dict[key] == val:
                     lstr.append(ses.name)
         return lstr
 
     def count(self, genotype, mating, metabolic):
+        """
+        DEPRECATED
+        """
         out = []
         for gene in genotype:
             for mate in mating:
@@ -289,7 +287,7 @@ class Database(object):
                     return ses
         return None
 
-    def sessions(self, genotype=[], mating=[], metabolic=[]):
+    def select(self, genotype=[], mating=[], metabolic=[]):
         # TODO: use **kwargs
         outlist = []
         self.last["Genotype"] = genotype
@@ -325,6 +323,18 @@ class Experiment(object):
             if self.name in key:
                 self.sessions.append(Session(val, _file, key, self.name))
         #print(self.sessions[-1])
+        self.last = {"Genotype":[], "Mating":[], "Metabolic":[]}
+        # count genotypes, mating and metabolic
+        lens = []
+        for each in ['Genotype', 'Mating', 'Metabolic']:
+            lens.append(len(self.dict[each].keys()))
+        self.counts = np.zeros((lens[0], lens[1], lens[2]))
+        for session in self.sessions:
+            igene = session.Genotype-1
+            imate = session.Mating-1
+            imetab = session.Metabolic-1
+            self.counts[igene, imate, imetab] += 1
+        print(self.counts)
 
     def __getattr__(self, name):
         return self.dict[name]
@@ -355,11 +365,30 @@ class Experiment(object):
                 print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
         self.datdescr[title] = descr
 
+    def count(self, genotype, mating, metabolic):
+        out = []
+        for mate in mating:
+            indc = []
+            for gene in genotype:
+                for metab in metabolic:
+                    igene = self.name2int("Genotype", gene)
+                    imate = self.name2int("Mating", mate)
+                    imetab = self.name2int("Metabolic", metab)
+                    indc.append(self.counts[igene, imate, imetab])
+            out.append(indc)
+        return out[0], out[1]
+
     def int2name(self, key, arg):
         if type(arg) is int:
             return self.dict[key][str(arg)]
         else:
             return self.dict[key][arg]
+
+    def last_select(self, arg):
+        if arg in self.last:
+            return self.last[arg][0]
+        else:
+            return None
 
     def name2int(self, key, arg):
         for ix, val in enumerate(self.dict[key].values()):
@@ -400,6 +429,23 @@ class Experiment(object):
                 if identifier in ses.name:
                     return ses
         return "[ERROR]: session not found."
+
+    def select(self, genotype=[], mating=[], metabolic=[]):
+        # TODO: use **kwargs
+        outlist = []
+        self.last["Genotype"] = genotype
+        self.last["Mating"] = mating
+        self.last["Metabolic"] = metabolic
+
+        for ses in self.sessions:
+            this_gen = self.int2name("Genotype", ses.Genotype)
+            this_mate = self.int2name("Mating", ses.Mating)
+            this_metab = self.int2name("Metabolic", ses.Metabolic)
+            if (this_gen in genotype) or len(genotype) == 0:
+                if (this_mate in mating) or len(mating) == 0:
+                    if (this_metab in metabolic) or len(metabolic) == 0:
+                        outlist.append(ses)
+        return outlist
 
 
 class Session(object):
