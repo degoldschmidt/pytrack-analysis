@@ -11,7 +11,8 @@ from example_figures import fig_1c, fig_1d
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
-import seaborn as sns; sns.set(color_codes=True)
+#import seaborn as sns; sns.set(color_codes=True)
+#sns.set_style('ticks')
 
 DO_IT = ["Fig1"]
 
@@ -81,7 +82,7 @@ def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
 def stats_analysis(db, _only=[]):
     ### Get data together
     if len(_only) == 0:
-        _only = db.sessions()
+        _only = db.select()
     etho_data = {}
     for session in _only:
         etho_data[session.name] = session.data['etho']
@@ -113,26 +114,19 @@ def stats_analysis(db, _only=[]):
 
 
 
-def plotting(db, _experiment="CANS", _session="005"):
+def fig_1cd(_data, _meta):
     ### PLOTTING
     ## Fig 1
-    this_session = db.experiment(_experiment).session(_session)
     start = 56100#58085 50*180 =
     end = start+9000#65450#62577
-    meta = this_session
-    data = this_session.data.loc[start:end]
+    meta = _meta
+    data = _data.loc[start:end]
 
     ## C
     f1c, a1c = fig_1c(data, meta)
     ## D
-    data = this_session.data.loc[start:end+370]
+    data = _data.loc[start:end+370]
     f1d, a1d = fig_1d(data, meta)
-    ## E
-    ## F
-    ## G
-    ## H
-
-
 
     figs = {
                 '1C': (f1c, a1c),
@@ -149,23 +143,24 @@ def main():
     db = Database(get_db(profile)) # database from file
     log = Logger(profile, scriptname=thisscript)
 
-    if "Fig1" in DO_IT:
-        ### Example session "CANS_005" for Fig 1C,D
-        kine_analysis(db)
+    ### Example session "CANS_005" for Fig 1C,D
+    kine_analysis(db)
+    figures = fig_1cd(db.session("CANS_005").data, db.session("CANS_005"))
 
-        ### Fig. E-H
-        only_metab =  ["AA+ rich"]
-        only_gene = ["Canton S"]
-        group = db.sessions(genotype=only_gene, metabolic=only_metab)[:]
-        for session in group:
-            kine_analysis(db, _experiment=session.exp, _session=session.name, MULTI=True)
-        num_mated, num_virgins = db.count(only_gene, ['Mated', 'Virgin'], only_metab)
-        print( "Analyzed {1} mated {0} females and {2} virgin {0} females".format(db.last_select('Metabolic'), int(num_mated), int(num_virgins)) )
-        stats_analysis(db, _only=group)
+    ### Fig. E-H
+    """
+    only_metab =  ["AA+ rich"]
+    only_gene = ["Canton S"]
+    group = db.select(genotype=only_gene, metabolic=only_metab)[:]
+    for session in group:
+        kinematics.run(db, _experiment=session.exp, _session=session.name, MULTI=True)
+    num_mated, num_virgins = db.count(only_gene, ['Mated', 'Virgin'], only_metab)
+    print( "Analyzed {1} mated {0} females and {2} virgin {0} females".format(db.last_select('Metabolic'), int(num_mated), int(num_virgins)) )
+    stats_analysis(db, _only=group)
 
     log.close()
     #log.show()
-    figures = plotting(db)
+    """
 
     ### SAVE FIGURES TO FILE
     pltdir = get_plot(profile)

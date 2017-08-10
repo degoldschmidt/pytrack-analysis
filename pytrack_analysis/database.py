@@ -322,7 +322,7 @@ class Experiment(object):
         for key, val in self.dict.items():
             if self.name in key:
                 self.sessions.append(Session(val, _file, key, self.name))
-        #print(self.sessions[-1])
+
         self.last = {"Genotype":[], "Mating":[], "Metabolic":[]}
         # count genotypes, mating and metabolic
         lens = []
@@ -334,7 +334,6 @@ class Experiment(object):
             imate = session.Mating-1
             imetab = session.Metabolic-1
             self.counts[igene, imate, imetab] += 1
-        print(self.counts)
 
     def __getattr__(self, name):
         return self.dict[name]
@@ -362,7 +361,7 @@ class Experiment(object):
                 #else:
                     #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
             except:
-                print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
+                print(title, "given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
         self.datdescr[title] = descr
 
     def count(self, genotype, mating, metabolic):
@@ -480,12 +479,15 @@ class Session(object):
         else:
             try:
                 self.data = pd.concat([self.data, data], axis=1)
+                if isinstance(data, pd.Series):
+                    data = data.to_frame()
                 if len(data.columns) == 1:
                     self.data.rename(inplace=True, columns = {data.columns[0] : title})
                     #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
                 #else:
                     #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
             except:
+                print(title)
                 print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
         self.datdescr[title] = descr
 
