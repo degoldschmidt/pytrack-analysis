@@ -14,71 +14,6 @@ import matplotlib.pyplot as plt
 #import seaborn as sns; sns.set(color_codes=True)
 #sns.set_style('ticks')
 
-DO_IT = ["Fig1"]
-
-def kine_analysis(db, _experiment="CANS", _session="005", MULTI=False):
-    # load session
-    this_session = db.experiment(_experiment).session(_session)
-    # load data
-    raw_data, meta_data = this_session.load()
-    print(_experiment, _session, meta_data.Mating)
-    #arena_env = {}
-
-    ## STEP 1: NaN removal + interpolation + px-to-mm conversion
-    clean_data = prep.interpolate(raw_data)
-    clean_data = prep.to_mm(clean_data, meta_data.px2mm)
-
-    ## STEP 2: Gaussian filtering
-    window_len = 16 # = 0.32 s
-    smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
-
-    ## STEP 3: Distance from patch
-    kinematics = Kinematics(db)
-    distance_patch = kinematics.distance_to_patch(smoothed_data[['head_x', 'head_y']], meta_data)
-
-    ## STEP 4: Linear Speed
-    speed = kinematics.linear_speed(smoothed_data, meta_data)
-    window_len = 60 # = 1.2 s
-    smooth_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
-    window_len = 120 # = 1.2 s
-    smoother_speed = prep.gaussian_filter(smooth_speed, _len=window_len, _sigma=window_len/10)
-    speeds = pd.DataFrame({"head": smooth_speed["head_speed"], "body": smooth_speed["body_speed"], "smoother_head": smoother_speed["head_speed"]})
-
-    ## STEP 5: Angular Heading & Speed
-    angular_heading = kinematics.head_angle(smoothed_data)
-    angular_speed = kinematics.angular_speed(angular_heading, meta_data)
-
-    ## STEP 6: Ethogram classification
-    etho_dict = {   0: "resting",
-                    1: "micromovement",
-                    2: "walking",
-                    3: "sharp turn",
-                    4: "yeast micromovement",
-                    5: "sucrose micromovement"}
-    meta_data.dict["etho_class"] = etho_dict
-    etho_vector, visits = kinematics.ethogram(speeds, angular_speed, distance_patch, meta_data)
-
-    ## STEP 7: Food patch encounters (TODO)
-
-    ## DESTROY object
-    del kinematics
-
-    ## data to add to db
-    if not MULTI:
-        this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")
-        this_session.add_data("body_pos", smoothed_data[['body_x', 'body_y']], descr="Body positions of fly in [mm].")
-        this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
-        this_session.add_data("head_speed", speeds['head'], descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
-        this_session.add_data("body_speed", speeds['body'], descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
-        this_session.add_data("smoother_head_speed", speeds['smoother_head'], descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
-        this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
-        this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
-        this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
-        this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
-    else:
-        this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
-        this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
-
 def stats_analysis(db, _only=[]):
     ### Get data together
     if len(_only) == 0:
@@ -132,11 +67,12 @@ def fig_1cd(_data, _meta):
                 '1C': (f1c, a1c),
                 '1D': (f1d, a1d),
             }
+    plt.close("all")
     #plt.show()
     return figs
 
-
 def main():
+    DO_IT = "CDEG"
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
     profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
@@ -144,25 +80,48 @@ def main():
     log = Logger(profile, scriptname=thisscript)
 
     ### Example session "CANS_005" for Fig 1C,D
-    kine_analysis(db)
-    figures = fig_1cd(db.session("CANS_005").data, db.session("CANS_005"))
+    figcd = {}
+    if "CD" in DO_IT :
+        this_one = "CANS_005"
+        print("Process Fig. 1 C & D...", end="\t\t\t", flush=True)
+        kinematics = Kinematics(db)
+        kinematics.run(this_one, _ALL=True)
+        figcd = fig_1cd(db.session(this_one).data, db.session(this_one))
+        print("[DONE]")
 
     ### Fig. E-H
-    """
-    only_metab =  ["AA+ rich"]
-    only_gene = ["Canton S"]
-    group = db.select(genotype=only_gene, metabolic=only_metab)[:]
-    for session in group:
-        kinematics.run(db, _experiment=session.exp, _session=session.name, MULTI=True)
-    num_mated, num_virgins = db.count(only_gene, ['Mated', 'Virgin'], only_metab)
-    print( "Analyzed {1} mated {0} females and {2} virgin {0} females".format(db.last_select('Metabolic'), int(num_mated), int(num_virgins)) )
-    stats_analysis(db, _only=group)
+    figeg = {}
+    if "EG" in DO_IT :
+        print("Process Fig. 1 E & G...", flush=True)
+        # selecting only AA+ rich and Canton S (obsolete)
+        only_metab =  ["AA+ rich"]
+        only_gene = ["Canton S"]
+        group = db.experiment("CANS").select(genotype=only_gene, metabolic=only_metab)
 
+        ### count all mated and virgin sessions in that group (TODO: just count one of them)
+        num_mated, num_virgins = db.experiment("CANS").count(only_gene, ['Mated', 'Virgin'], only_metab)
+        kinematics.print_header = True # this is needed to print header for multi run
+
+        etho_data = {} # dict for DataFrame
+        for session in group:
+            etho, visits = kinematics.run(session.name, _VERBOSE=True) # run session with print out
+            etho_data[session.name] = etho['etho'] # save session ethogram in dict
+        etho_data = pd.DataFrame(etho_data) #create DataFrame
+        ### TODO in run function!!!
+        for i, metab in enumerate(only_metab):
+            for gene in only_gene:
+                print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
+        #stats_analysis(db, _only=group)
+        print("[DONE]")
     log.close()
     #log.show()
-    """
+    figfh = {}
+
+    #del kinematics
+    del db
 
     ### SAVE FIGURES TO FILE
+    figures = {**figcd, **figeg, **figfh}
     pltdir = get_plot(profile)
     for k,v in figures.items():
         figtitle = k + '.pdf'
@@ -171,6 +130,6 @@ def main():
 
 if __name__ == '__main__':
     # runs as benchmark test
-    test = multibench()
+    test = multibench(SILENT=False)
     test(main)
     del test

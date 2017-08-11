@@ -232,7 +232,7 @@ class Kinematics(object):
         return pd.DataFrame(speeds)
 
     @logged_f(LOG_PATH)
-    def run(self, _session, _VERBOSE=False):
+    def run(self, _session, _VERBOSE=False, _ALL=False):
         """
         returns ethogram and visits from running kinematics analysis for given session
         """
@@ -241,7 +241,7 @@ class Kinematics(object):
         if _VERBOSE and self.print_header:
             self.print_header = False
             header = "{0:10s}   {1:10s}   {2:10s}   {3:10s}".format("Session","Genotype", "Mating", "Metabolic")
-            print(header)
+            print(header, flush=True)
             autolen = len(header)
             print("-"*autolen)
         # import preprocessing functions
@@ -253,9 +253,9 @@ class Kinematics(object):
         # this prints out details of each session
         if _VERBOSE:
             print("{0:10s}   {1:10s}   {2:10s}   {3:10s}".format(this_session.name,
-             self.db.experiment("CANS").Genotype[str(this_session.Genotype)],
-             self.db.experiment("CANS").Mating[str(this_session.Mating)],
-             self.db.experiment("CANS").Metabolic[str(this_session.Metabolic)]) )
+             self.db.experiment(this_session.exp).Genotype[str(this_session.Genotype)],
+             self.db.experiment(this_session.exp).Mating[str(this_session.Mating)],
+             self.db.experiment(this_session.exp).Metabolic[str(this_session.Metabolic)]), flush=True)
         # get frame duration from framerate
         dt = 1/meta_data.framerate
         ## STEP 1: NaN removal + interpolation + px-to-mm conversion
@@ -277,15 +277,33 @@ class Kinematics(object):
         angular_heading = self.head_angle(smoothed_data)
         angular_speed = self.angular_speed(angular_heading, meta_data)
         ## STEP 6: Ethogram classification & visits
-        etho_dict = {   0: "resting",
-                        1: "micromovement",
-                        2: "walking",
-                        3: "sharp turn",
-                        4: "yeast micromovement",
-                        5: "sucrose micromovement"}
-        meta_data.dict["etho_class"] = etho_dict
-        etho_vector, visit_vector = self.ethogram(speeds, angular_speed, distance_patch, meta_data)
-        return etho_vector, visit_vector
+        meta_data.dict["etho_class"] = {    0: "resting",
+                                            1: "micromovement",
+                                            2: "walking",
+                                            3: "sharp turn",
+                                            4: "yeast micromovement",
+                                            5: "sucrose micromovement"}
+        etho_vector, visits = self.ethogram(speeds, angular_speed, distance_patch, meta_data)
+        ## STEP 7: SAVING DATA TO DATABASE
+        if _ALL:
+            this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")
+            this_session.add_data("body_pos", smoothed_data[['body_x', 'body_y']], descr="Body positions of fly in [mm].")
+            this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
+            this_session.add_data("head_speed", speeds['head'], descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
+            this_session.add_data("body_speed", speeds['body'], descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
+            this_session.add_data("smoother_head_speed", speeds['smoother_head'], descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
+            this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
+            this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
+            this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
+            this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
+        else:
+            this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
+            this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
+        ## RETURN
+        if _ALL:
+            return smoothed_data, distance_patch, speeds, angular_heading, angular_speed, etho_vector, visits
+        else:
+            return etho_vector, visits
 
 
 

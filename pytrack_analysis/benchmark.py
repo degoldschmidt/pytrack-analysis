@@ -1,5 +1,6 @@
 from timeit import default_timer as timer
 import numpy as np
+import os, sys
 
 class benchmark(object):
 
@@ -42,12 +43,15 @@ class multibench(object):
     * SILENT [bool] : option for silenced tests (no individual printouts)
     """
     def __init__(self, times=1, msg="", fmt="%0.9g", SILENT=True):
-        print("Starting benchmark:")
+        print("*** RUNNING BENCHMARK ***")
+        print("#times: {}\nSTDOUT silenced: {}\n***".format(times, SILENT))
+        self.t = np.zeros(times)
+        self.stdout = sys.stdout
         if not SILENT:
             self.msg = msg
         else:
             self.msg = ""
-            self.t = np.zeros(times)
+            sys.stdout = open(os.devnull, "w")
 
     """
     Calling the object performs the tests for given function f
@@ -58,12 +62,16 @@ class multibench(object):
     def __call__(self, f):
         self.f = f
         for i,thistime in enumerate(self.t):
+            print("#{}:".format(i+1), end="\t", file=self.stdout, flush=True)
             with benchmark(self.msg) as result:
                 self.f()
             self.t[i] = result.time
+            print("{} s".format(result.time), file=self.stdout)
+        #sys.stdout.close()
+        sys.stdout = self.stdout
 
     """
     Print-out when object is destroyed
     """
     def __del__(self):
-        print("Test {:} for {:} repititions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)))
+        print("Test {:} for {:} repititions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)), file=sys.stdout)
