@@ -168,7 +168,7 @@ class Kinematics(object):
         ymin = np.amin(yps, axis=0) # yeast minimum distance
         smin = np.amin(sps, axis=0) # sucrose minimum distance
 
-        out = np.zeros(speed.shape) - 1
+        out = np.zeros(speed.shape, dtype=np.int) - 1
         #out[speed <= 0.2] = 0   ## resting
         #out[speed > 0.2] = 1    ## micromovement
         out[speed > 2] = 2      ## walking

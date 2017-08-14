@@ -123,7 +123,7 @@ class Statistics(object):
     @logged_f(LOG_PATH)
     def sequence(self, _X):
         """
-        Returns sequence information (duration of sequences, total duration and cumulative length) from state vectors 
+        Returns sequence information (duration of sequences, total duration and cumulative length) from state vectors
         TESTED
         """
         outdict = {
@@ -131,7 +131,7 @@ class Statistics(object):
                     'mating': [],
                     'behavior': [],
                     'length [s]': [],
-                    'total_length [s]': [],
+                    'total_length [min]': [],
                     'cumulative_length [s]': [],
         }
         for col in _X.columns:
@@ -141,10 +141,18 @@ class Statistics(object):
 
             lengths, pos, behavior_class = self.rle(_X[col])
             sums = []
-            cums = np.zeros(len(lengths))
-            for each_class in np.sort(np.unique(behavior_class)): ## find unique behavioral class values
+            cums = np.zeros(len(lengths), dtype=np.int)
+            unique_behaviors = np.sort(np.unique(behavior_class))
+            sums_check = np.zeros(len(unique_behaviors), dtype=np.int)
+            for i, each_class in enumerate(unique_behaviors): ## find unique behavioral class values
                 sums.append(np.sum(lengths[behavior_class == each_class]))
                 cums[behavior_class == each_class] = np.cumsum(lengths[behavior_class == each_class])
+
+                ## checking whether total duration is calculated correctly
+                for entry in _X[col]:
+                    if entry == each_class:
+                        sums_check[i] += 1
+                assert (sums[i] == sums_check[i]),"Total duration is not calculated correctly! {} != {}".format(sums[i], sums_check[i])
 
             for index, each_len in enumerate(lengths):
                 this_behavior = int(behavior_class[index])
@@ -152,6 +160,6 @@ class Statistics(object):
                 outdict['mating'].append(mating)
                 outdict['behavior'].append(this_behavior)
                 outdict['length [s]'].append(each_len*dt)
-                outdict['total_length [s]'].append(sums[this_behavior]*dt)
+                outdict['total_length [min]'].append(sums[this_behavior]*dt/60.)
                 outdict['cumulative_length [s]'].append(cums[index]*dt)
         return pd.DataFrame(outdict)

@@ -9,45 +9,91 @@ from pytrack_analysis.benchmark import multibench
 from example_figures import fig_1c, fig_1d
 import logging
 
+#### USED FOR PLOTTING
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
-#import seaborn as sns; sns.set(color_codes=True)
-#sns.set_style('ticks')
 
-LOG_ME = False
+#### plotting
+def stars(p):
+   if p < 0.0001:
+       return "****"
+   elif (p < 0.001):
+       return "***"
+   elif (p < 0.01):
+       return "**"
+   elif (p < 0.05):
+       return "*"
+   else:
+       return "ns"
 
-def stats_analysis(db, _only=[]):
-    ### Get data together
-    if len(_only) == 0:
-        _only = db.select()
-    etho_data = {}
-    for session in _only:
-        etho_data[session.name] = session.data['etho']
-    etho_data = pd.DataFrame(etho_data)
-
-    stats = Statistics(db)
+def stats_analysis(etho_data, _stats=[]):
+    #### USED FOR PLOTTING
+    import seaborn as sns; sns.set(color_codes=True)
+    sns.set_style('ticks')
+    import scipy.stats as scistat
 
     ### STEP 1: Get etho sequence data (lengths, total lengths, cumulative lengths)
-    sequence_data = stats.sequence(etho_data)
-    print(len(sequence_data))
+    sequence_data = _stats.sequence(etho_data)
+    sequence_data.loc[sequence_data['behavior']==4, 'behavior'] = 'Yeast'
+    sequence_data.loc[sequence_data['behavior']==5, 'behavior'] = 'Sucrose'
     virgin_data = sequence_data.query('mating == 2')
-    virgin_data = virgin_data.query('behavior == 4 or behavior == 5')
-    virgin_data = virgin_data.drop_duplicates('total_length [s]')
-    print(len(virgin_data))
+    virgin_data = virgin_data.query("behavior == 'Yeast' or behavior == 'Sucrose'")
+    virgin_data = virgin_data.drop_duplicates('total_length [min]')
+    #print(len(virgin_data))
     mated_data = sequence_data.query('mating == 1')
-    mated_data = mated_data.query('behavior == 4 or behavior == 5')
-    mated_data = mated_data.drop_duplicates('total_length [s]')
-    print(len(mated_data))
+    mated_data = mated_data.query("behavior == 'Yeast' or behavior == 'Sucrose'")
+    mated_data = mated_data.drop_duplicates('total_length [min]')
+    #print(len(mated_data))
 
 
     ## plot testing
-    f, axes = plt.subplots( 2, num="Fig. 1E")
+    f, axes = plt.subplots( 2, num="Fig. 1E/G", figsize=(3,3.5))
+    print("Figsize [inches]: ", f.get_size_inches())
     data = [virgin_data, mated_data]
+    substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
+    title_label = ["Virgin", "Mated"]
+    panel_label = ["E", "G"]
+    ticks = [[0, 5, 1], [0,12,2]]
+    tick_label = [ ["0", "1", "", "3", "", "5"], ["0", "2", "", "", "", "10", "12"]]
+    lims = [[0,5], [0,12]]
+    staty = [4.5, 9.5]
     for ix,ax in enumerate(axes):
-        ax = sns.boxplot(x="behavior", y="total_length [s]", data=data[ix], ax=ax)
-        ax = sns.swarmplot(x="behavior", y="total_length [s]", data=data[ix], color='#3d3d3d', ax=ax)
-        ax.set_xticklabels(["Yeast", "Sucrose"])
+        ### main data (box, swarm, median line)
+        ax = sns.boxplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], palette=substrate_colors, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
+        ax = sns.swarmplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], size=3, color='#666666', ax=ax)
+        yeast_data = np.array(data[ix].query("behavior == 'Yeast'")["total_length [min]"])
+        sucrose_data = np.array(data[ix].query("behavior == 'Sucrose'")["total_length [min]"])
+        medians = [np.median(yeast_data), np.median(sucrose_data)]
+        dx = 0.3
+        for pos, median in enumerate(medians):
+           ax.hlines(median, pos-dx, pos+dx, lw=1, zorder=10)
+
+        ### stats annotation
+        statistic, pvalue = scistat.ranksums(yeast_data, sucrose_data)
+        y_max = np.max(np.concatenate((yeast_data, sucrose_data)))
+        y_min = np.min(np.concatenate((yeast_data, sucrose_data)))
+        y_max += abs(y_max - y_min)*0.05 ## move it up
+        ax.annotate("", xy=(0, y_max), xycoords='data', xytext=(1, y_max), textcoords='data', arrowprops=dict(arrowstyle="-", fc='#000000', ec='#000000', lw=1,connectionstyle="bar,fraction=0.1"))
+        ax.text(0.5, y_max + abs(y_max - y_min)*0.15, stars(pvalue), horizontalalignment='center', verticalalignment='center')
+
+        print("pvalue:", pvalue)
+
+        ### figure aesthetics
+        ax.set_xlabel("") # remove xlabel
+        ax.set_ylabel(title_label[ix]+"\n\nTotal duration\nof food micro-\nmovements [min]") # put a nice ylabel
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, x=-2, y=0.15) # rotates the xlabels by 30º
+        #print(ax.get_xlim(), ax.get_ylim())
+        #ax.set_aspect((ax.get_xlim()[1]-ax.get_xlim()[0])/(ax.get_ylim()[1]-ax.get_ylim()[0]))
+        sns.despine(ax=ax, bottom=True)
+        ax.set_ylim(lims[ix])
+        ax.set_yticks(np.arange(ticks[ix][0],ticks[ix][1]+1, ticks[ix][2]))
+        #ax.set_yticklabels(tick_label[ix])
+        ax.get_xaxis().set_tick_params(width=0) # no xticks markers
+
+    plt.tight_layout()
+    for ix,ax in enumerate(axes):
+        ax.set_title(panel_label[ix], fontsize=16, fontweight='bold', loc='left', x=-.85, y= 1)
     plt.show()
 
 
@@ -75,7 +121,7 @@ def fig_1cd(_data, _meta):
     return figs
 
 def main():
-    DO_IT = "CD"
+    DO_IT = "EG"
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
     profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
@@ -94,17 +140,32 @@ def main():
 
     ### Fig. E-H
     figeg = {}
-    if "EG" in DO_IT :
+    if "EG" in DO_IT:
         print("Process Fig. 1 E & G...", flush=True)
         # selecting only AA+ rich and Canton S (obsolete)
         only_metab =  ["AA+ rich"]
         only_gene = ["Canton S"]
         group = db.experiment("CANS").select(genotype=only_gene, metabolic=only_metab)
-        etho_data = kinematics.run_many(group, _VERBOSE=True)
-        #stats_analysis(db, _only=group)
+        # initialize statistics object
+        stats = Statistics(db)
+        etho_filename = os.path.join(get_out(profile),"etho_data.csv")
+
+        ### DATAHOOK IMPLEMENTATION
+        if os.path.exists(etho_filename):
+            if os.path.isfile(etho_filename):
+                print("Found datahook for ethogram data in", etho_filename)
+                etho_data = pd.read_csv(etho_filename, sep="\t")
+            else:
+                etho_data = kinematics.run_many(group, _VERBOSE=True)
+                etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+        else:
+            etho_data = kinematics.run_many(group, _VERBOSE=True)
+            etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+
+        stats_analysis(etho_data, _stats=stats)
         print("[DONE]")
     log.close()
-    #log.show()
+    log.show()
     figfh = {}
 
     #del kinematics
@@ -120,6 +181,6 @@ def main():
 
 if __name__ == '__main__':
     # runs as benchmark test
-    test = multibench(times=100)
+    test = multibench(SILENT=False)
     test(main)
     del test
