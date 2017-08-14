@@ -3,11 +3,17 @@ import logging.config
 import sys
 from .profile import get_log
 
+from pytrack_analysis.settings import LOG_ME
+
+if not LOG_ME:
+    logging.disable(sys.maxsize)
+
 class Logger(object):
     """
     This class creates an object for the main entry point of logging
     """
     def __init__(self, profile, scriptname):
+        #print("Open logger")
         """ Defines formatting and filehandler for logging """
         self.profile = profile
         self.scriptname = scriptname
@@ -18,12 +24,12 @@ class Logger(object):
 
         # Set logger name
         self.log = logging.getLogger(scriptname)
-        self.log.setLevel(logging.DEBUG)
-
-        # Log messages are formatted as below
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.fh.setFormatter(formatter)
-        self.log.addHandler(self.fh)
+        if not len(self.log.handlers):
+            self.log.setLevel(logging.DEBUG)
+            # Log messages are formatted as below
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            self.fh.setFormatter(formatter)
+            self.log.addHandler(self.fh)
 
         # Beginning of each log start
         self.log.info("==================================================")
@@ -35,6 +41,8 @@ class Logger(object):
         system = project['systems'][active_sys]
         self.log.info("Hosted @ {:} (OS: {:})".format(active_sys, system['os']))
         self.log.info("Python version: {:}".format(sys.version))
+        for handler in self.log.handlers:
+            handler.close()
 
     def show(self):
         """ Prints out last log entry """
@@ -63,3 +71,6 @@ class Logger(object):
         logger.addHandler(self.fh)
         logger.info("===*  ENDING SCRIPT  *===")
         logger.info("==================================================")
+        for handler in logger.handlers:
+            handler.close()
+        #logging.shutdown()

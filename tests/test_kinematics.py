@@ -7,12 +7,15 @@ from pytrack_analysis.kinematics import Kinematics
 from pytrack_analysis.statistics import Statistics
 from pytrack_analysis.benchmark import multibench
 from example_figures import fig_1c, fig_1d
+import logging
 
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 #import seaborn as sns; sns.set(color_codes=True)
 #sns.set_style('ticks')
+
+LOG_ME = False
 
 def stats_analysis(db, _only=[]):
     ### Get data together
@@ -72,7 +75,7 @@ def fig_1cd(_data, _meta):
     return figs
 
 def main():
-    DO_IT = "CDEG"
+    DO_IT = "CD"
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
     profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
@@ -97,20 +100,7 @@ def main():
         only_metab =  ["AA+ rich"]
         only_gene = ["Canton S"]
         group = db.experiment("CANS").select(genotype=only_gene, metabolic=only_metab)
-
-        ### count all mated and virgin sessions in that group (TODO: just count one of them)
-        num_mated, num_virgins = db.experiment("CANS").count(only_gene, ['Mated', 'Virgin'], only_metab)
-        kinematics.print_header = True # this is needed to print header for multi run
-
-        etho_data = {} # dict for DataFrame
-        for session in group:
-            etho, visits = kinematics.run(session.name, _VERBOSE=True) # run session with print out
-            etho_data[session.name] = etho['etho'] # save session ethogram in dict
-        etho_data = pd.DataFrame(etho_data) #create DataFrame
-        ### TODO in run function!!!
-        for i, metab in enumerate(only_metab):
-            for gene in only_gene:
-                print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
+        etho_data = kinematics.run_many(group, _VERBOSE=True)
         #stats_analysis(db, _only=group)
         print("[DONE]")
     log.close()
@@ -130,6 +120,6 @@ def main():
 
 if __name__ == '__main__':
     # runs as benchmark test
-    test = multibench(SILENT=False)
+    test = multibench(times=100)
     test(main)
     del test

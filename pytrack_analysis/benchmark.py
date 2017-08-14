@@ -47,6 +47,7 @@ class multibench(object):
         print("#times: {}\nSTDOUT silenced: {}\n***".format(times, SILENT))
         self.t = np.zeros(times)
         self.stdout = sys.stdout
+        self.silenced = SILENT
         if not SILENT:
             self.msg = msg
         else:
@@ -62,11 +63,12 @@ class multibench(object):
     def __call__(self, f):
         self.f = f
         for i,thistime in enumerate(self.t):
-            print("#{}:".format(i+1), end="\t", file=self.stdout, flush=True)
+            t_end = "\t" if self.silenced else "\n"
+            print("#{}".format(i+1), end=t_end, file=self.stdout, flush=True)
             with benchmark(self.msg) as result:
                 self.f()
             self.t[i] = result.time
-            print("{} s".format(result.time), file=self.stdout)
+            print("= {} s".format(result.time), file=self.stdout)
         #sys.stdout.close()
         sys.stdout = self.stdout
 

@@ -40,7 +40,8 @@ def get_log(_module, _func, _logfile):
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     fh.setFormatter(formatter)
     # add handler to logger object
-    logger.addHandler(fh)
+    if not len(logger.handlers):
+        logger.addHandler(fh)
     return logger
 
 
@@ -305,7 +306,22 @@ class Kinematics(object):
         else:
             return etho_vector, visits
 
-
+    def run_many(self, _group, _VERBOSE=True):
+        if _VERBOSE: print()
+        self.print_header = _VERBOSE # this is needed to print header for multi run
+        etho_data = {} # dict for DataFrame
+        ### count all mated and virgin sessions in that group (TODO: just count one of them)
+        this_exp = self.db.experiment(_group[0].exp)
+        num_mated, num_virgins = this_exp.count(this_exp.last["Genotype"], ['Mated', 'Virgin'], this_exp.last["Metabolic"])
+        for session in _group:
+            etho, visits = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+            etho_data[session.name] = etho['etho'] # save session ethogram in dict
+        etho_data = pd.DataFrame(etho_data) #create DataFrame
+        for i, metab in enumerate(this_exp.last["Metabolic"]):
+            for gene in this_exp.last["Genotype"]:
+                print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
+        if _VERBOSE: print()
+        return etho_data
 
     #@logged(TODO)
     def sideward_speed(self, _X):
