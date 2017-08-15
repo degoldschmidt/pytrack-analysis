@@ -2,6 +2,21 @@ import numpy as np
 import matplotlib
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.serif'] = 'Helvetica Neue'
+
+#### plotting
+def stars(p):
+   if p < 0.0001:
+       return "****"
+   elif (p < 0.001):
+       return "***"
+   elif (p < 0.01):
+       return "**"
+   elif (p < 0.05):
+       return "*"
+   else:
+       return "ns"
 
 def fig_1c(data, meta):
     ## 5 subplots (3,3,3,2,2)
@@ -120,6 +135,7 @@ def fig_1c(data, meta):
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
     plt.tight_layout()
+    plt.close("all")
     return f, axes
 
 """
@@ -190,6 +206,62 @@ def fig_1d(data, meta):
 
     ### post adjustments & presentation
     ax.set_aspect('equal', 'datalim')
+    plt.close("all")
+    return f, ax
+
+def fig_1e_h(data, meta):
+    #### USED FOR PLOTTING
+    import seaborn as sns; sns.set(color_codes=True)
+    sns.set_style('ticks')
+    import scipy.stats as scistat
+    ## plot testing
+    f, axes = plt.subplots( 2, num="Fig. 1E/G", figsize=(3,3.5))
+    print("Figsize [inches]: ", f.get_size_inches())
+    substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
+    title_label = ["Virgin", "Mated"]
+    panel_label = ["E", "G"]
+    ticks = [[0, 5, 1], [0,12,2]]
+    tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
+    lims = [[0,5], [0,12]]
+    staty = [4.5, 9.5]
+    for ix,ax in enumerate(axes):
+        ### main data (box, swarm, median line)
+        ax = sns.boxplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], palette=substrate_colors, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
+        ax = sns.swarmplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], size=3, color='#666666', ax=ax)
+        yeast_data = np.array(data[ix].query("behavior == 'Yeast'")["total_length [min]"])
+        sucrose_data = np.array(data[ix].query("behavior == 'Sucrose'")["total_length [min]"])
+        medians = [np.median(yeast_data), np.median(sucrose_data)]
+        dx = 0.3
+        for pos, median in enumerate(medians):
+           ax.hlines(median, pos-dx, pos+dx, lw=1, zorder=10)
+
+        ### stats annotation
+        statistic, pvalue = scistat.ranksums(yeast_data, sucrose_data)
+        y_max = np.max(np.concatenate((yeast_data, sucrose_data)))
+        y_min = np.min(np.concatenate((yeast_data, sucrose_data)))
+        y_max += abs(y_max - y_min)*0.05 ## move it up
+        ax.annotate("", xy=(0, y_max), xycoords='data', xytext=(1, y_max), textcoords='data', arrowprops=dict(arrowstyle="-", fc='#000000', ec='#000000', lw=1,connectionstyle="bar,fraction=0.1"))
+        ax.text(0.5, y_max + abs(y_max - y_min)*0.15, stars(pvalue), horizontalalignment='center', verticalalignment='center')
+
+        print("pvalue:", pvalue)
+
+        ### figure aesthetics
+        ax.set_xlabel("") # remove xlabel
+        ax.set_ylabel(title_label[ix]+"\n\nTotal duration\nof food micro-\nmovements [min]") # put a nice ylabel
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, x=-2, y=0.15) # rotates the xlabels by 30º
+        #print(ax.get_xlim(), ax.get_ylim())
+        #ax.set_aspect((ax.get_xlim()[1]-ax.get_xlim()[0])/(ax.get_ylim()[1]-ax.get_ylim()[0]))
+        sns.despine(ax=ax, bottom=True)
+        ax.set_ylim(lims[ix])
+        ax.set_yticks(np.arange(ticks[ix][0],ticks[ix][1]+1, ticks[ix][2]))
+        #ax.set_yticklabels(tick_label[ix])
+        ax.get_xaxis().set_tick_params(width=0) # no xticks markers
+
+    plt.tight_layout()
+    axes[0].yaxis.set_label_coords(-0.29, 0.5)
+    for ix,ax in enumerate(axes):
+        ax.set_title(panel_label[ix], fontsize=16, fontweight='bold', loc='left', x=-.92, y= 1)
+    plt.close("all")
     return f, ax
 
 """ ARCHIVE
