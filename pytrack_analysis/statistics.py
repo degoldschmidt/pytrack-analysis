@@ -131,6 +131,7 @@ class Statistics(object):
                     'mating': [],
                     'behavior': [],
                     'length [s]': [],
+                    'total_length [s]': [],
                     'total_length [min]': [],
                     'cumulative_length [s]': [],
         }
@@ -160,6 +161,7 @@ class Statistics(object):
                 outdict['mating'].append(mating)
                 outdict['behavior'].append(this_behavior)
                 outdict['length [s]'].append(each_len*dt)
+                outdict['total_length [s]'].append(sums[this_behavior]*dt)
                 outdict['total_length [min]'].append(sums[this_behavior]*dt/60.)
                 outdict['cumulative_length [s]'].append(cums[index]*dt)
         return pd.DataFrame(outdict)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib
 matplotlib.use('TKAgg')
@@ -23,13 +24,13 @@ def fig_1c(data, meta):
     f, axes = plt.subplots( 5,
                             num="Fig. 1C",
                             sharex=True,
-                            figsize=(5.5, 5),
+                            figsize=(4.5, 3.5),
                             dpi=150,
                             gridspec_kw={'height_ratios':[3,3,3,1,1]})
     submeta = { "xlabel" : ["", "", "", "", "Time [s]"],
                 "ylabel": [ "Distance\nto patch\n[mm]",
                             "Linear\nspeed\n[mm/s]",
-                            "Angular\nspeed\n[$^\circ$/s]",
+                            "Angular\nspeed\n[\xb0/s]",
                             "Etho-\ngram",
                             "Food\npatch\nvisits"],
                 "keep_spines": ["L", "L", "L", "", "B"],
@@ -120,21 +121,24 @@ def fig_1c(data, meta):
 
         ### annotation
         if ix == 0:
-            ax.hlines(5, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
-            ax.hlines(2.5, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
-            ax.text(lx[1]+100, 5-0.5, "5 mm", color='#bbbbbb', fontsize=8)
-            ax.text(lx[1]+100, 2.5-0.5, "2.5 mm", color='#bbbbbb', fontsize=8)
-            ax.set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=1.05)
+            ax.hlines(5, lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.hlines(2.5, lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.text(lx[1]+100, 5-0.5, "5 mm", color='#818181', fontsize=8)
+            ax.text(lx[1]+100, 2.5-0.5, "2.5 mm", color='#818181', fontsize=8)
         if ix == 1:
-            ax.hlines(2., lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
-            ax.hlines(0.2, lx[0], lx[1], colors='#bbbbbb', linestyles='--', lw=1)
-            ax.text(lx[1]+100, 2-0.4, "2 mm", color='#bbbbbb', fontsize=8)
-            ax.text(lx[1]+100, 0.2-0.4, "0.2 mm", color='#bbbbbb', fontsize=8)
-
-
+            ax.hlines(2., lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.hlines(0.2, lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.text(lx[1]+100, 2-0.5, "2 mm", color='#818181', fontsize=8)
+            ax.text(lx[1]+100, 0.2-1, "0.2 mm", color='#818181', fontsize=8)
+        if ix == 2:
+            ax.hlines(125., lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.hlines(-125., lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
+            ax.text(lx[1]+100, 125.-25, "125 \xb0/s", color='#818181', fontsize=8)
+            ax.text(lx[1]+100, -125.-25, "-125 \xb0/s", color='#818181', fontsize=8)
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
-    plt.tight_layout()
+    plt.tight_layout(rect=(0,0,0.97,1.))
+    axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.25, y=.9)
     plt.close("all")
     return f, axes
 
@@ -143,7 +147,7 @@ PLOTTING FIG 1D
 """
 def fig_1d(data, meta):
     ### figure itself
-    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(5, 5), dpi=150)
+    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(3.5, 3.5), dpi=150)
     ax = f.gca()
     ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
     # no axes
@@ -210,279 +214,75 @@ def fig_1d(data, meta):
     return f, ax
 
 def fig_1e_h(data, meta):
-    #### USED FOR PLOTTING
-    import seaborn as sns; sns.set(color_codes=True)
-    sns.set_style('ticks')
-    import scipy.stats as scistat
-    ## plot testing
-    f, axes = plt.subplots( 2, num="Fig. 1E/G", figsize=(3,3.5))
-    print("Figsize [inches]: ", f.get_size_inches())
-    substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
-    title_label = ["Virgin", "Mated"]
-    panel_label = ["E", "G"]
-    ticks = [[0, 5, 1], [0,12,2]]
-    tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
-    lims = [[0,5], [0,12]]
-    staty = [4.5, 9.5]
-    for ix,ax in enumerate(axes):
-        ### main data (box, swarm, median line)
-        ax = sns.boxplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], palette=substrate_colors, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
-        ax = sns.swarmplot(x="behavior", y="total_length [min]", data=data[ix], order = ["Yeast", "Sucrose"], size=3, color='#666666', ax=ax)
-        yeast_data = np.array(data[ix].query("behavior == 'Yeast'")["total_length [min]"])
-        sucrose_data = np.array(data[ix].query("behavior == 'Sucrose'")["total_length [min]"])
-        medians = [np.median(yeast_data), np.median(sucrose_data)]
-        dx = 0.3
-        for pos, median in enumerate(medians):
-           ax.hlines(median, pos-dx, pos+dx, lw=1, zorder=10)
+   #### USED FOR PLOTTING
+   import seaborn as sns; sns.set(color_codes=True)
+   sns.set_style('ticks')
+   import scipy.stats as scistat
 
-        ### stats annotation
-        statistic, pvalue = scistat.ranksums(yeast_data, sucrose_data)
-        y_max = np.max(np.concatenate((yeast_data, sucrose_data)))
-        y_min = np.min(np.concatenate((yeast_data, sucrose_data)))
-        y_max += abs(y_max - y_min)*0.05 ## move it up
-        ax.annotate("", xy=(0, y_max), xycoords='data', xytext=(1, y_max), textcoords='data', arrowprops=dict(arrowstyle="-", fc='#000000', ec='#000000', lw=1,connectionstyle="bar,fraction=0.1"))
-        ax.text(0.5, y_max + abs(y_max - y_min)*0.15, stars(pvalue), horizontalalignment='center', verticalalignment='center')
+   ## plot testing
+   f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
+   print("Figsize [inches]: ", f.get_size_inches())
+   substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
+   title_label = ["Virgin", "Mated"]
+   panel_label = ["E", "G", "F", "H"]
+   movel_label = [-1.15,-0.4]
+   ticks = [[0, 5, 1], [0,12,2]]
+   tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
+   lims = [[-0.5,5], [-1.2,12]] ### low = 0 - high/10
+   staty = [4.5, 9.5]
 
-        print("pvalue:", pvalue)
+   for ix,ax in enumerate(axes[:,0]):
+      data_eg = data[ix].drop_duplicates("total_length [min]")
+      ### main data (box, swarm, median line)
+      ax = sns.boxplot(x="behavior", y="total_length [min]", data=data_eg, order = ["Yeast", "Sucrose"], palette=substrate_colors, saturation=1.0, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
+      ax = sns.swarmplot(x="behavior", y="total_length [min]", data=data_eg, order = ["Yeast", "Sucrose"], size=2, color='#666666', ax=ax)
+      yeast_data = np.array(data_eg.query("behavior == 'Yeast'")["total_length [min]"])
+      sucrose_data = np.array(data_eg.query("behavior == 'Sucrose'")["total_length [min]"])
+      medians = [np.median(yeast_data), np.median(sucrose_data)]
+      dx = 0.3
+      for pos, median in enumerate(medians):
+         ax.hlines(median, pos-dx, pos+dx, lw=1, zorder=10)
 
-        ### figure aesthetics
-        ax.set_xlabel("") # remove xlabel
-        ax.set_ylabel(title_label[ix]+"\n\nTotal duration\nof food micro-\nmovements [min]") # put a nice ylabel
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, x=-2, y=0.15) # rotates the xlabels by 30º
-        #print(ax.get_xlim(), ax.get_ylim())
-        #ax.set_aspect((ax.get_xlim()[1]-ax.get_xlim()[0])/(ax.get_ylim()[1]-ax.get_ylim()[0]))
-        sns.despine(ax=ax, bottom=True)
-        ax.set_ylim(lims[ix])
-        ax.set_yticks(np.arange(ticks[ix][0],ticks[ix][1]+1, ticks[ix][2]))
-        #ax.set_yticklabels(tick_label[ix])
-        ax.get_xaxis().set_tick_params(width=0) # no xticks markers
+      ### stats annotation
+      statistic, pvalue = scistat.ranksums(yeast_data, sucrose_data)
+      y_max = np.max(np.concatenate((yeast_data, sucrose_data)))
+      y_min = np.min(np.concatenate((yeast_data, sucrose_data)))
+      y_max += abs(y_max - y_min)*0.05 ## move it up
+      ax.annotate("", xy=(0, y_max), xycoords='data', xytext=(1, y_max), textcoords='data', arrowprops=dict(arrowstyle="-", fc='#000000', ec='#000000', lw=1,connectionstyle="bar,fraction=0.1"))
+      ax.text(0.5, y_max + abs(y_max - y_min)*0.2, "p = {:.3g}".format(pvalue), horizontalalignment='center', verticalalignment='center', fontsize=8)
+      #print("pvalue:", pvalue)
 
-    plt.tight_layout()
-    axes[0].yaxis.set_label_coords(-0.29, 0.5)
-    for ix,ax in enumerate(axes):
-        ax.set_title(panel_label[ix], fontsize=16, fontweight='bold', loc='left', x=-.92, y= 1)
-    plt.close("all")
-    return f, ax
+      ### figure aesthetics
+      ax.set_xlabel("") # remove xlabel
+      ax.set_ylabel(title_label[ix]+"\n\nTotal duration\nof food micro-\nmovements [min]") # put a nice ylabel
+      ax.set_xticklabels(ax.get_xticklabels(), rotation=30, x=-2, y=0.15) # rotates the xlabels by 30º
+      #print(ax.get_xlim(), ax.get_ylim())
+      #ax.set_aspect((ax.get_xlim()[1]-ax.get_xlim()[0])/(ax.get_ylim()[1]-ax.get_ylim()[0]))
+      ax.set_ylim(lims[ix])
+      ax.set_yticks(np.arange(ticks[ix][0],ticks[ix][1]+1, ticks[ix][2]))
+      #ax.set_yticklabels(tick_label[ix])
+      ax.get_xaxis().set_tick_params(color='#ffffff') # no xticks markers
+      sns.despine(ax=ax, bottom=True, trim=True)
 
-""" ARCHIVE
-PLOTTING FIG 1C
-def fig_1c(data, meta, index):
-    figlabels = {
-                0: "i: Distance to Patch",
-                1: "ii: Linear Speed",
-                2: "iii: Angular Speed",
-                3: "iv: Ethogram",
-                4: "v: Food Patch Visits",
-    }
-    ylabels = {
-                0: "Distance\nto patch\n[mm]",
-                1: "Linear\nspeed\n[mm/s]",
-                2: "Angular\nspeed\n[$^\circ$/s]",
-                3: "Etho-\ngram",
-                4: "Food\npatch\nvisits",
-    }
+   for ix,ax in enumerate(axes[:,1:]):
+      hist_data = [ np.array(data[ix].query("behavior == 'Yeast'")["length [s]"]), np.array(data[ix].query("behavior == 'Sucrose'")["length [s]"]) ]
+      for jx,a in enumerate(ax):
+         a.hist(hist_data[jx], bins=np.arange(0,20,2.2), normed=1, align='left', rwidth=0.9, color=substrate_colors[jx])
+         a.set_xlim([0.,20.])
+         a.set_ylim([0.,1.])
+         a.set_yticklabels(["0", "", "0.5", "", "1"])
+         sns.despine(ax=a, trim=True, offset=2)
 
-    start = data.first_valid_index()
-    #print(start)
-    end = start+9000#65450#62577
-    nsubs = [2,2,1,1,1]
-    if index < 2:
-        ## Ratios for grid
-        splits = [0,1]
-        end_at = [25,20]
-        break_at = 6
-        scale1 = 1
-        scale2 = 5
-
-        #for i in range(len(ratios_panel)):
-        #    if i in splits:
-        ylim  = [break_at, end_at[index]]
-        #print(ylim)
-        ylim2 = [0.0, break_at]
-        ylimratio = (ylim[1]-ylim[0])/(ylim2[1]-ylim2[0]+ylim[1]-ylim[0])/scale2
-        ylim2ratio = (ylim2[1]-ylim2[0])/(ylim2[1]-ylim2[0]+ylim[1]-ylim[0])/scale1
-        f, axes = plt.subplots( nsubs[index],
-                                num="Fig. 1C"+figlabels[index],
-                                sharex=True,
-                                figsize=(4.5, 1.5),
-                                dpi=300,
-                                gridspec_kw={'height_ratios':[ylimratio, ylim2ratio]})
-        axes[0].set_ylim(ylim)
-        axes[1].set_ylim(ylim2)
-    else:
-        f, axes = plt.subplots( nsubs[index],
-                                num="Fig. 1C"+figlabels[index],
-                                sharex=True,
-                                figsize=(4.5, 1.5),
-                                dpi=300)
-
-    if index == 0:
-        axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=1.05)
-    elif index == 1:
-        axes[0].set_title("C", fontsize=16, color='w', fontweight='bold', loc='left', x=-0.3, y=1.05)
-    else:
-        axes.set_title("C", fontsize=16, color='w', fontweight='bold', loc='left', x=-0.3, y=1.05)
-    if index < 2:
-        ### LABEL
-        axes[1].set_ylabel(ylabels[index], fontsize=12)
-
-        ### REMOVE SPINES
-        # TOP
-        axes[0].spines['top'].set_visible(False)
-        axes[1].spines['top'].set_visible(False)
-        # BOTTOM
-        axes[0].spines['bottom'].set_visible(False)
-        axes[1].spines['bottom'].set_visible(False)
-        # RIGHT
-        axes[0].spines['right'].set_visible(False)
-        axes[1].spines['right'].set_visible(False)
-        # NO TOP TICKS
-        axes[0].tick_params(labeltop='off')  # don't put tick labels at the top
-        axes[0].set_xticks([])
-
-        # I want major ticks to be every 5
-        majors = np.arange(10, end_at[0]+1, 15)
-        # I want minor ticks to be every 1
-        minors = np.arange(10, end_at[0]+1, 5)
-        # Specify tick label size
-        axes[0].tick_params(axis = 'both', which = 'major', labelsize = 12)
-        axes[0].tick_params(axis = 'both', which = 'minor', labelsize = 0)
-        axes[0].set_yticks(majors)
-        axes[0].set_yticks(minors, minor = True)
-
-        # I want major ticks to be every 2
-        majors = np.arange(0, break_at, 2)
-        # I want minor ticks to be every 1
-        minors = np.arange(0, break_at, scale1)
-        # Specify tick label size
-        axes[1].tick_params(axis = 'both', which = 'major', labelsize = 12)
-        axes[1].tick_params(axis = 'both', which = 'minor', labelsize = 0)
-        axes[1].set_yticks(majors)
-        axes[1].set_yticks(minors, minor = True)
-    elif index == 4:
-        ### REMOVE SPINES
-        # TOP
-        axes.spines['top'].set_visible(False)
-        # RIGHT
-        axes.spines['right'].set_visible(False)
-        axes.set_ylabel(ylabels[index], fontsize=12)
-        axes.set_xlabel("Time [s]", fontsize=12)
-    else:
-        ### REMOVE SPINES
-        # TOP
-        axes.spines['top'].set_visible(False)
-        # BOTTOM
-        axes.spines['bottom'].set_visible(False)
-        # RIGHT
-        axes.spines['right'].set_visible(False)
-        ### LABEL
-        axes.set_ylabel(ylabels[index], fontsize=12)
-        axes.set_xticks([])
-    if index == 2:
-        axes.set_yticks(np.arange(-400, 401, 200))
+         ### figure aesthetics
+         a.set_xlabel("Micromovement duration [s]") # remove xlabel
+         a.set_ylabel("Occurences,\nnormalized") # put a nice ylabel
 
 
-    # distance_to_patch
-    #axes[0], axes[1] = brokenAxesDemo(5,25,1,5)
-    lx1 = start
-    lx2 = end
-    if index == 0:
-        axes[0].plot(data, 'k-', lw=1)
-        axes[1].plot(data, 'k-', lw=1)
-        axes[0].set_ylim([break_at, end_at[0]])
-        axes[1].hlines(5, lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes[1].hlines(2.5, lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes[1].text(lx2+100, 5-0.5, "5 mm", color='#bbbbbb', fontsize=8)
-        axes[1].text(lx2+100, 2.5-0.5, "2.5 mm", color='#bbbbbb', fontsize=8)
-        axes[0].set_xlim([lx1,lx2])
-        axes[1].set_xlim([lx1,lx2])
-        axes[1].set_ylim([0,break_at])
-    elif index == 1:
-        axes[0].plot(data['head_speed'], 'b-', lw=1)
-        axes[0].plot(data['body_speed'], 'k-', lw=1)
-        axes[1].plot(data['head_speed'], 'b-', lw=1)
-        axes[1].plot(data['body_speed'], 'k-', lw=1)
-        axes[1].hlines(2., lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes[1].hlines(0.2, lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes[1].text(lx2+100, 2-0.4, "2 mm", color='#bbbbbb', fontsize=8)
-        axes[1].text(lx2+100, 0.2-0.4, "0.2 mm", color='#bbbbbb', fontsize=8)
-        lx1 = start
-        lx2 = end
-        axes[0].set_xlim([lx1,lx2])
-        axes[1].set_xlim([lx1,lx2])
-        axes[1].set_ylim([0,break_at])
-    elif index == 2:
-        axes.plot(data['angular_speed'], 'k-', lw=1)
-        #axes.plot(data['angle'], 'r-', lw=1)
-        axes.hlines(125., lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes.hlines(-125, lx1, lx2, colors='#bbbbbb', linestyles='--', lw=1)
-        axes.text(lx2+100, 125-40, "125 $^\circ$", color='#bbbbbb', fontsize=8)
-        axes.text(lx2+100, -125-40, "-125 $^\circ$", color='#bbbbbb', fontsize=8)
-        lx1 = start
-        lx2 = end
-        axes.set_xlim([lx1,lx2])
-        axes.set_ylim([-400,400])
-    elif index == 3:
-        a = np.array(data)[:,0]
-        dy = 0.5
-        x = np.arange(lx1,lx2+1)
-        _lw = 0.1
-        axes.vlines(x[a==0],-dy,dy, colors='#ffffff', lw=_lw)
-        axes.vlines(x[a==1],-dy,dy, colors='#c97aaa', lw=_lw)
-        axes.vlines(x[a==2],-dy,dy, colors='#5bd5ff', lw=_lw)
-        axes.vlines(x[a==3],-dy,dy, colors='#04bf11', lw=_lw)
-        axes.vlines(x[a==4],-dy,dy, colors='#f0e442', lw=_lw)
-        axes.vlines(x[a==5],-dy,dy, colors='k', lw=_lw)
-        #axes.plot(data, 'k-', lw=_lw, zorder=0)
-        axes.set_xlim([lx1,lx2])
-        axes.set_ylim([-dy,dy])
-        axes.spines['left'].set_visible(False)
-        axes.set_yticks([])
-    elif index == 4:
-        a = np.array(data)[:,0]
-        dy = 0.5
-        x = np.arange(lx1,lx2+1)
-        _lw = 0.1
-        axes.vlines(x[a==1],-dy,dy, colors='#ffc04c', lw=_lw)
-        axes.vlines(x[a==2],-dy,dy, colors='#4c8bff', lw=_lw)
-        #axes.plot(data, 'k-', lw=_lw, zorder=0)
-        axes.set_xlim([lx1,lx2])
-        axes.set_ylim([-dy,dy])
-        axes.spines['left'].set_visible(False)
-        axes.set_yticks([])
 
-    if index < 2:
-        d = .005  # how big to make the diagonal lines in axes coordinates
-        # arguments to pass to plot, just so we don't keep repeating them
-        b = 0.0225
-        points = [0, 0.271-b, 0.715-b, 0.735-b]
-        for dp in points:
-            kwargs = dict(transform=axes[0].transAxes, color='#666666', clip_on=False, zorder=10, lw=1)
-            axes[0].plot((dp - d, dp + d), (-2*d, 2*d), **kwargs)  # top-right diagonal (data)
-            kwargs.update(transform=axes[1].transAxes)  # switch to the bottom axes
-            axes[1].plot((dp - d, dp + d), (1 - 2*d, 1 + 2*d), **kwargs)  # bottom-right diagonal
-
-        plt.tight_layout()
-        axes[1].yaxis.set_label_coords(0.18, 0.45, transform=f.transFigure)
-        plt.subplots_adjust(hspace=0.00)
-    else:
-        plt.tight_layout()
-        if index == 3:
-            axes.yaxis.set_label_coords(0.16, 0.42, transform=f.transFigure)
-
-    if index == 0:
-        for ax in axes:
-            currpos = ax.get_position() # get the original position
-            #print(currpos)
-    if index == 1:
-        for ax in axes:
-            currpos = ax.get_position() # get the original position
-            #print(currpos)
-            #currpos.x0 += 0.1
-            #ax.set_position(currpos) # set a new position
-    if index > 1:
-        currpos = axes.get_position() # get the original position
-        #print(currpos)
-
-    return f, axes
-"""
+   plt.tight_layout()
+   axes[0,0].yaxis.set_label_coords(-0.35, 0.5)
+   for colix in range(axes.shape[1]-1):
+      for ix,ax in enumerate(axes[:,colix]):
+         ax.set_title(panel_label[ix+2*colix], fontsize=16, fontweight='bold', loc='left', x=movel_label[colix])
+   plt.close("all")
+   return f, ax

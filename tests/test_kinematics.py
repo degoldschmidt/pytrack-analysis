@@ -12,17 +12,13 @@ import logging
 def stats_analysis(etho_data, _stats=[]):
     ### STEP 1: Get etho sequence data (lengths, total lengths, cumulative lengths)
     sequence_data = _stats.sequence(etho_data)
-    sequence_data.loc[sequence_data['behavior']==4, 'behavior'] = 'Yeast'
-    sequence_data.loc[sequence_data['behavior']==5, 'behavior'] = 'Sucrose'
+    sequence_data.loc[sequence_data['behavior']==4, 'behavior'] = 'Yeast' # renaming integer to Substrate name
+    sequence_data.loc[sequence_data['behavior']==5, 'behavior'] = 'Sucrose' # renaming integer to Substrate name
     virgin_data = sequence_data.query('mating == 2')
     virgin_data = virgin_data.query("behavior == 'Yeast' or behavior == 'Sucrose'")
-    virgin_data = virgin_data.drop_duplicates('total_length [min]')
-    #print(len(virgin_data))
     mated_data = sequence_data.query('mating == 1')
     mated_data = mated_data.query("behavior == 'Yeast' or behavior == 'Sucrose'")
-    mated_data = mated_data.drop_duplicates('total_length [min]')
-    #print(len(mated_data))
-    return [virgin_data, mated_data]
+    return  [virgin_data, mated_data]
 
 
 
@@ -46,10 +42,10 @@ def fig_1cd(_data, _meta):
             }
     return figs
 
-def fig_1eg(_data, _meta):
+def fig_1eh(_data, _meta):
     f, ax = fig_1e_h(_data, _meta)
     figs = {
-                'fig_1E_G': (f, ax),
+                'fig_1E_H': (f, ax),
             }
     return figs
 
@@ -96,7 +92,7 @@ def main():
             etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
         virgin_mated_data = stats_analysis(etho_data, _stats=stats)
-        figeg = fig_1eg(virgin_mated_data, "Substrate")
+        figeg = fig_1eh(virgin_mated_data, "Substrate")
         print("[DONE]")
     log.close()
     log.show()
@@ -110,6 +106,7 @@ def main():
     pltdir = get_plot(profile)
     for k,v in figures.items():
         figtitle = k + '.pdf'
+        print(os.path.join(pltdir, figtitle))
         v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)#v[0].dpi)
 
 
