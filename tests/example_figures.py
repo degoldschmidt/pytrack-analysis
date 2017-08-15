@@ -24,7 +24,7 @@ def fig_1c(data, meta):
     f, axes = plt.subplots( 5,
                             num="Fig. 1C",
                             sharex=True,
-                            figsize=(4.5, 3.5),
+                            figsize=(4.5, 3.5), ##5.5,5
                             dpi=150,
                             gridspec_kw={'height_ratios':[3,3,3,1,1]})
     submeta = { "xlabel" : ["", "", "", "", "Time [s]"],
@@ -147,7 +147,7 @@ PLOTTING FIG 1D
 """
 def fig_1d(data, meta):
     ### figure itself
-    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(3.5, 3.5), dpi=150)
+    f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(3.5, 3.5), dpi=150) # 5,5
     ax = f.gca()
     ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
     # no axes
@@ -220,7 +220,7 @@ def fig_1e_h(data, meta):
    import scipy.stats as scistat
 
    ## plot testing
-   f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
+   f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) ##9,3.5 # ratio 1,1.5,1.5 # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
    print("Figsize [inches]: ", f.get_size_inches())
    substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
    title_label = ["Virgin", "Mated"]
