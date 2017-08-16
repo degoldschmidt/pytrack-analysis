@@ -112,8 +112,12 @@ def main():
     pltdir = get_plot(profile)
     for k,v in figures.items():
         figtitle = k + '.pdf'
+        pngtitle = k + '.png'
         print(os.path.join(pltdir, figtitle))
+        ### pdf
         v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)#v[0].dpi)
+        ### png
+        v[0].savefig(os.path.join(pltdir, pngtitle), dpi=300)#v[0].dpi)
 
 
 if __name__ == '__main__':
