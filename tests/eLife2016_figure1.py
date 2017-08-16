@@ -6,7 +6,7 @@ import pytrack_analysis.preprocessing as prep
 from pytrack_analysis.kinematics import Kinematics
 from pytrack_analysis.statistics import Statistics
 from pytrack_analysis.benchmark import multibench
-from example_figures import fig_1c, fig_1d, fig_1e_h
+from example_figures import fig_1c, fig_1d, fig_1e_h, fig_2
 import logging
 
 def stats_analysis(etho_data, _stats=[]):
@@ -49,8 +49,15 @@ def fig_1eh(_data, _meta):
             }
     return figs
 
+def fig_2(_data, _meta):
+    f, ax = fig_2(_data, _meta)
+    figs = {
+                'fig_2': (f, ax),
+            }
+    return figs
+
 def main():
-    DO_IT = "CDEG"
+    DO_IT = "CDEFGH"
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
     profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
@@ -68,8 +75,8 @@ def main():
         print("[DONE]")
 
     ### Fig. E-H
-    figeg = {}
-    if "EG" in DO_IT:
+    figefgh = {}
+    if "EFGH" in DO_IT:
         print("Process Fig. 1 E & G...", flush=True)
         # selecting only AA+ rich and Canton S (obsolete)
         only_metab =  ["AA+ rich"]
@@ -77,7 +84,7 @@ def main():
         group = db.experiment("CANS").select(genotype=only_gene, metabolic=only_metab)
         # initialize statistics object
         stats = Statistics(db)
-        etho_filename = os.path.join(get_out(profile),"etho_data.csv")
+        etho_filename = os.path.join(get_out(profile),"fig1_etho_data.csv")
 
         ### DATAHOOK IMPLEMENTATION
         if os.path.exists(etho_filename):
@@ -92,17 +99,16 @@ def main():
             etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
         virgin_mated_data = stats_analysis(etho_data, _stats=stats)
-        figeg = fig_1eh(virgin_mated_data, "Substrate")
+        figefgh = fig_1eh(virgin_mated_data, "Substrate")
         print("[DONE]")
     log.close()
     log.show()
-    figfh = {}
 
     #del kinematics
     del db
 
     ### SAVE FIGURES TO FILE
-    figures = {**figcd, **figeg, **figfh}
+    figures = {**figcd, **figefgh}
     pltdir = get_plot(profile)
     for k,v in figures.items():
         figtitle = k + '.pdf'

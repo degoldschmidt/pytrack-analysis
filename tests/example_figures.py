@@ -26,7 +26,7 @@ def fig_1c(data, meta):
                             sharex=True,
                             figsize=(4.5, 3.5), ##5.5,5
                             dpi=150,
-                            gridspec_kw={'height_ratios':[3,3,3,1,1]})
+                            gridspec_kw={'height_ratios':[2,2,2,1,1]})
     submeta = { "xlabel" : ["", "", "", "", "Time [s]"],
                 "ylabel": [ "Distance\nto patch\n[mm]",
                             "Linear\nspeed\n[mm/s]",
@@ -135,10 +135,9 @@ def fig_1c(data, meta):
             ax.hlines(-125., lx[0], lx[1], colors='#818181', linestyles='--', lw=1)
             ax.text(lx[1]+100, 125.-25, "125 \xb0/s", color='#818181', fontsize=8)
             ax.text(lx[1]+100, -125.-25, "-125 \xb0/s", color='#818181', fontsize=8)
-        ax.yaxis.set_label_coords(-0.1, 0.5)
-
-    plt.tight_layout(rect=(0,0,0.97,1.))
-    axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.25, y=.9)
+        ax.yaxis.set_label_coords(-0.15, 0.5)
+    plt.tight_layout(h_pad=-0.1,rect=(0,0,0.96,1.))
+    axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=.8)
     plt.close("all")
     return f, axes
 
@@ -214,24 +213,27 @@ def fig_1d(data, meta):
     return f, ax
 
 def fig_1e_h(data, meta):
-   #### USED FOR PLOTTING
-   import seaborn as sns; sns.set(color_codes=True)
-   sns.set_style('ticks')
-   import scipy.stats as scistat
+    """
+    Fig. 1E-H
+    """
+    #### USED FOR PLOTTING
+    import seaborn as sns; sns.set(color_codes=True)
+    sns.set_style('ticks')
+    import scipy.stats as scistat
 
-   ## plot testing
-   f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) ##9,3.5 # ratio 1,1.5,1.5 # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
-   print("Figsize [inches]: ", f.get_size_inches())
-   substrate_colors = ['#ffc04c', '#4c8bff']  ##MATING COLORS #bc1a62","": "#1abc74"}
-   title_label = ["Virgin", "Mated"]
-   panel_label = ["E", "G", "F", "H"]
-   movel_label = [-1.15,-0.4]
-   ticks = [[0, 5, 1], [0,12,2]]
-   tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
-   lims = [[-0.5,5], [-1.2,12]] ### low = 0 - high/10
-   staty = [4.5, 9.5]
+    ## plot testing
+    f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) ##9,3.5 # ratio 1,1.5,1.5 # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
+    print("Figsize [inches]: ", f.get_size_inches())
+    substrate_colors = ['#ffc04c', '#4c8bff']
+    title_label = ["Virgin", "Mated"]
+    panel_label = ["E", "G", "F", "H"]
+    movel_label = [-1.15,-0.4]
+    ticks = [[0, 5, 1], [0,12,2]]
+    tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
+    lims = [[-0.5,5], [-1.2,12]] ### low = 0 - high/10
+    staty = [4.5, 9.5]
 
-   for ix,ax in enumerate(axes[:,0]):
+    for ix,ax in enumerate(axes[:,0]):
       data_eg = data[ix].drop_duplicates("total_length [min]")
       ### main data (box, swarm, median line)
       ax = sns.boxplot(x="behavior", y="total_length [min]", data=data_eg, order = ["Yeast", "Sucrose"], palette=substrate_colors, saturation=1.0, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
@@ -264,7 +266,7 @@ def fig_1e_h(data, meta):
       ax.get_xaxis().set_tick_params(color='#ffffff') # no xticks markers
       sns.despine(ax=ax, bottom=True, trim=True)
 
-   for ix,ax in enumerate(axes[:,1:]):
+    for ix,ax in enumerate(axes[:,1:]):
       hist_data = [ np.array(data[ix].query("behavior == 'Yeast'")["length [s]"]), np.array(data[ix].query("behavior == 'Sucrose'")["length [s]"]) ]
       for jx,a in enumerate(ax):
          a.hist(hist_data[jx], bins=np.arange(0,20,2.2), normed=1, align='left', rwidth=0.9, color=substrate_colors[jx])
@@ -272,17 +274,29 @@ def fig_1e_h(data, meta):
          a.set_ylim([0.,1.])
          a.set_yticklabels(["0", "", "0.5", "", "1"])
          sns.despine(ax=a, trim=True, offset=2)
-
          ### figure aesthetics
          a.set_xlabel("Micromovement duration [s]") # remove xlabel
          a.set_ylabel("Occurences,\nnormalized") # put a nice ylabel
 
-
-
-   plt.tight_layout()
-   axes[0,0].yaxis.set_label_coords(-0.35, 0.5)
-   for colix in range(axes.shape[1]-1):
+    plt.tight_layout()
+    axes[0,0].yaxis.set_label_coords(-0.35, 0.5)
+    for colix in range(axes.shape[1]-1):
       for ix,ax in enumerate(axes[:,colix]):
          ax.set_title(panel_label[ix+2*colix], fontsize=16, fontweight='bold', loc='left', x=movel_label[colix])
-   plt.close("all")
-   return f, ax
+    plt.close("all")
+    return f, ax
+
+def fig_2(_data, _meta):
+    """
+    Fig. 2
+    ##MATING COLORS
+    #dd1c77	(221,28,119)
+    #f4b7d2	(244,183,210)
+    #2ca25f	(44,162,95)
+    #99d8b3	(153,216,179)
+    #e5f9e9	(229,249,233)
+    """
+
+    f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=True)
+    plt.close("all")
+    return f, axes

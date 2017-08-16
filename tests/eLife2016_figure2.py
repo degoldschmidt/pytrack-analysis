@@ -1,0 +1,74 @@
+import os
+from pytrack_analysis.profile import *
+from pytrack_analysis.database import *
+from pytrack_analysis.logger import Logger
+import pytrack_analysis.preprocessing as prep
+from pytrack_analysis.kinematics import Kinematics
+from pytrack_analysis.statistics import Statistics
+from pytrack_analysis.benchmark import multibench
+from example_figures import fig_2
+import logging
+
+def fig_2(_data, _meta):
+    f, ax = fig_2(_data, _meta)
+    figs = {
+                'fig_2': (f, ax),
+            }
+    return figs
+
+def main():
+    # filename of this script
+    thisscript = os.path.basename(__file__).split('.')[0]
+    profile = get_profile('Vero eLife 2016', 'degoldschmidt', script=thisscript)
+    db = Database(get_db(profile)) # database from file
+    log = Logger(profile, scriptname=thisscript)
+
+    ### Fig. 2
+    print("Process Fig. 2...", flush=True)
+    ### select all sesson from CANS
+    group = db.experiment("CANS").select()
+    # initialize kinematics object
+    kinematics = Kinematics(db)
+    # initialize statistics object
+    stats = Statistics(db)
+
+    ### DATAHOOK IMPLEMENTATION
+    etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
+    if os.path.exists(etho_filename):
+        if os.path.isfile(etho_filename):
+            print("Found datahook for ethogram data in", etho_filename)
+            etho_data = pd.read_csv(etho_filename, sep="\t")
+        else:
+            etho_data = kinematics.run_many(group, _VERBOSE=True)
+            etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+    else:
+        etho_data = kinematics.run_many(group, _VERBOSE=True)
+        etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+
+    ### Statistical analysis of ethogram sequences
+    sequence_data = stats.sequence(etho_data)
+    sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
+
+    ### Eventually plotting
+    figures = {} #fig_2(virgin_mated_data, "Substrate")
+    print("[DONE]")
+    log.close()
+    log.show()
+
+    del kinematics
+    del stats
+    del db
+
+    ### SAVE FIGURES TO FILE
+    pltdir = get_plot(profile)
+    for k,v in figures.items():
+        figtitle = k + '.pdf'
+        print(os.path.join(pltdir, figtitle))
+        v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)#v[0].dpi)
+
+
+if __name__ == '__main__':
+    # runs as benchmark test
+    test = multibench(SILENT=False)
+    test(main)
+    del test

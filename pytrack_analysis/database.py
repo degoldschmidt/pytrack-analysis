@@ -208,14 +208,33 @@ class Database(object):
         self.dir = os.path.dirname(_filename)
         self.name = os.path.basename(_filename).split(".")[0]
         basename = os.path.basename(_filename)
-        self.last = {"Genotype":[], "Mating":[], "Metabolic":[]}
+        self.last = {"genotype":[], "mating":[], "metabolic":[]}
+        self.all_conds = {"genotype":[], "mating":[], "metabolic":[]}
 
         ### set up experiments
         self.experiments = []
         for key in dictstruct[basename].keys():
             jfile = os.path.join(self.dir, key)
             self.experiments.append(Experiment(jfile))
-
+            if "CANS" in key:
+                self.experiments[-1].all_conds["genotype"].append("Canton S")
+                self.experiments[-1].all_conds["mating"].append("Mated")
+                self.experiments[-1].all_conds["mating"].append("Virgin")
+                self.experiments[-1].all_conds["metabolic"].append("A++ rich")
+                self.experiments[-1].all_conds["metabolic"].append("A--")
+                self.experiments[-1].all_conds["metabolic"].append("A++ suboptimal")
+            elif "ORCO" in key:
+                self.experiments[-1].all_conds["genotype"].append("Canton S")
+                self.experiments[-1].all_conds["genotype"].append("Or83b-/-")
+                self.experiments[-1].all_conds["genotype"].append("Or83b+/-")
+                self.experiments[-1].all_conds["mating"].append("Mated")
+                self.experiments[-1].all_conds["metabolic"].append("A--")
+            elif "TBEH" in key:
+                self.experiments[-1].all_conds["genotype"].append("Canton S")
+                self.experiments[-1].all_conds["genotype"].append("tbetah")
+                self.experiments[-1].all_conds["mating"].append("Mated")
+                self.experiments[-1].all_conds["mating"].append("Virgin")
+                self.experiments[-1].all_conds["metabolic"].append("A--")
         # count genotypes, mating and metabolic
         lens = []
         for each in ['Genotype', 'Mating', 'Metabolic']:
@@ -287,12 +306,13 @@ class Database(object):
                     return ses
         return None
 
-    def select(self, genotype=[], mating=[], metabolic=[]):
+    def select(self, **kwargs):
         # TODO: use **kwargs
         outlist = []
-        self.last["Genotype"] = genotype
-        self.last["Mating"] = mating
-        self.last["Metabolic"] = metabolic
+        self.last = self.all_conds.copy()
+        for key, value in kwargs.items():
+            self.last[key] = value
+
 
         for exp in self.experiments:
             for ses in exp.sessions:
@@ -323,7 +343,8 @@ class Experiment(object):
             if self.name in key:
                 self.sessions.append(Session(val, _file, key, self.name))
 
-        self.last = {"Genotype":[], "Mating":[], "Metabolic":[]}
+        self.all_conds = {"genotype":[], "mating":[], "metabolic":[]}
+        self.last = {"genotype":[], "mating":[], "metabolic":[]}
         # count genotypes, mating and metabolic
         lens = []
         for each in ['Genotype', 'Mating', 'Metabolic']:
@@ -364,7 +385,7 @@ class Experiment(object):
                 print(title, "given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
         self.datdescr[title] = descr
 
-    def count(self, genotype, mating, metabolic):
+    def count(self, g, mating, metabolic):
         out = []
         for mate in mating:
             indc = []
@@ -429,20 +450,20 @@ class Experiment(object):
                     return ses
         return "[ERROR]: session not found."
 
-    def select(self, genotype=[], mating=[], metabolic=[]):
+    def select(self, **kwargs):
         # TODO: use **kwargs
         outlist = []
-        self.last["Genotype"] = genotype
-        self.last["Mating"] = mating
-        self.last["Metabolic"] = metabolic
+        self.last = self.all_conds.copy()
+        for key, value in kwargs.items():
+            self.last[key] = value
 
         for ses in self.sessions:
             this_gen = self.int2name("Genotype", ses.Genotype)
             this_mate = self.int2name("Mating", ses.Mating)
             this_metab = self.int2name("Metabolic", ses.Metabolic)
-            if (this_gen in genotype) or len(genotype) == 0:
-                if (this_mate in mating) or len(mating) == 0:
-                    if (this_metab in metabolic) or len(metabolic) == 0:
+            if (this_gen in self.last["genotype"]) or len(self.last["genotype"]) == 0:
+                if (this_mate in self.last["mating"]) or len(self.last["mating"]) == 0:
+                    if (this_metab in self.last["metabolic"]) or len(self.last["metabolic"]) == 0:
                         outlist.append(ses)
         return outlist
 
