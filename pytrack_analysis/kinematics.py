@@ -251,6 +251,7 @@ class Kinematics(object):
         this_session = self.db.session(_session)
         # load raw data and meta data
         raw_data, meta_data = this_session.load()
+        print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))
         # this prints out details of each session
         if _VERBOSE:
             print("{0:10s}   {1:10s}   {2:10s}   {3:10s}".format(this_session.name,

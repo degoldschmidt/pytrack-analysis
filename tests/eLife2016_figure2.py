@@ -9,7 +9,7 @@ from pytrack_analysis.benchmark import multibench
 from example_figures import fig_2
 import logging
 
-def fig_2(_data, _meta):
+def get_fig_2(_data, _meta):
     f, ax = fig_2(_data, _meta)
     figs = {
                 'fig_2': (f, ax),
@@ -34,23 +34,33 @@ def main():
 
     ### DATAHOOK IMPLEMENTATION
     etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
-    if os.path.exists(etho_filename):
-        if os.path.isfile(etho_filename):
-            print("Found datahook for ethogram data in", etho_filename)
-            etho_data = pd.read_csv(etho_filename, sep="\t")
+    try:
+        print("Found datahook for ethogram data in", etho_filename)
+        etho_size = os.path.getsize(etho_filename)
+        if np.log10(etho_size) > 8:
+            print("Opening large csv file. Might take a while...")
+            chunksize = 10 ** 5
+            chunks = pd.read_csv(etho_filename, sep="\t", chunksize=chunksize)
+            etho_data = pd.concat([chunk for chunk in chunks])
         else:
-            etho_data = kinematics.run_many(group, _VERBOSE=True)
-            etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
-    else:
+            etho_data = pd.read_csv(etho_filename, sep="\t")
+    except FileNotFoundError:
         etho_data = kinematics.run_many(group, _VERBOSE=True)
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
-    sequence_data = stats.sequence(etho_data)
-    sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
+    seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
+    try:
+        print("Found datahook for sequence data in", seq_filename)
+        sequence_data = pd.read_csv(seq_filename, sep="\t")
+    except FileNotFoundError:
+        sequence_data = stats.sequence(etho_data)
+        sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
+        sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
+
 
     ### Eventually plotting
-    figures = {} #fig_2(virgin_mated_data, "Substrate")
+    figures = get_fig_2([etho_data, sequence_data], db)
     print("[DONE]")
     log.close()
     log.show()
@@ -64,8 +74,7 @@ def main():
     for k,v in figures.items():
         figtitle = k + '.pdf'
         print(os.path.join(pltdir, figtitle))
-        v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)#v[0].dpi)
-
+        v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)
 
 if __name__ == '__main__':
     # runs as benchmark test

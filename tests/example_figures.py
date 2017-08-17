@@ -296,7 +296,45 @@ def fig_2(_data, _meta):
     #99d8b3	(153,216,179)
     #e5f9e9	(229,249,233)
     """
+    #### USED FOR PLOTTING
+    import seaborn as sns; sns.set(color_codes=True)
+    sns.set_style('ticks')
+    import scipy.stats as scistat
 
-    f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=True)
+    ## data unpacking
+    [etho_data, sequence_data] = _data
+    ## time series limits (120 mins = 50[frames/s]*60[secs/min]*120 = 360000 frames)
+    lx = (0, len(etho_data.index))
+
+    ### sort the etho_data by ascending sum of yeast micromovements and then split them by "metabolic"
+    etho_sum = {col: np.sum(etho_data[col]==4) for col in etho_data.columns} # creates a dictionary with column name as key and sum of YEAST micromovements as value
+    etho_sum = [entry[0] for entry in sorted(etho_sum.items(), key=lambda x: x[1])] # create list with tuples sorted by values (sum of Y micromov), then take only sessions
+    indices = [_meta.session(entry).condition-1 for entry in etho_sum] # list of indices from Condition = mating and metabolic states (sorted by sessions as above) [0: ]
+    split_etho_sum = [[entry for i, entry in enumerate(etho_sum) if indices[i]==ix] for ix in range(5)] # splits session names into the five conditions (sorted)
+    nethos = [len(entry) for entry in split_etho_sum] # lengths of each split (how many ethos per condition)
+    max_nethos = max(nethos)
+    print(nethos)
+
+    f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
+
+    for (row, col), ax in np.ndenumerate(axes):
+        #print(row, col, ax)
+
+        if row == 1: ## This is the ethogram stacks
+            smpl=100
+            if col == 0:
+                ax.set_ylabel("Ethogram index")
+            for ieth, etho in enumerate(split_etho_sum[col]): # go through all entries per column
+                a = np.array(etho_data.loc[:, etho])[::smpl] # data to np.array
+                x = np.arange(lx[0],lx[1],smpl)
+                for ic, color in enumerate(['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']):
+                    ax.vlines(x[a==ic],ieth,ieth+1, colors=color, lw=0.1)
+            ax.set_ylim([0, max_nethos])
+            ax.set_xticks([lx[0], lx[1]/2, lx[1]])
+            ax.set_yticks([0, nethos[col]+1, nethos[col]])
+            sns.despine(ax=ax, left=True, trim=True)
+
+
+    plt.tight_layout(w_pad=-0.05)
     plt.close("all")
     return f, axes
