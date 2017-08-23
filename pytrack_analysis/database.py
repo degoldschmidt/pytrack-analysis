@@ -385,7 +385,7 @@ class Experiment(object):
                 print(title, "given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
         self.datdescr[title] = descr
 
-    def count(self, g, mating, metabolic):
+    def count(self, genotype, mating, metabolic):
         out = []
         for mate in mating:
             indc = []

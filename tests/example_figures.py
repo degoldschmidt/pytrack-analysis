@@ -320,6 +320,9 @@ def fig_2(_data, _meta):
     for (row, col), ax in np.ndenumerate(axes):
         #print(row, col, ax)
 
+        if row == 0: ## This is the yeast micromovent histograms
+            if col == 0:
+                ax.set_ylabel("Total duration\nof yeast micro-\nmovements [min]")
         if row == 1: ## This is the ethogram stacks
             smpl=100
             if col == 0:
@@ -333,6 +336,9 @@ def fig_2(_data, _meta):
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
             ax.set_yticks([0, nethos[col]+1, nethos[col]])
             sns.despine(ax=ax, left=True, trim=True)
+        if row == 2: ## This is the cumulative duration plot
+            if col == 0:
+                ax.set_ylabel("Cumulative duration\nof yeast micro-\nmovements [min]")
 
 
     plt.tight_layout(w_pad=-0.05)

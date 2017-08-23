@@ -313,13 +313,13 @@ class Kinematics(object):
         etho_data = {} # dict for DataFrame
         ### count all mated and virgin sessions in that group (TODO: just count one of them)
         this_exp = self.db.experiment(_group[0].exp)
-        num_mated, num_virgins = this_exp.count(this_exp.last["Genotype"], ['Mated', 'Virgin'], this_exp.last["Metabolic"])
+        num_mated, num_virgins = this_exp.count(this_exp.last["genotype"], ['Mated', 'Virgin'], this_exp.last["metabolic"])
         for session in _group:
             etho, visits = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
             etho_data[session.name] = etho['etho'] # save session ethogram in dict
         etho_data = pd.DataFrame(etho_data) #create DataFrame
-        for i, metab in enumerate(this_exp.last["Metabolic"]):
-            for gene in this_exp.last["Genotype"]:
+        for i, metab in enumerate(this_exp.last["metabolic"]):
+            for gene in this_exp.last["genotype"]:
                 print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
         if _VERBOSE: print()
         return etho_data
