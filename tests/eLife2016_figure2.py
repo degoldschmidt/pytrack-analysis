@@ -1,13 +1,16 @@
+# -*- coding: utf-8 -*-
+# author: degoldschmidt
+# date: 25/8/2017
+import logging
 import os
 from pytrack_analysis.profile import *
 from pytrack_analysis.database import *
-from pytrack_analysis.logger import Logger
-import pytrack_analysis.preprocessing as prep
-from pytrack_analysis.kinematics import Kinematics
-from pytrack_analysis.statistics import Statistics
-from pytrack_analysis.benchmark import multibench
+from pytrack_analysis import Logger
+import pytrack_analysis.preprocessing as prp
+from pytrack_analysis import Kinematics
+from pytrack_analysis import Statistics
+from pytrack_analysis import multibench
 from example_figures import fig_2
-import logging
 
 def get_fig_2(_data, _meta):
     f, ax = fig_2(_data, _meta)

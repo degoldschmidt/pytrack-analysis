@@ -21,7 +21,10 @@ PROFILE, NAME, OS = get_globals()
 def get_log_path(_file):
     with open(_file, 'r') as stream:
         profile = yaml.load(stream)
-    return profile[profile['active']]['systems'][NAME]['log']
+    try:
+        return profile[profile['active']]['systems'][NAME]['log']
+    except KeyError:
+        return profile[profile['active']]['systems'][NAME.lower()]['log']
 
 def get_log(_module, _func, _logfile):
     """
