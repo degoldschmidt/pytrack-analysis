@@ -10,7 +10,7 @@ __author__          = "Dennis Goldschmidt"
 __author_email__    = "dennis.goldschmidt@neuro.fchampalimaud.org"
 __all__ = ["benchmark", "database", "kinematics", "logger", "preprocessing", "profile", "settings", "statistics"]
 
-from .benchmark import multibench
+from .benchmark import Benchmark, Multibench
 from .kinematics import Kinematics
 from .logger import Logger
 from .statistics import Statistics

@@ -9,7 +9,7 @@ from pytrack_analysis import Logger
 import pytrack_analysis.preprocessing as prp
 from pytrack_analysis import Kinematics
 from pytrack_analysis import Statistics
-from pytrack_analysis import multibench
+from pytrack_analysis import Multibench
 from example_figures import fig_2
 
 def get_fig_2(_data, _meta):

@@ -33,24 +33,24 @@ class Benchmark(object):
 
     def __enter__(self):
         """
-        Starts default timer
+        Starts default timer. Use it like this ``with Benchmark(self.msg) as result:`` to enter
 
         Returns
         -------
-        itself : object
-            For whatever reason...
+        self : object
+            needs to be to return time for the exit
         """
         self.start = timer()
         return self
 
     def __exit__(self, *args):
         """
-        Stops timer and prints message and times in given format
+        Stops timer and prints message and times in given format. This is called as soon as the with-loop is exited.
 
         Args
         ----
         args :
-            Variable number of arguments, but not really needed?!
+            Exception type, value, and traceback, if raised
         """
         t = timer() - self.start
         if len(self.msg) > 0:
@@ -95,19 +95,27 @@ class Multibench(object):
         """
         Calling the object performs the tests for given function f
 
-        Args:
+        Args
+        ----
         f : callable
             Function to be tested
+
+        Returns
+        -------
+        res :
+            Whatever f returns
         """
         self.f = f
         for i,thistime in enumerate(self.t):
             t_end = "\t" if self.silenced else "\n"
             print("#{}".format(i+1), end=t_end, file=self.stdout, flush=True)
-            with benchmark(self.msg) as result:
-                self.f()
+            with Benchmark(self.msg) as result:
+                res = self.f()
             self.t[i] = result.time
             print("= {} s".format(result.time), file=self.stdout)
+        sys.stdout.close()
         sys.stdout = self.stdout
+        return res
 
     def __del__(self):
         """
