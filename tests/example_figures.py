@@ -419,5 +419,6 @@ def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.me
         ## step 4: plot interpolated signals over frames with gray solid lines
         ax.plot(new_y[-1], c="#666666", alpha=0.5, lw=1)
     ## step 5: plot median of signals along frames axis with given color
-    ax.plot(estimator(np.array(new_y), axis=0), c=color, lw=2)
+    median = estimator(np.array(new_y), axis=0, overwrite_input=True)
+    ax.plot(median, c=color, lw=2)
     return ax

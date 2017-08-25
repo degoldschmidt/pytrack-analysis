@@ -27,7 +27,6 @@ def main():
     print("Process Fig. 2...", flush=True)
     ### select all sesson from CANS
     group = db.experiment("CANS").select()
-    print(group)
     # initialize kinematics object
     kinematics = Kinematics(db)
     # initialize statistics object

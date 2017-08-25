@@ -216,6 +216,7 @@ class Database(object):
         for key in dictstruct[basename].keys():
             jfile = os.path.join(self.dir, key)
             self.experiments.append(Experiment(jfile))
+            #### TODO: this needs to be generic!!!
             if "CANS" in key:
                 self.experiments[-1].all_conds["genotype"].append("Canton S")
                 self.experiments[-1].all_conds["mating"].append("Mated")
