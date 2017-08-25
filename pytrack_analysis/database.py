@@ -7,7 +7,7 @@ from asciitree import draw_tree
 from ._globals import *
 
 """
-DataFileFormats IO
+DataFileFormats IO (TODO: move to fileio.py)
 """
 
 def json2dict(_file):

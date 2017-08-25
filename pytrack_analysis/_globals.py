@@ -71,8 +71,6 @@ def check_file(_file):
             write_yaml(_file, {'$USERS': [], '$PROJECTS': []})
         elif '$LINK' in test.keys():
             link = os.path.join(test['$LINK'],'profile.yaml')
-            #print("Found link to {:}".format(link))
-            ### Link to new profile file
             return link
         elif '$USERS' not in test.keys() or '$PROJECTS' not in test.keys():
             write_yaml(_file, {'$USERS': [], '$PROJECTS': []})
