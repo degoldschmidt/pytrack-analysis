@@ -76,7 +76,8 @@ def main():
         pngtitle = k + '.png'
         print(os.path.join(pltdir, figtitle))
         v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)
-        v[0].savefig(os.path.join(pltdir, pngtitle), dpi=300)
+        ## TODO: does not work for Windows
+        #v[0].savefig(os.path.join(pltdir, pngtitle))
 
 if __name__ == '__main__':
     # runs as benchmark test
