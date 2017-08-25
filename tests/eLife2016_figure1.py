@@ -95,7 +95,7 @@ def main():
                 etho_data = kinematics.run_many(group, _VERBOSE=True)
                 etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
         else:
-            etho_data = kinematics.run_many(group, _VERBOSE=True)
+            etho_data = kinematics.run_many(group, _VERBOSE=False)
             etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
         virgin_mated_data = stats_analysis(etho_data, _stats=stats)

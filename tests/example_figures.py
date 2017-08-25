@@ -137,7 +137,7 @@ def fig_1c(data, meta):
             ax.text(lx[1]+100, -125.-25, "-125 \xb0/s", color='#818181', fontsize=8)
         ax.yaxis.set_label_coords(-0.15, 0.5)
     plt.tight_layout(h_pad=-0.1,rect=(0,0,0.96,1.))
-    axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=.8)
+    #axes[0].set_title("C", fontsize=16, fontweight='bold', loc='left', x=-0.3, y=.8)
     plt.close("all")
     return f, axes
 
@@ -148,7 +148,7 @@ def fig_1d(data, meta):
     ### figure itself
     f = plt.figure("Fig. 1D Representative trajectory of a fly walking in the arena", figsize=(3.5, 3.5), dpi=150) # 5,5
     ax = f.gca()
-    ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
+    #ax.set_title("D", fontsize=16, fontweight='bold', loc='left', x=-0.05)
     # no axes
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
@@ -282,7 +282,7 @@ def fig_1e_h(data, meta):
     axes[0,0].yaxis.set_label_coords(-0.35, 0.5)
     for colix in range(axes.shape[1]-1):
       for ix,ax in enumerate(axes[:,colix]):
-         ax.set_title(panel_label[ix+2*colix], fontsize=16, fontweight='bold', loc='left', x=movel_label[colix])
+         pass#ax.set_title(panel_label[ix+2*colix], fontsize=16, fontweight='bold', loc='left', x=movel_label[colix])
     plt.close("all")
     return f, ax
 
@@ -313,16 +313,39 @@ def fig_2(_data, _meta):
     split_etho_sum = [[entry for i, entry in enumerate(etho_sum) if indices[i]==ix] for ix in range(5)] # splits session names into the five conditions (sorted)
     nethos = [len(entry) for entry in split_etho_sum] # lengths of each split (how many ethos per condition)
     max_nethos = max(nethos)
-    print(nethos)
+
+    colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+    conds = {"mating": [2,2,1,1,1], "metabolic": [3,2,3,1,2]}
 
     f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
 
     for (row, col), ax in np.ndenumerate(axes):
         #print(row, col, ax)
+        if row == 0: ## This is the yeast micromovent histograms (C)
 
-        if row == 0: ## This is the yeast micromovent histograms
+            ## data plotting
+            currdata = sequence_data.drop_duplicates("total_length [min]")
+            currdata = currdata.query("mating == "+str(conds["mating"][col]))
+            currdata = currdata.query("metabolic == "+str(conds["metabolic"][col]))
+            ax = sns.boxplot(x="behavior", y="total_length [min]", data=currdata, color=colors[col], saturation=1.0, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
+            ax = sns.swarmplot(x="behavior", y="total_length [min]", data=currdata, size=2, color='#666666', ax=ax)
+            currdata = np.array(currdata["total_length [min]"])
+            median = np.median(currdata)
+            dx = 0.3
+            ax.hlines(median, -dx, dx, lw=1, zorder=10)
+
+            ## figure aesthetics
+            ax.set_ylim([-2.,62.])
+            ax.set_yticks(np.arange(0, 60+1, 20))
             if col == 0:
                 ax.set_ylabel("Total duration\nof yeast micro-\nmovements [min]")
+                sns.despine(ax=ax, bottom=True, trim=True)
+            else:
+                sns.despine(ax=ax, bottom=True, left=True, trim=True)
+                ax.get_yaxis().set_visible(False)
+            ax.get_xaxis().set_visible(False)
+
+
         if row == 1: ## This is the ethogram stacks
             smpl=100
             if col == 0:
@@ -334,13 +357,67 @@ def fig_2(_data, _meta):
                     ax.vlines(x[a==ic],ieth,ieth+1, colors=color, lw=0.1)
             ax.set_ylim([0, max_nethos])
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
-            ax.set_yticks([0, nethos[col]+1, nethos[col]])
+            ax.set_xticklabels(["0", "60", "120"])
+            ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
+            ax.get_yaxis().set_tick_params(length=2, pad=0.0)
             sns.despine(ax=ax, left=True, trim=True)
+
+
         if row == 2: ## This is the cumulative duration plot
+            currdata = sequence_data
+            currdata = currdata.query("mating == "+str(conds["mating"][col]))
+            currdata = currdata.query("metabolic == "+str(conds["metabolic"][col]))
+            #print(currdata[["frame_index", "cumulative_length [min]"]].head(10))
+
+            ## data plotting
+            ax = cum_plot(currdata, time="frame_index", unit="session", value="cumulative_length [min]", color=colors[col], upper=len(etho_data.index), ax=ax)
+
+            ## figure aesthetics
+            ax.set_xlabel("Time [min]")
+            ax.set_xticks([lx[0], lx[1]/2, lx[1]])
+            ax.set_xticklabels(["0", "60", "120"])
+            ax.set_ylim([-2.,62.])
+            ax.set_yticks(np.arange(0, 60+1, 20))
             if col == 0:
                 ax.set_ylabel("Cumulative duration\nof yeast micro-\nmovements [min]")
+                sns.despine(ax=ax, offset=2, trim=True)
+            else:
+                ax.get_yaxis().set_visible(False)
+                sns.despine(ax=ax, offset=2, left=True, trim=True)
+
+
 
 
     plt.tight_layout(w_pad=-0.05)
     plt.close("all")
     return f, axes
+
+def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):
+    ## step 0: reduce data
+    df = data[[time, unit, value]]
+    ## step 1: define array of frames
+    new_x = np.arange(upper) ### TODO
+    med_y = np.zeros(len(new_x))
+
+    ## step 2: groupby unit -> list
+    gp = df.groupby(unit)
+    new_y = []
+    # groups() returns a dict with unit:indices as k:v pair
+    for unit, indices  in gp.groups.items():
+        selected_unit = df.loc[indices]
+        x0 = np.array(selected_unit[time])
+        y0 = np.array(selected_unit[value])
+        ## step 3: interpolate to fit frame array -> list of functions
+        from scipy import interpolate
+        ## add bounds
+        x0b = np.append(0, x0)
+        x0b = np.append(x0b, int(len(new_x)))
+        y0b = np.append(0.0, y0)
+        y0b = np.append(y0b, y0[-1])
+        f = interpolate.interp1d(x0b, y0b, kind='zero')    # interpolation function
+        new_y.append(f(new_x))
+        ## step 4: plot interpolated signals over frames with gray solid lines
+        ax.plot(new_y[-1], c="#666666", alpha=0.5, lw=1)
+    ## step 5: plot median of signals along frames axis with given color
+    ax.plot(estimator(np.array(new_y), axis=0), c=color, lw=2)
+    return ax

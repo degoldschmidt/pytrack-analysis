@@ -27,6 +27,7 @@ def main():
     print("Process Fig. 2...", flush=True)
     ### select all sesson from CANS
     group = db.experiment("CANS").select()
+    print(group)
     # initialize kinematics object
     kinematics = Kinematics(db)
     # initialize statistics object
@@ -45,7 +46,7 @@ def main():
         else:
             etho_data = pd.read_csv(etho_filename, sep="\t")
     except FileNotFoundError:
-        etho_data = kinematics.run_many(group, _VERBOSE=True)
+        etho_data = kinematics.run_many(group, _VERBOSE=False)
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
@@ -73,8 +74,10 @@ def main():
     pltdir = get_plot(profile)
     for k,v in figures.items():
         figtitle = k + '.pdf'
+        pngtitle = k + '.png'
         print(os.path.join(pltdir, figtitle))
         v[0].savefig(os.path.join(pltdir, figtitle), dpi=300)
+        v[0].savefig(os.path.join(pltdir, pngtitle), dpi=300)
 
 if __name__ == '__main__':
     # runs as benchmark test

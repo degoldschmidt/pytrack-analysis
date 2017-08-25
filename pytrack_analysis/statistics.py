@@ -128,16 +128,22 @@ class Statistics(object):
         """
         outdict = {
                     'session': [],
+                    'genotype': [],
                     'mating': [],
+                    'metabolic': [],
                     'behavior': [],
                     'length [s]': [],
                     'total_length [s]': [],
                     'total_length [min]': [],
                     'cumulative_length [s]': [],
+                    'cumulative_length [min]': [],
+                    'frame_index': [],
         }
         for col in _X.columns:
             session = col # session name is column name
+            genotype = self.db.session(col).dict['Genotype'] # read out genotype of session from database
             mating = self.db.session(col).dict['Mating'] # read out mating state of session from database
+            metabolic = self.db.session(col).dict['Metabolic'] # read out metabolic state of session from database
             dt = 1/self.db.session(col).dict['framerate'] # read out framerate of session from database
 
             lengths, pos, behavior_class = self.rle(_X[col])
@@ -158,10 +164,14 @@ class Statistics(object):
             for index, each_len in enumerate(lengths):
                 this_behavior = int(behavior_class[index])
                 outdict['session'].append(session)
+                outdict['genotype'].append(genotype)
                 outdict['mating'].append(mating)
+                outdict['metabolic'].append(metabolic)
                 outdict['behavior'].append(this_behavior)
                 outdict['length [s]'].append(each_len*dt)
                 outdict['total_length [s]'].append(sums[this_behavior]*dt)
                 outdict['total_length [min]'].append(sums[this_behavior]*dt/60.)
                 outdict['cumulative_length [s]'].append(cums[index]*dt)
+                outdict['cumulative_length [min]'].append(cums[index]*dt/60.)
+                outdict['frame_index'].append(pos[index])
         return pd.DataFrame(outdict)

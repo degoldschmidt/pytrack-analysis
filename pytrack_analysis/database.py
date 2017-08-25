@@ -220,21 +220,21 @@ class Database(object):
                 self.experiments[-1].all_conds["genotype"].append("Canton S")
                 self.experiments[-1].all_conds["mating"].append("Mated")
                 self.experiments[-1].all_conds["mating"].append("Virgin")
-                self.experiments[-1].all_conds["metabolic"].append("A++ rich")
-                self.experiments[-1].all_conds["metabolic"].append("A--")
-                self.experiments[-1].all_conds["metabolic"].append("A++ suboptimal")
+                self.experiments[-1].all_conds["metabolic"].append("AA+ rich")
+                self.experiments[-1].all_conds["metabolic"].append("AA-")
+                self.experiments[-1].all_conds["metabolic"].append("AA+ suboptimal")
             elif "ORCO" in key:
                 self.experiments[-1].all_conds["genotype"].append("Canton S")
                 self.experiments[-1].all_conds["genotype"].append("Or83b-/-")
                 self.experiments[-1].all_conds["genotype"].append("Or83b+/-")
                 self.experiments[-1].all_conds["mating"].append("Mated")
-                self.experiments[-1].all_conds["metabolic"].append("A--")
+                self.experiments[-1].all_conds["metabolic"].append("AA-")
             elif "TBEH" in key:
                 self.experiments[-1].all_conds["genotype"].append("Canton S")
                 self.experiments[-1].all_conds["genotype"].append("tbetah")
                 self.experiments[-1].all_conds["mating"].append("Mated")
                 self.experiments[-1].all_conds["mating"].append("Virgin")
-                self.experiments[-1].all_conds["metabolic"].append("A--")
+                self.experiments[-1].all_conds["metabolic"].append("AA-")
         # count genotypes, mating and metabolic
         lens = []
         for each in ['Genotype', 'Mating', 'Metabolic']:
@@ -451,7 +451,6 @@ class Experiment(object):
         return "[ERROR]: session not found."
 
     def select(self, **kwargs):
-        # TODO: use **kwargs
         outlist = []
         self.last = self.all_conds.copy()
         for key, value in kwargs.items():
