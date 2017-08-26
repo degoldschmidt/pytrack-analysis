@@ -84,6 +84,6 @@ def main():
 
 if __name__ == '__main__':
     # runs as benchmark test
-    test = multibench(SILENT=False)
+    test = Multibench("", SILENT=False)
     test(main)
     del test

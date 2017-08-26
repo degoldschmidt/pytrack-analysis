@@ -113,7 +113,7 @@ class Multibench(object):
                 res = self.f()
             self.t[i] = result.time
             print("= {} s".format(result.time), file=self.stdout)
-        sys.stdout.close()
+        #sys.stdout.close()
         sys.stdout = self.stdout
         return res
 

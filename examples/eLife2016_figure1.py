@@ -2,11 +2,11 @@ import os
 from pytrack_analysis.profile import *
 from pytrack_analysis.database import *
 from pytrack_analysis.logger import Logger
-import pytrack_analysis.preprocessing as prep
-from pytrack_analysis.kinematics import Kinematics
-from pytrack_analysis.statistics import Statistics
-from pytrack_analysis.benchmark import Multibench
-from example_figures import fig_1c, fig_1d, fig_1e_h, fig_2
+import pytrack_analysis.preprocessing as prp
+from pytrack_analysis import Kinematics
+from pytrack_analysis import Statistics
+from pytrack_analysis import Multibench
+from example_figures import fig_1c, fig_1d, fig_1e_h
 import logging
 
 def stats_analysis(etho_data, _stats=[]):
@@ -123,6 +123,6 @@ def main():
 
 if __name__ == '__main__':
     # runs as benchmark test
-    test = multibench(SILENT=False)
+    test = Multibench("", SILENT=False)
     test(main)
     del test
