@@ -3,6 +3,7 @@
 # date: 25/8/2017
 import logging
 import os
+import pytrack_analysis
 from pytrack_analysis.profile import *
 from pytrack_analysis.database import *
 from pytrack_analysis.logger import Logger
