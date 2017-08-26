@@ -5,7 +5,7 @@ from pytrack_analysis.logger import Logger
 import pytrack_analysis.preprocessing as prep
 from pytrack_analysis.kinematics import Kinematics
 from pytrack_analysis.statistics import Statistics
-from pytrack_analysis.benchmark import multibench
+from pytrack_analysis.benchmark import Multibench
 from example_figures import fig_1c, fig_1d, fig_1e_h, fig_2
 import logging
 

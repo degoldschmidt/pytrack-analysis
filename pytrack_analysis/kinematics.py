@@ -147,11 +147,19 @@ class Kinematics(object):
         return df
 
     @logged_f(LOG_PATH)
-    def ethogram(self, _X, _Y, _Z, _meta):
+    def classify_behavior(self, _X, _Y, _Z, _meta):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
         ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
         ## 4) rest of frames >> micromovement
+        """
+        {       0: "resting",
+                1: "micromovement",
+                2: "walking",
+                3: "sharp turn",
+                4: "yeast micromovement",
+                5: "sucrose micromovement"}
+        """
 
         speed = np.array(_X["head"])
         bspeed = np.array(_X["body"])
@@ -173,9 +181,7 @@ class Kinematics(object):
         ymin = np.amin(yps, axis=0) # yeast minimum distance
         smin = np.amin(sps, axis=0) # sucrose minimum distance
 
-        out = np.zeros(speed.shape, dtype=np.int) - 1
-        #out[speed <= 0.2] = 0   ## resting
-        #out[speed > 0.2] = 1    ## micromovement
+        out = np.zeros(speed.shape, dtype=np.int) - 1 ## non-walking/-classified
         out[speed > 2] = 2      ## walking
 
         mask = (out == 2) & (bspeed < 4) & (np.abs(turn) >= 125.)
@@ -209,7 +215,7 @@ class Kinematics(object):
         pass
 
     @logged_f(LOG_PATH)
-    def head_angle(self, _X):
+    def heading_angle(self, _X):
         """
         Returns angular heading for given body and head positions.
 
@@ -278,19 +284,19 @@ class Kinematics(object):
         window_len = 60 # = 1.2 s
         smooth_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
         window_len = 120 # = 1.2 s
-        smoother_speed = prep.gaussian_filter(smooth_speed, _len=window_len, _sigma=window_len/10)
+        smoother_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
         speeds = pd.DataFrame({"head": smooth_speed["head_speed"], "body": smooth_speed["body_speed"], "smoother_head": smoother_speed["head_speed"]})
         ## STEP 5: Angular Heading & Speed
-        angular_heading = self.head_angle(smoothed_data)
+        angular_heading = self.heading_angle(smoothed_data)
         angular_speed = self.angular_speed(angular_heading, meta_data)
-        ## STEP 6: Ethogram classification & visits
+        ## STEP 6: Ethogram classification, encounters & visits
         meta_data.dict["etho_class"] = {    0: "resting",
                                             1: "micromovement",
                                             2: "walking",
                                             3: "sharp turn",
                                             4: "yeast micromovement",
                                             5: "sucrose micromovement"}
-        etho_vector, visits = self.ethogram(speeds, angular_speed, distance_patch, meta_data)
+        etho_vector, visits = self.classify_behavior(speeds, angular_speed, distance_patch, meta_data)
         ## STEP 7: SAVING DATA TO DATABASE
         if _ALL:
             this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")

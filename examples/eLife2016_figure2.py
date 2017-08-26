@@ -5,7 +5,7 @@ import logging
 import os
 from pytrack_analysis.profile import *
 from pytrack_analysis.database import *
-from pytrack_analysis import Logger
+from pytrack_analysis.logger import Logger
 import pytrack_analysis.preprocessing as prp
 from pytrack_analysis import Kinematics
 from pytrack_analysis import Statistics
