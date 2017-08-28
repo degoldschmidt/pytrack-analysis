@@ -168,10 +168,13 @@ class Kinematics(object):
         Neach = int(len(_Z.columns)/2) ## number of only yeast/sucrose patches
         yps = np.zeros((Neach, speed.shape[0])) ## yeast patches distances
         sps = np.zeros((Neach, speed.shape[0])) ## sucrose patches distances
+        aps = np.zeros((len(_Z.columns), speed.shape[0])) ## all patches distances
+        print("[to be removed] aps size:", aps.shape)
         yc = 0 # counter
         sc = 0 # counter
         for i,col in enumerate(_Z.columns):
             idc = int(col.split("_")[2])
+            aps[i,:] = np.array(_Z[col])
             if _meta.dict["SubstrateType"][idc] == 1:
                 yps[yc,:] = np.array(_Z[col])
                 yc += 1
@@ -180,35 +183,42 @@ class Kinematics(object):
                 sc += 1
         ymin = np.amin(yps, axis=0) # yeast minimum distance
         smin = np.amin(sps, axis=0) # sucrose minimum distance
+        amin = np.amin(aps, axis=0) # all patches minimum distance
+        imin = np.argmin(aps, axis=0) # number of patch with minimum distance
+        print("[to be removed] indices of min dist:", imin)
 
-        out = np.zeros(speed.shape, dtype=np.int) - 1 ## non-walking/-classified
-        out[speed > 2] = 2      ## walking
+        ethogram = np.zeros(speed.shape, dtype=np.int) - 1 ## non-walking/-classified
+        ethogram[speed > 2] = 2      ## walking
 
-        mask = (out == 2) & (bspeed < 4) & (np.abs(turn) >= 125.)
-        out[mask] = 3           ## sharp turn
+        mask = (ethogram == 2) & (bspeed < 4) & (np.abs(turn) >= 125.)
+        ethogram[mask] = 3           ## sharp turn
 
-        out[smoother <= 0.2] = 0 # new resting
+        ethogram[smoother <= 0.2] = 0 # new resting
 
-        out[out == -1] = 1 # new micromovement
+        ethogram[ethogram == -1] = 1 # new micromovement
 
-        visits = np.zeros(out.shape)
+        visits = np.zeros(ethogram.shape)
+        encounters = np.zeros(ethogram.shape)
         for i in range(ymin.shape[0]):
             if ymin[i] <= 2.5:
                 visits[i] = 1
             if smin[i] <= 2.5:
                 visits[i] = 2
 
+            if amin[i] <= 3:
+                encounters[i] = imin[i]
+
             if visits[i-1] == 1 and ymin[i] <= 5.0:
                 visits[i] = 1
             if visits[i-1] == 2 and smin[i] <= 5.0:
                 visits[i] = 2
 
-        mask_yeast = (out == 1) & (visits == 1)
-        mask_sucrose = (out == 1) & (visits == 2)
-        out[mask_yeast] = 4     ## yeast micromovement
-        out[mask_sucrose] = 5   ## sucrose micromovement
+        mask_yeast = (ethogram == 1) & (visits == 1)
+        mask_sucrose = (ethogram == 1) & (visits == 2)
+        ethogram[mask_yeast] = 4     ## yeast micromovement
+        ethogram[mask_sucrose] = 5   ## sucrose micromovement
 
-        return pd.DataFrame({"etho": out}), pd.DataFrame({"visits": visits})
+        return pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits})
 
     #@logged(TODO)
     def forward_speed(self, _X):
@@ -242,6 +252,22 @@ class Kinematics(object):
             ydiff = np.diff(yfly)
             speeds[col_pair.split('_')[0]+"_speed"] = np.append(0, np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"])
         return pd.DataFrame(speeds)
+
+    @logged_f(LOG_PATH)
+    def rle(self, inarray):
+            """ run length encoding. Partial credit to R rle function.
+                Multi datatype arrays catered for including non Numpy
+                returns: tuple (runlengths, startpositions, values) """
+            ia = np.array(inarray)                  # force numpy
+            n = len(ia)
+            if n == 0:
+                return (None, None, None)
+            else:
+                y = np.array(ia[1:] != ia[:-1])     # pairwise unequal (string safe)
+                i = np.append(np.where(y), n - 1)   # must include last element posi
+                z = np.diff(np.append(-1, i))       # run lengths
+                p = np.cumsum(np.append(0, z))[:-1] # positions
+                return(z, p, ia[i])
 
     @logged_f(LOG_PATH)
     def run(self, _session, _VERBOSE=False, _ALL=False):
@@ -307,10 +333,10 @@ class Kinematics(object):
             this_session.add_data("smoother_head_speed", speeds['smoother_head'], descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
             this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
             this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
-            this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
+            this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
             this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
         else:
-            this_session.add_data("etho", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
+            this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
             this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
         ## RETURN
         if _ALL:
@@ -327,13 +353,16 @@ class Kinematics(object):
         num_mated, num_virgins = this_exp.count(this_exp.last["genotype"], ['Mated', 'Virgin'], this_exp.last["metabolic"])
         for session in _group:
             etho, visits = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
-            etho_data[session.name] = etho['etho'] # save session ethogram in dict
+            etho_data[session.name] = etho['ethogram'] # save session ethogram in dict
         etho_data = pd.DataFrame(etho_data) #create DataFrame
         for i, metab in enumerate(this_exp.last["metabolic"]):
             for gene in this_exp.last["genotype"]:
                 print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
         if _VERBOSE: print()
         return etho_data
+
+    def two_pixel_rule(self, _dts, _pos):
+        pass
 
     #@logged(TODO)
     def sideward_speed(self, _X):

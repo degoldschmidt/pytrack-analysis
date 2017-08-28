@@ -34,7 +34,7 @@ def fig_1c(data, meta):
                             "Etho-\ngram",
                             "Food\npatch\nvisits"],
                 "keep_spines": ["L", "L", "L", "", "B"],
-                "keys": [['dist_patch_0'], ['head_speed', 'body_speed'],['angular_speed'],['etho'],['visits']],
+                "keys": [['dist_patch_0'], ['head_speed', 'body_speed'],['angular_speed'],['ethogram'],['visits']],
                 "types": ['line', 'line', 'line', 'discrete', 'discrete']
     }
     """
@@ -64,7 +64,7 @@ def fig_1c(data, meta):
                                     "lw":   1,
                                     "z":    2,
                                 },
-                "etho":         {
+                "ethogram":         {
                                     "c":    ['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000'],
                                     "lw":   0.1,
                                 },
@@ -164,7 +164,7 @@ def fig_1d(data, meta):
     hx, hy = hx[::subsampl], hy[::subsampl]
     bx, by = bx[::subsampl], by[::subsampl]
     dx, dy = hx-bx, hy-by
-    etho = np.array(data['etho'])
+    etho = np.array(data['ethogram'])
     etho = etho[::subsampl]
     colors =  ['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']
     zs =  [1, 4, 3, 2, 10, 10]
