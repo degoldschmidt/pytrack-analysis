@@ -144,10 +144,11 @@ class Kinematics(object):
             dist[key] = np.sqrt(dist_sq)
             #dist[key][dist[key]==np.nan] = -1 # NaNs to -1
         df = pd.DataFrame(dist)
+        df = df[["dist_patch_"+str(i) for i in range(19)]] ## sorted now
         return df
 
     @logged_f(LOG_PATH)
-    def classify_behavior(self, _X, _Y, _Z, _meta):
+    def classify_behavior(self, _X, _Y, _Z, head_pos, _meta):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
         ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
@@ -160,32 +161,15 @@ class Kinematics(object):
                 4: "yeast micromovement",
                 5: "sucrose micromovement"}
         """
-
         speed = np.array(_X["head"])
         bspeed = np.array(_X["body"])
         smoother = np.array(_X["smoother_head"])
         turn = np.array(_Y["speed"])
-        Neach = int(len(_Z.columns)/2) ## number of only yeast/sucrose patches
-        yps = np.zeros((Neach, speed.shape[0])) ## yeast patches distances
-        sps = np.zeros((Neach, speed.shape[0])) ## sucrose patches distances
         aps = np.zeros((len(_Z.columns), speed.shape[0])) ## all patches distances
-        print("[to be removed] aps size:", aps.shape)
-        yc = 0 # counter
-        sc = 0 # counter
         for i,col in enumerate(_Z.columns):
-            idc = int(col.split("_")[2])
             aps[i,:] = np.array(_Z[col])
-            if _meta.dict["SubstrateType"][idc] == 1:
-                yps[yc,:] = np.array(_Z[col])
-                yc += 1
-            if _meta.dict["SubstrateType"][idc] == 2:
-                sps[sc,:] = np.array(_Z[col])
-                sc += 1
-        ymin = np.amin(yps, axis=0) # yeast minimum distance
-        smin = np.amin(sps, axis=0) # sucrose minimum distance
         amin = np.amin(aps, axis=0) # all patches minimum distance
         imin = np.argmin(aps, axis=0) # number of patch with minimum distance
-        print("[to be removed] indices of min dist:", imin)
 
         ethogram = np.zeros(speed.shape, dtype=np.int) - 1 ## non-walking/-classified
         ethogram[speed > 2] = 2      ## walking
@@ -199,26 +183,36 @@ class Kinematics(object):
 
         visits = np.zeros(ethogram.shape)
         encounters = np.zeros(ethogram.shape)
-        for i in range(ymin.shape[0]):
-            if ymin[i] <= 2.5:
-                visits[i] = 1
-            if smin[i] <= 2.5:
-                visits[i] = 2
+        encounter_index = np.zeros(ethogram.shape, dtype=np.int) - 1
 
-            if amin[i] <= 3:
-                encounters[i] = imin[i]
+        substrates = np.array(_meta.dict["SubstrateType"])
+        visits[amin <= 2.5] = imin[amin <= 2.5]%2+1
+        encounters[amin <= 3] = imin[amin <= 3]%2+1
+        encounter_index[amin <= 3] = imin[amin <= 3]
+        encounters[encounter_index > 11] = (imin[encounter_index > 11]+1)%2+1
+        visits[encounter_index > 11] = (imin[encounter_index > 11]+1)%2+1
+        encounters[encounter_index == 18] = 0
+        visits[encounter_index == 18] = 0
 
-            if visits[i-1] == 1 and ymin[i] <= 5.0:
-                visits[i] = 1
-            if visits[i-1] == 2 and smin[i] <= 5.0:
-                visits[i] = 2
+        for i in range(1, amin.shape[0]):
+            if encounter_index[i-1] >= 0:
+                if visits[i-1] > 0:
+                    if aps[encounter_index[i-1], i] <= 5. and visits[i] == 0:
+                        visits[i] = visits[i-1]
+                if encounters[i-1] > 0:
+                    if aps[encounter_index[i-1], i] <= 5. and encounters[i] == 0:
+                        encounters[i] = encounters[i-1]
+                        encounter_index[i] = encounter_index[i-1]
+        visits = self.two_pixel_rule(visits, head_pos, join=[1,2])
+        encounters = self.two_pixel_rule(encounters, head_pos, join=[1,2])
 
-        mask_yeast = (ethogram == 1) & (visits == 1)
-        mask_sucrose = (ethogram == 1) & (visits == 2)
+        mask_yeast = (ethogram == 1) & (visits == 1) & (amin <= 2.5)
+        mask_sucrose = (ethogram == 1) & (visits == 2) & (amin <= 2.5)
         ethogram[mask_yeast] = 4     ## yeast micromovement
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
+        ethogram = self.two_pixel_rule(ethogram, head_pos, join=[4,5])
 
-        return pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits})
+        return  pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits}), pd.DataFrame({"encounters": encounters}), pd.DataFrame({"encounter_index": encounter_index})
 
     #@logged(TODO)
     def forward_speed(self, _X):
@@ -322,7 +316,7 @@ class Kinematics(object):
                                             3: "sharp turn",
                                             4: "yeast micromovement",
                                             5: "sucrose micromovement"}
-        etho_vector, visits = self.classify_behavior(speeds, angular_speed, distance_patch, meta_data)
+        etho_vector, visits, encounters, encounter_index = self.classify_behavior(speeds, angular_speed, distance_patch, smoothed_data[["head_x", "head_y"]], meta_data)
         ## STEP 7: SAVING DATA TO DATABASE
         if _ALL:
             this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")
@@ -334,7 +328,9 @@ class Kinematics(object):
             this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
             this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
             this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
-            this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
+            this_session.add_data("visits", visits, descr="Food patch visits. 0: none, 1: yeast, 2: sucrose.")
+            this_session.add_data("encounters", encounters, descr="Food patch encounters. 0: none, 1: yeast, 2: sucrose.")
+            this_session.add_data("encounter_index", encounter_index, descr="Food patch encounters. Value is index of patch (-1: none; 0: patch 0, and so on)")
         else:
             this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
             this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
@@ -361,8 +357,23 @@ class Kinematics(object):
         if _VERBOSE: print()
         return etho_data
 
-    def two_pixel_rule(self, _dts, _pos):
-        pass
+    def two_pixel_rule(self, _dts, _pos, join=[]):
+        _pos = np.array(_pos)
+        for j in join:
+            segm_len, segm_pos, segm_val = self.rle(_dts) #lengths, pos, behavior_class = self.rle(_X[col])
+            for (length, start, val) in zip(segm_len, segm_pos, segm_val):
+                if start == 0 or start+length == len(_dts):
+                    continue
+                if val not in join and _dts[start-1] == j and _dts[start+length] == j:
+                    dist_vector = _pos[start:start+length,:] - _pos[start,:].transpose()
+                    lens_vector = np.linalg.norm(dist_vector, axis=1)
+                    if np.all(lens_vector <= 2*0.15539): ## length <= 2 * 0.15539
+                        _dts[start:start+length] = j
+        if len(join) == 0:
+            print("Give values to join segments.")
+            return _dts
+        else:
+            return _dts
 
     #@logged(TODO)
     def sideward_speed(self, _X):

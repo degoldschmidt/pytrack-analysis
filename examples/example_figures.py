@@ -2,9 +2,10 @@
 import numpy as np
 import matplotlib
 matplotlib.use('TKAgg')
+matplotlib.rcParams['font.family'] = 'sans-serif'
+matplotlib.rcParams['font.sans-serif'] = 'Helvetica Neue'
+matplotlib.rcParams['font.weight'] = 'light'
 import matplotlib.pyplot as plt
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.serif'] = 'Helvetica Neue'
 
 #### plotting
 def stars(p):
@@ -70,6 +71,7 @@ def fig_1c(data, meta):
                                 },
                 "visits":       {
                                     "c":    ['#ffffff', '#ffc04c', '#4c8bff'],
+                                    "cs":    ['#ffffff', '#f6d18b', '#75a4fb'],
                                     "lw":   0.1,
                                 },
     }
@@ -111,10 +113,15 @@ def fig_1c(data, meta):
                     ax.plot(data[key], c=sty['c'], ls=sty['ls'], lw=sty['lw'], zorder=sty['z'])
                 elif types[ix] == 'discrete':
                     a = np.array(data[key])
+                    enc = np.array(data['encounters'])
                     dy = 0.5
                     x = np.arange(lx[0],lx[1]+1)
                     for ic, col in enumerate(sty['c']):
                         ax.vlines(x[a==ic],-dy,dy, colors=col, lw=sty['lw'])
+                        if key == "visits":
+                           #ax.plot(x, enc, "k-", alpha=0.5, lw=0.5) ### TODO
+                           if ic > 0:
+                              ax.vlines(x[enc==ic], 0.05+dy+np.zeros(x[enc==ic].shape), 0.1+dy+np.zeros(x[enc==ic].shape), colors=sty['cs'][ic], alpha=0.5, lw=sty['lw']) ### TODO
             except KeyError:
                 print('You need to define a style dictionary for \'{:}\''.format(key))
         #ax.set_ylim([break_at, end_at[0]])
@@ -183,7 +190,7 @@ def fig_1d(data, meta):
 
     ### arena objects
     patch_color = {1: '#ffc04c', 2: '#4c8bff', 3: '#ffffff'}
-    allowed = [0,2,3,4,5,6,12,13]
+    allowed = [0,2,3,4,5,6,12,13,18]
     zoom = False
     for i, patch in enumerate(meta.patches()):
         c = patch_color[patch["substrate"]]
@@ -202,8 +209,8 @@ def fig_1d(data, meta):
             circle = plt.Circle(pos, rad, color=c, alpha=0.5)
             circle.set_zorder(0)
             ax.add_artist(circle)
-        if i == 6:
-            circle = plt.Circle(pos, 5., edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=2)
+        if i in allowed:
+            circle = plt.Circle(pos, 5., edgecolor="#aaaaaa", fill=False, ls=(0,(4,4)), lw=1)
             circle.set_zorder(0)
             ax.add_artist(circle)
 
@@ -228,9 +235,9 @@ def fig_1e_h(data, meta):
     title_label = ["Virgin", "Mated"]
     panel_label = ["E", "G", "F", "H"]
     movel_label = [-1.15,-0.4]
-    ticks = [[0, 5, 1], [0,12,2]]
-    tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "2", "", "", "", "10", "12"]]
-    lims = [[-0.5,5], [-1.2,12]] ### low = 0 - high/10
+    ticks = [[0, 5, 1], [0,25,5]]
+    tick_label = [ [" 0", " 1", "", " 3", "", "    5"], ["0", "5", "", "15", "", "25"]]
+    lims = [[-0.5,5], [-1.2,25]] ### low = 0 - high/10
     staty = [4.5, 9.5]
 
     for ix,ax in enumerate(axes[:,0]):
@@ -269,10 +276,12 @@ def fig_1e_h(data, meta):
     for ix,ax in enumerate(axes[:,1:]):
       hist_data = [ np.array(data[ix].query("behavior == 'Yeast'")["length [s]"]), np.array(data[ix].query("behavior == 'Sucrose'")["length [s]"]) ]
       for jx,a in enumerate(ax):
-         a.hist(hist_data[jx], bins=np.arange(0,20,2.2), normed=1, align='left', rwidth=0.9, color=substrate_colors[jx])
-         a.set_xlim([0.,20.])
-         a.set_ylim([0.,1.])
-         a.set_yticklabels(["0", "", "0.5", "", "1"])
+         #weights = np.ones_like(hist_data[jx])/float(len(hist_data[jx]))
+         #a.hist(hist_data[jx], align='left', rwidth=0.9, color=substrate_colors[jx])
+         a = sns.distplot(hist_data[jx], hist=True, color=substrate_colors[jx], ax=a)
+         #a.set_xlim([0.,20.])
+         #a.set_ylim([0.,1.])
+         #a.set_yticklabels(["0", "0.5", "1"])
          sns.despine(ax=a, trim=True, offset=2)
          ### figure aesthetics
          a.set_xlabel("Micromovement duration [s]") # remove xlabel

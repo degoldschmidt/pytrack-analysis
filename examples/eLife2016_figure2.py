@@ -38,7 +38,6 @@ def main():
     ### DATAHOOK IMPLEMENTATION
     etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
     try:
-        print("Found datahook for ethogram data in", etho_filename)
         etho_size = os.path.getsize(etho_filename)
         if np.log10(etho_size) > 8:
             print("Opening large csv file. Might take a while...")
@@ -47,15 +46,16 @@ def main():
             etho_data = pd.concat([chunk for chunk in chunks])
         else:
             etho_data = pd.read_csv(etho_filename, sep="\t")
+        print("Found datahook for ethogram data in", etho_filename)
     except FileNotFoundError:
-        etho_data = kinematics.run_many(group, _VERBOSE=False)
+        etho_data = kinematics.run_many(group, _VERBOSE=True)
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
     seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
     try:
-        print("Found datahook for sequence data in", seq_filename)
         sequence_data = pd.read_csv(seq_filename, sep="\t")
+        print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
         sequence_data = stats.sequence(etho_data)
         sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
