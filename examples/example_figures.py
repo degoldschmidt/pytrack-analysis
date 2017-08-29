@@ -278,8 +278,12 @@ def fig_1e_h(data, meta):
       for jx,a in enumerate(ax):
          #weights = np.ones_like(hist_data[jx])/float(len(hist_data[jx]))
          #a.hist(hist_data[jx], align='left', rwidth=0.9, color=substrate_colors[jx])
-         a = sns.distplot(hist_data[jx], hist=True, color=substrate_colors[jx], ax=a)
-         #a.set_xlim([0.,20.])
+         #print("max:", np.max(hist_data[jx]))
+         _bins = np.arange(0,24.2,2.2) # [ 0, 2.2, 4.4, 6.6, 8.8, 11, 13.2, 15.4, 17.6, 19.8, 22 ]
+         _, bins, patches = a.hist(np.clip(hist_data[jx], _bins[0], 20), bins=_bins, align='left', rwidth=0.9, color=substrate_colors[jx])
+         print(bins)
+         #a = sns.distplot( np.clip(hist_data[jx], _bins[0], _bins[-1]) , bins=_bins, hist=True, color=substrate_colors[jx], ax=a)
+         a.set_xlim([-1.5,22.5])
          #a.set_ylim([0.,1.])
          #a.set_yticklabels(["0", "0.5", "1"])
          sns.despine(ax=a, trim=True, offset=2)
@@ -329,8 +333,11 @@ def fig_2(_data, _meta):
     f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
 
     for (row, col), ax in np.ndenumerate(axes):
-        #print(row, col, ax)
-        if row == 0: ## This is the yeast micromovent histograms (C)
+
+        """
+        This is the yeast micromovent histograms (C)
+        """
+        if row == 0:
 
             ## data plotting
             currdata = sequence_data.drop_duplicates("total_length [min]")
@@ -354,8 +361,10 @@ def fig_2(_data, _meta):
                 ax.get_yaxis().set_visible(False)
             ax.get_xaxis().set_visible(False)
 
-
-        if row == 1: ## This is the ethogram stacks
+        """
+        This is the ethogram stacks
+        """
+        if row == 1:
             smpl=100
             if col == 0:
                 ax.set_ylabel("Ethogram index")
@@ -364,15 +373,26 @@ def fig_2(_data, _meta):
                 x = np.arange(lx[0],lx[1],smpl)
                 for ic, color in enumerate(['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']):
                     ax.vlines(x[a==ic],ieth,ieth+1, colors=color, lw=0.1)
-            ax.set_ylim([0, max_nethos])
+            """
+            temporary (start)
+            """
+            if col == 4: ## TODO temp
+                ax.set_ylim([0, 10]) ## TODO temp
+            else:
+                """
+                temporary (end)
+                """
+                ax.set_ylim([0, max_nethos])
+                ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
+                ax.get_yaxis().set_tick_params(length=2, pad=0.0)
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
             ax.set_xticklabels(["0", "60", "120"])
-            ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
-            ax.get_yaxis().set_tick_params(length=2, pad=0.0)
             sns.despine(ax=ax, left=True, trim=True)
 
-
-        if row == 2: ## This is the cumulative duration plot
+        """
+        This is the cumulative duration plot
+        """
+        if row == 2:
             currdata = sequence_data
             currdata = currdata.query("mating == "+str(conds["mating"][col]))
             currdata = currdata.query("metabolic == "+str(conds["metabolic"][col]))
