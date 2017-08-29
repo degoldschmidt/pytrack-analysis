@@ -210,7 +210,7 @@ class Kinematics(object):
         mask_sucrose = (ethogram == 1) & (visits == 2) & (amin <= 2.5)
         ethogram[mask_yeast] = 4     ## yeast micromovement
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
-        ethogram = self.two_pixel_rule(ethogram, head_pos, join=[4,5])
+        ethogram = self.two_pixel_rule(ethogram, head_pos, join=[4])
 
         return  pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits}), pd.DataFrame({"encounters": encounters}), pd.DataFrame({"encounter_index": encounter_index})
 
@@ -278,8 +278,12 @@ class Kinematics(object):
             print("-"*autolen)
         # import preprocessing functions
         import pytrack_analysis.preprocessing as prep
-        # load session
-        this_session = self.db.session(_session)
+        # load session (takes either session string or session object)
+        print(type(_session))
+        if type(_session) is str:
+            this_session = self.db.session(_session)
+        else:
+            this_session = _session
         # load raw data and meta data
         raw_data, meta_data = this_session.load()
         #print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))

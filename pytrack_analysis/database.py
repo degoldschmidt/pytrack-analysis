@@ -201,7 +201,7 @@ class Database(object):
     """
     Database class: contains meta-data for experiment database
     """
-    def __init__(self, _filename):
+    def __init__(self, _filename, in_pynb=False):
         dictstruct, timestamps = self.load_db(_filename)
         test(os.path.dirname(_filename), dictstruct, timestamps)
         self.struct = GraphDict(dictstruct)
@@ -215,7 +215,7 @@ class Database(object):
         self.experiments = []
         for key in dictstruct[basename].keys():
             jfile = os.path.join(self.dir, key)
-            self.experiments.append(Experiment(jfile))
+            self.experiments.append(Experiment(jfile, in_pynb=in_pynb))
             #### TODO: this needs to be generic!!!
             if "CANS" in key:
                 self.experiments[-1].all_conds["genotype"].append("Canton S")
@@ -331,7 +331,7 @@ class Database(object):
 
 
 class Experiment(object):
-    def __init__(self, _file):
+    def __init__(self, _file, in_pynb=False):
         self.dict = json2dict(_file)
         self.file = _file
         self.name = _file.split(os.sep)[-1].split(".")[0]
@@ -342,7 +342,7 @@ class Experiment(object):
         self.sessions = []
         for key, val in self.dict.items():
             if self.name in key:
-                self.sessions.append(Session(val, _file, key, self.name))
+                self.sessions.append(Session(val, _file, key, self.name, in_pynb=in_pynb))
 
         self.all_conds = {"genotype":[], "mating":[], "metabolic":[]}
         self.last = {"genotype":[], "mating":[], "metabolic":[]}
@@ -472,11 +472,12 @@ class Session(object):
     """
     Session class creates an object that hold meta-data of single session and has the functionality to load data into pd.DataFrame or np.ndarray
     """
-    def __init__(self, _dict, _file, _key, _exp):
+    def __init__(self, _dict, _file, _key, _exp, in_pynb=False):
         self.dict = _dict
         self.file = _file
         self.name = _key
         self.exp = _exp
+        self.in_pynb = in_pynb
         self.data = None    # this is supposed to be a pandas dataframe
         self.datdescr = {}
 
@@ -487,7 +488,7 @@ class Session(object):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
 
     def add_data(self, title, data, descr=""):
-        if title in self.datdescr.keys():
+        if title in self.datdescr.keys() and not self.in_pynb:
             if not query_yn("Data \'{:}\' does seem to exist in the dataframe. Do you want to overwrite the data?".format(title)):
                 return None
         if self.data is None:

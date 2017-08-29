@@ -324,6 +324,8 @@ def fig_2(_data, _meta):
     etho_sum = [entry[0] for entry in sorted(etho_sum.items(), key=lambda x: x[1])] # create list with tuples sorted by values (sum of Y micromov), then take only sessions
     indices = [_meta.session(entry).condition-1 for entry in etho_sum] # list of indices from Condition = mating and metabolic states (sorted by sessions as above) [0: ]
     split_etho_sum = [[entry for i, entry in enumerate(etho_sum) if indices[i]==ix] for ix in range(5)] # splits session names into the five conditions (sorted)
+    for i, session in enumerate(split_etho_sum[4]):
+      print(i, session)
     nethos = [len(entry) for entry in split_etho_sum] # lengths of each split (how many ethos per condition)
     max_nethos = max(nethos)
 
@@ -374,13 +376,13 @@ def fig_2(_data, _meta):
                 for ic, color in enumerate(['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']):
                     ax.vlines(x[a==ic],ieth,ieth+1, colors=color, lw=0.1)
             """
-            temporary (start)
+            temporary plot (start)
             """
             if col == 4: ## TODO temp
-                ax.set_ylim([0, 10]) ## TODO temp
+                ax.set_ylim([0, 12]) ## TODO temp
             else:
                 """
-                temporary (end)
+                temporary plot (end)
                 """
                 ax.set_ylim([0, max_nethos])
                 ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
