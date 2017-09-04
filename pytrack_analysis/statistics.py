@@ -13,6 +13,10 @@ from ._globals import *
 from pkg_resources import get_distribution
 __version__ = get_distribution('pytrack_analysis').version
 
+
+"""
+TODO: Get these global definitions out
+"""
 ###
 # GLOBAL CONSTANTS (based on OS)
 ###

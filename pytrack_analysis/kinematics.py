@@ -17,7 +17,6 @@ __version__ = get_distribution('pytrack_analysis').version
 # GLOBAL CONSTANTS (based on OS)
 ###
 PROFILE, NAME, OS = get_globals()
-print(PROFILE, NAME, OS)
 
 def get_log_path(_file):
     with open(_file, 'r') as stream:

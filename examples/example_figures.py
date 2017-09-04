@@ -230,7 +230,7 @@ def fig_1e_h(data, meta):
 
     ## plot testing
     f, axes = plt.subplots( 2, 3, num="Fig. 1E/G", figsize=(8.,3), dpi=150, gridspec_kw={'width_ratios':[1,1.5,1.5]}) ##9,3.5 # ratio 1,1.5,1.5 # COLUMNS: 0=total durations, 1=histogram yeast, 2=histogram sucrose
-    print("Figsize [inches]: ", f.get_size_inches())
+    #print("Figsize [inches]: ", f.get_size_inches())
     substrate_colors = ['#ffc04c', '#4c8bff']
     title_label = ["Virgin", "Mated"]
     panel_label = ["E", "G", "F", "H"]
@@ -281,7 +281,6 @@ def fig_1e_h(data, meta):
          #print("max:", np.max(hist_data[jx]))
          _bins = np.arange(0,24.2,2.2) # [ 0, 2.2, 4.4, 6.6, 8.8, 11, 13.2, 15.4, 17.6, 19.8, 22 ]
          _, bins, patches = a.hist(np.clip(hist_data[jx], _bins[0], 20), bins=_bins, align='left', rwidth=0.9, color=substrate_colors[jx])
-         print(bins)
          #a = sns.distplot( np.clip(hist_data[jx], _bins[0], _bins[-1]) , bins=_bins, hist=True, color=substrate_colors[jx], ax=a)
          a.set_xlim([-1.5,22.5])
          #a.set_ylim([0.,1.])
