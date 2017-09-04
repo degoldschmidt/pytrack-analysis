@@ -348,18 +348,24 @@ class Kinematics(object):
         if _VERBOSE: print()
         self.print_header = _VERBOSE # this is needed to print header for multi run
         etho_data = {} # dict for DataFrame
+        visit_data = {} # dict for DataFrame
+        encounter_data = {} # dict for DataFrame
         ### count all mated and virgin sessions in that group (TODO: just count one of them)
         this_exp = self.db.experiment(_group[0].exp)
         num_mated, num_virgins = this_exp.count(this_exp.last["genotype"], ['Mated', 'Virgin'], this_exp.last["metabolic"])
         for session in _group:
-            etho, visits = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+            etho, visits, encounters, encounter_index = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
             etho_data[session.name] = etho['ethogram'] # save session ethogram in dict
+            visit_data[session.name] = visits['visits'] # save session visits in dict
+            encounter_data[session.name] = encounters['encounters'] # save session encounters in dict
         etho_data = pd.DataFrame(etho_data) #create DataFrame
+        visit_data = pd.DataFrame(visit_data) #create DataFrame
+        encounter_data = pd.DataFrame(encounter_data) #create DataFrame
         for i, metab in enumerate(this_exp.last["metabolic"]):
             for gene in this_exp.last["genotype"]:
                 print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
         if _VERBOSE: print()
-        return etho_data
+        return etho_data, visit_data, encounter_data
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)

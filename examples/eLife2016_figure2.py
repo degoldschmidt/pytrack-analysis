@@ -48,7 +48,7 @@ def main():
             etho_data = pd.read_csv(etho_filename, sep="\t")
         print("Found datahook for ethogram data in", etho_filename)
     except FileNotFoundError:
-        etho_data = kinematics.run_many(group, _VERBOSE=True)
+        etho_data, visit_data, encounter_data = kinematics.run_many(group, _VERBOSE=True)
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences

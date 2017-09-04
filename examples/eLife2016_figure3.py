@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+ # -*- coding: utf-8 -*-
 # author: degoldschmidt
 # date: 4/9/2017
 import logging
@@ -58,7 +58,7 @@ def main():
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
         sequence_data = stats.sequence(etho_data)
-        sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
+        sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
         sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
 

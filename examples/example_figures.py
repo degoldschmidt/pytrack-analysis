@@ -334,7 +334,8 @@ def fig_2(_data, _meta):
     f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
 
     for (row, col), ax in np.ndenumerate(axes):
-        max_dur = 80.
+        max_dur = 90.
+        div = 30.
         """
         This is the yeast micromovent histograms (C)
         """
@@ -354,7 +355,7 @@ def fig_2(_data, _meta):
             ax.hlines(median, -dx, dx, lw=1, zorder=10)
 
             ## figure aesthetics
-            ax.set_yticks(np.arange(0, max_dur+1, 20))
+            ax.set_yticks(np.arange(0, max_dur+1, div))
             if col == 0:
                 ax.set_ylabel("Total duration\nof yeast micro-\nmovements [min]")
                 sns.despine(ax=ax, bottom=True, trim=True)
@@ -408,7 +409,7 @@ def fig_2(_data, _meta):
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
             ax.set_xticklabels(["0", "60", "120"])
             ax.set_ylim([-2.,max_dur + 2.])
-            ax.set_yticks(np.arange(0, max_dur+1, 20))
+            ax.set_yticks(np.arange(0, max_dur+1, div))
             if col == 0:
                 ax.set_ylabel("Cumulative duration\nof yeast micro-\nmovements [min]")
                 sns.despine(ax=ax, offset=2, trim=True)

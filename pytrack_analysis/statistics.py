@@ -128,9 +128,9 @@ class Statistics(object):
                 return(z, p, ia[i])
 
     @logged_f(LOG_PATH)
-    def sequence(self, _X):
+    def segments(self, _X):
         """
-        Returns sequence information (duration of sequences, total duration and cumulative length) from state vectors
+        Returns segmental information (duration of sequences, total duration and cumulative length) of a given input discrete-valued time series
         TESTED
         """
         outdict = {
