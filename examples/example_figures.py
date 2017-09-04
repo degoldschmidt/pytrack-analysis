@@ -332,29 +332,30 @@ def fig_2(_data, _meta):
     colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
     conds = {"mating": [2,2,1,1,1], "metabolic": [3,2,3,1,2]}
 
-    f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), dpi=150, sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
+    f, axes = plt.subplots( 3, 5, num="Fig. 2C-E", figsize=(8.,5.), sharey=False, gridspec_kw={'height_ratios':[1,1.2,1]})
 
     for (row, col), ax in np.ndenumerate(axes):
-
+        max_dur = 80.
         """
         This is the yeast micromovent histograms (C)
         """
         if row == 0:
 
-            ## data plotting
-            currdata = sequence_data.drop_duplicates("total_length [min]")
+            ## data selecting
+            currdata = sequence_data.drop_duplicates("session")
             currdata = currdata.query("mating == "+str(conds["mating"][col]))
             currdata = currdata.query("metabolic == "+str(conds["metabolic"][col]))
-            ax = sns.boxplot(x="behavior", y="total_length [min]", data=currdata, color=colors[col], saturation=1.0, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
-            ax = sns.swarmplot(x="behavior", y="total_length [min]", data=currdata, size=2, color='#666666', ax=ax)
+            ## data plotting
+            ax.set_ylim([-2.,max_dur + 2.]) # this is needed for swarmplot to work!!!
+            ax = sns.boxplot(x="state", y="total_length [min]", data=currdata, color=colors[col], saturation=1.0, width=0.35, linewidth=0.0, boxprops=dict(lw=0.0), showfliers=False, ax=ax)
+            ax = sns.swarmplot(x="state", y="total_length [min]", data=currdata, size=2, color='#666666', ax=ax)
             currdata = np.array(currdata["total_length [min]"])
             median = np.median(currdata)
             dx = 0.3
             ax.hlines(median, -dx, dx, lw=1, zorder=10)
 
             ## figure aesthetics
-            ax.set_ylim([-2.,62.])
-            ax.set_yticks(np.arange(0, 60+1, 20))
+            ax.set_yticks(np.arange(0, max_dur+1, 20))
             if col == 0:
                 ax.set_ylabel("Total duration\nof yeast micro-\nmovements [min]")
                 sns.despine(ax=ax, bottom=True, trim=True)
@@ -378,15 +379,15 @@ def fig_2(_data, _meta):
             """
             temporary plot (start)
             """
-            if col == 4: ## TODO temp
-                ax.set_ylim([0, 12]) ## TODO temp
-            else:
-                """
-                temporary plot (end)
-                """
-                ax.set_ylim([0, max_nethos])
-                ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
-                ax.get_yaxis().set_tick_params(length=2, pad=0.0)
+            #if col == 4: ## TODO temp
+            #    ax.set_ylim([0, 12]) ## TODO temp
+            #else:
+            """
+            temporary plot (end)
+            """
+            ax.set_ylim([0, max_nethos])
+            ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
+            ax.get_yaxis().set_tick_params(length=2, pad=0.0)
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
             ax.set_xticklabels(["0", "60", "120"])
             sns.despine(ax=ax, left=True, trim=True)
@@ -407,8 +408,8 @@ def fig_2(_data, _meta):
             ax.set_xlabel("Time [min]")
             ax.set_xticks([lx[0], lx[1]/2, lx[1]])
             ax.set_xticklabels(["0", "60", "120"])
-            ax.set_ylim([-2.,62.])
-            ax.set_yticks(np.arange(0, 60+1, 20))
+            ax.set_ylim([-2.,max_dur + 2.])
+            ax.set_yticks(np.arange(0, max_dur+1, 20))
             if col == 0:
                 ax.set_ylabel("Cumulative duration\nof yeast micro-\nmovements [min]")
                 sns.despine(ax=ax, offset=2, trim=True)
@@ -422,6 +423,9 @@ def fig_2(_data, _meta):
     plt.tight_layout(w_pad=-0.05)
     plt.close("all")
     return f, axes
+
+def fig_3():
+    pass
 
 def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):
     ## step 0: reduce data

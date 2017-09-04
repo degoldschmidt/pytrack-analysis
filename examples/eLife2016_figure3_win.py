@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # author: degoldschmidt
-# date: 25/8/2017
+# date: 4/9/2017
 import logging
 import os
 from pytrack_analysis.profile import *
@@ -10,12 +10,12 @@ import pytrack_analysis.preprocessing as prp
 from pytrack_analysis import Kinematics
 from pytrack_analysis import Statistics
 from pytrack_analysis import Multibench
-from example_figures import fig_2
+from example_figures import fig_3
 
-def get_fig_2(_data, _meta):
-    f, ax = fig_2(_data, _meta)
+def get_fig_3(_data, _meta):
+    f, ax = fig_3(_data, _meta)
     figs = {
-                'fig_2': (f, ax),
+                'fig_3': (f, ax),
             }
     return figs
 
@@ -27,7 +27,7 @@ def main():
     log = Logger(profile, scriptname=thisscript)
 
     ### Fig. 2
-    print("Process Fig. 2...", flush=True)
+    print("Process Fig. 3...", flush=True)
     ### select all sesson from CANS
     group = db.experiment("CANS").select()
     # initialize kinematics object
@@ -36,7 +36,7 @@ def main():
     stats = Statistics(db)
 
     ### DATAHOOK IMPLEMENTATION
-    etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
+    etho_filename = os.path.join(get_out(profile),"fig3_etho_data.csv")
     try:
         etho_size = os.path.getsize(etho_filename)
         if np.log10(etho_size) > 8:
@@ -52,18 +52,18 @@ def main():
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
-    seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
+    seq_filename = os.path.join(get_out(profile),"fig3_seq_data.csv")
     try:
         sequence_data = pd.read_csv(seq_filename, sep="\t")
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
         sequence_data = stats.sequence(etho_data)
-        sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
+        sequence_data = sequence_data.query("behavior == 4") ## only yeast micromovements
         sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
 
     ### Eventually plotting
-    figures = get_fig_2([etho_data, sequence_data], db)
+    figures = get_fig_3([etho_data, sequence_data], db)
     print("[DONE]")
     log.close()
     log.show()

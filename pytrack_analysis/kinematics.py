@@ -279,7 +279,6 @@ class Kinematics(object):
         # import preprocessing functions
         import pytrack_analysis.preprocessing as prep
         # load session (takes either session string or session object)
-        print(type(_session))
         if type(_session) is str:
             this_session = self.db.session(_session)
         else:
@@ -338,11 +337,13 @@ class Kinematics(object):
         else:
             this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
             this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
+            this_session.add_data("encounters", encounters, descr="Food patch encounters. 0: none, 1: yeast, 2: sucrose.")
+            this_session.add_data("encounter_index", encounter_index, descr="Food patch encounters. Value is index of patch (-1: none; 0: patch 0, and so on)")
         ## RETURN
         if _ALL:
-            return smoothed_data, distance_patch, speeds, angular_heading, angular_speed, etho_vector, visits
+            return smoothed_data, distance_patch, speeds, angular_heading, angular_speed, etho_vector, visits, encounters, encounter_index
         else:
-            return etho_vector, visits
+            return etho_vector, visits, encounters, encounter_index
 
     def run_many(self, _group, _VERBOSE=True):
         if _VERBOSE: print()

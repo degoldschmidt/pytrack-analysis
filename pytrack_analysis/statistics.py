@@ -134,7 +134,7 @@ class Statistics(object):
                     'genotype': [],
                     'mating': [],
                     'metabolic': [],
-                    'behavior': [],
+                    'state': [],
                     'length [s]': [],
                     'total_length [s]': [],
                     'total_length [min]': [],
@@ -170,7 +170,7 @@ class Statistics(object):
                 outdict['genotype'].append(genotype)
                 outdict['mating'].append(mating)
                 outdict['metabolic'].append(metabolic)
-                outdict['behavior'].append(this_behavior)
+                outdict['state'].append(this_behavior)
                 outdict['length [s]'].append(each_len*dt)
                 outdict['total_length [s]'].append(sums[this_behavior]*dt)
                 outdict['total_length [min]'].append(sums[this_behavior]*dt/60.)
