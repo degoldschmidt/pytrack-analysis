@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # author: degoldschmidt
-# date: 2/9/2017
+# date: 4/9/2017
 import logging
 import os
 from pytrack_analysis.profile import *
@@ -10,7 +10,14 @@ import pytrack_analysis.preprocessing as prp
 from pytrack_analysis import Kinematics
 from pytrack_analysis import Statistics
 from pytrack_analysis import Multibench
-#from example_figures import fig_3
+from example_figures import fig_3
+
+def get_fig_3(_data, _meta):
+    f, ax = fig_3(_data, _meta)
+    figs = {
+                'fig_3': (f, ax),
+            }
+    return figs
 
 def main():
     # filename of this script
@@ -56,7 +63,7 @@ def main():
 
 
     ### Eventually plotting
-    #figures = get_fig_2([etho_data, sequence_data], db)
+    figures = get_fig_3([etho_data, sequence_data], db)
     print("[DONE]")
     log.close()
     log.show()
