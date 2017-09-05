@@ -57,7 +57,7 @@ def main():
         sequence_data = pd.read_csv(seq_filename, sep="\t")
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
-        sequence_data = stats.sequence(etho_data)
+        sequence_data = stats.segments(etho_data)
         sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
         sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
