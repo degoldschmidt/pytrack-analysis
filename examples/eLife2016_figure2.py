@@ -19,6 +19,18 @@ def get_fig_2(_data, _meta):
             }
     return figs
 
+def datahook(_file):
+    this_size = os.path.getsize(_file)
+    if np.log10(this_size) > 8:
+        print("Opening large csv file. Might take a while...")
+        chunksize = 10 ** 5
+        chunks = pd.read_csv(_file, sep="\t", chunksize=chunksize)
+        data = pd.concat([chunk for chunk in chunks])
+    else:
+        data = pd.read_csv(etho_filename, sep="\t")
+    print("Opened datahook in", _file)
+    return data
+
 def main():
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
@@ -36,20 +48,18 @@ def main():
     stats = Statistics(db)
 
     ### DATAHOOK IMPLEMENTATION
-    etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
-    try:
-        etho_size = os.path.getsize(etho_filename)
-        if np.log10(etho_size) > 8:
-            print("Opening large csv file. Might take a while...")
-            chunksize = 10 ** 5
-            chunks = pd.read_csv(etho_filename, sep="\t", chunksize=chunksize)
-            etho_data = pd.concat([chunk for chunk in chunks])
-        else:
-            etho_data = pd.read_csv(etho_filename, sep="\t")
-        print("Found datahook for ethogram data in", etho_filename)
-    except FileNotFoundError:
-        etho_data = kinematics.run_many(group, _VERBOSE=True)
-        etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+    types = ['etho', 'visit', 'encounter']
+    filenames = [os.path.join(get_out(profile),"fig2_" + each + "_data.csv") for each in types]
+    data = []
+    load_all = False
+    for fname in filenames:
+        try:
+            data.append(datahook(fname))
+        except FileNotFoundError:
+            load_all = True
+    if load_all:
+    data = kinematics.run_many(group, _VERBOSE=True)
+            etho_data.to_csv(fname, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
     seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
@@ -57,9 +67,9 @@ def main():
         sequence_data = pd.read_csv(seq_filename, sep="\t")
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
-        sequence_data = stats.sequence(etho_data)
-        sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
-        sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
+        etho_segments = stats.segments(etho_data)
+        etho_segments = etho_segments.query("state == 4") ## only yeast micromovements
+        etho_segments.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
 
     ### Eventually plotting
