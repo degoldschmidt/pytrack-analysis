@@ -58,8 +58,10 @@ def main():
         except FileNotFoundError:
             load_all = True
     if load_all:
-    data = kinematics.run_many(group, _VERBOSE=True)
-            etho_data.to_csv(fname, index=False, sep='\t', encoding='utf-8')
+        etho_data, visit_data, encounter_data = kinematics.run_many(group, _VERBOSE=True)
+        data = [etho_data, visit_data, encounter_data]
+        for i, fname in enumerate(filenames):
+            data[i].to_csv(fname, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
     seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
