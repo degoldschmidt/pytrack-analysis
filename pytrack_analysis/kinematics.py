@@ -354,10 +354,17 @@ class Kinematics(object):
         this_exp = self.db.experiment(_group[0].exp)
         num_mated, num_virgins = this_exp.count(this_exp.last["genotype"], ['Mated', 'Virgin'], this_exp.last["metabolic"])
         for session in _group:
+<<<<<<< HEAD
             etho, visits, encounters, encounter_index = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
             etho_data[session.name] = etho['ethogram'] # save session ethogram in dict
             visit_data[session.name] = visits['visits'] # save session visits in dict
             encounter_data[session.name] = encounters['encounters'] # save session encounters in dict
+=======
+            etho_vector, visits, encounters, encounter_index = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+            etho_data[session.name] = etho_vector['ethogram'] # save session ethogram in dict
+            visit_data[session.name] = visits['visits'] # save session ethogram in dict
+            encounter_data[session.name] = encounters['encounters'] # save session ethogram in dict
+>>>>>>> origin/master
         etho_data = pd.DataFrame(etho_data) #create DataFrame
         visit_data = pd.DataFrame(visit_data) #create DataFrame
         encounter_data = pd.DataFrame(encounter_data) #create DataFrame

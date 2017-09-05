@@ -19,6 +19,18 @@ def get_fig_2(_data, _meta):
             }
     return figs
 
+def datahook(_file):
+    this_size = os.path.getsize(_file)
+    if np.log10(this_size) > 8:
+        print("Opening large csv file. Might take a while...")
+        chunksize = 10 ** 5
+        chunks = pd.read_csv(_file, sep="\t", chunksize=chunksize)
+        data = pd.concat([chunk for chunk in chunks])
+    else:
+        data = pd.read_csv(etho_filename, sep="\t")
+    print("Opened datahook in", _file)
+    return data
+
 def main():
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
@@ -57,9 +69,9 @@ def main():
         sequence_data = pd.read_csv(seq_filename, sep="\t")
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
-        sequence_data = stats.segments(etho_data)
-        sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
-        sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
+        etho_segments = stats.segments(etho_data)
+        etho_segments = etho_segments.query("state == 4") ## only yeast micromovements
+        etho_segments.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
 
     ### Eventually plotting
