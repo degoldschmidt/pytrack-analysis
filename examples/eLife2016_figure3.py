@@ -48,7 +48,7 @@ def main():
             etho_data = pd.read_csv(etho_filename, sep="\t")
         print("Found datahook for ethogram data in", etho_filename)
     except FileNotFoundError:
-        etho_data = kinematics.run_many(group, _VERBOSE=True)
+        etho_data, visit_data, encounter_data = kinematics.run_many(group, _VERBOSE=True)
         etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of ethogram sequences
@@ -57,10 +57,12 @@ def main():
         sequence_data = pd.read_csv(seq_filename, sep="\t")
         print("Found datahook for sequence data in", seq_filename)
     except FileNotFoundError:
-        sequence_data = stats.segments(etho_data)
-        sequence_data = sequence_data.query("state == 4") ## only yeast micromovements
-        sequence_data.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
-
+        etho_segments = stats.segments(etho_data)
+        etho_segments = etho_segments.query("state == 4") ## only yeast micromovements
+        etho_segments.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
+        etho_segments = stats.segments(etho_data)
+        etho_segments = etho_segments.query("state == 4") ## only yeast micromovements
+        etho_segments.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Eventually plotting
     figures = get_fig_3([etho_data, sequence_data], db)

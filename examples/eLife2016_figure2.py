@@ -47,35 +47,32 @@ def main():
     # initialize statistics object
     stats = Statistics(db)
 
-    ### DATAHOOK IMPLEMENTATION
-    etho_filename = os.path.join(get_out(profile),"fig2_etho_data.csv")
-    try:
-        etho_size = os.path.getsize(etho_filename)
-        if np.log10(etho_size) > 8:
-            print("Opening large csv file. Might take a while...")
-            chunksize = 10 ** 5
-            chunks = pd.read_csv(etho_filename, sep="\t", chunksize=chunksize)
-            etho_data = pd.concat([chunk for chunk in chunks])
-        else:
-            etho_data = pd.read_csv(etho_filename, sep="\t")
-        print("Found datahook for ethogram data in", etho_filename)
-    except FileNotFoundError:
-        etho_data, visit_data, encounter_data = kinematics.run_many(group, _VERBOSE=True)
-        etho_data.to_csv(etho_filename, index=False, sep='\t', encoding='utf-8')
+    ### Kinematic analysis of trials
+    data_types = ["etho", "visit", "encounter"]
+    filenames = [os.path.join(get_out(profile),"fig2_" + each + "_data.csv") for each in data_types]
+    load_data = False
+    data = []
+    for _file in filenames:
+        try:
+            data.append(datahook(_file))
+        except FileNotFoundError:
+            load_data = True
+    data = kinematics.run_many(group, _VERBOSE=True)
+    for ix, _data in enumerate(data):
+        _data.to_csv(filenames[ix], index=False, sep='\t', encoding='utf-8')
 
-    ### Statistical analysis of ethogram sequences
-    seq_filename = os.path.join(get_out(profile),"fig2_seq_data.csv")
-    try:
-        sequence_data = pd.read_csv(seq_filename, sep="\t")
-        print("Found datahook for sequence data in", seq_filename)
-    except FileNotFoundError:
-        etho_segments = stats.segments(etho_data)
-        etho_segments = etho_segments.query("state == 4") ## only yeast micromovements
-        etho_segments.to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
-
+    ### Statistical analysis of behavioral discrete-valued time series
+    filenames = [os.path.join(get_out(profile),"fig2_" + each + "_segments.csv") for each in data_types]
+    segments_data = []
+    for ix, _file in enumerate(filenames):
+        try:
+            segments_data.append(datahook(_file))
+        except FileNotFoundError:
+            segments_data.append(stats.segments(data[ix]))
+            segments_data[-1].to_csv(seq_filename, index=False, sep='\t', encoding='utf-8')
 
     ### Eventually plotting
-    figures = get_fig_2([etho_data, sequence_data], db)
+    figures = get_fig_2([etho_data, etho_segments], db)
     print("[DONE]")
     log.close()
     log.show()
