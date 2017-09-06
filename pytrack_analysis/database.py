@@ -130,7 +130,7 @@ def test(_dir, _dict, _tstamps, _VERBOSE=True):
         print("CHECKING TIMESTAMPS...\t\t\t", end='')
     timefl = check_time(_tstamps, _dir)
     if _VERBOSE: print("[O.K.]" if timefl else "[FAILED]")
-
+    print("\n[DONE]\n***\n")
     return [basefl, metafl, datafl, timefl]
 
 

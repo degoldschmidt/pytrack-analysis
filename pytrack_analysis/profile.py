@@ -122,7 +122,9 @@ def get_profile( _name, _user, script=""):
             if query_yn("DO you want to add user to project: {:}?".format(_name)):
                 project["users"].append(_user)
 
-        print("Loaded [PROJECT] {:}".format(_name))
+        print("***")
+        print("Loading [PROJECT] {:}".format(_name))
+        print()
 
     ### RETURN
     with io.open(PROFILE, 'w+', encoding='utf8') as outfile:

@@ -314,7 +314,8 @@ def fig_2(_data, _meta):
     import scipy.stats as scistat
 
     ## data unpacking
-    [etho_data, sequence_data] = _data
+    etho_data = _data['D']
+    sequence_data = _data['C']
     ## time series limits (120 mins = 50[frames/s]*60[secs/min]*120 = 360000 frames)
     lx = (0, len(etho_data.index))
 
@@ -323,8 +324,6 @@ def fig_2(_data, _meta):
     etho_sum = [entry[0] for entry in sorted(etho_sum.items(), key=lambda x: x[1])] # create list with tuples sorted by values (sum of Y micromov), then take only sessions
     indices = [_meta.session(entry).condition-1 for entry in etho_sum] # list of indices from Condition = mating and metabolic states (sorted by sessions as above) [0: ]
     split_etho_sum = [[entry for i, entry in enumerate(etho_sum) if indices[i]==ix] for ix in range(5)] # splits session names into the five conditions (sorted)
-    for i, session in enumerate(split_etho_sum[4]):
-      print(i, session)
     nethos = [len(entry) for entry in split_etho_sum] # lengths of each split (how many ethos per condition)
     max_nethos = max(nethos)
 
@@ -422,7 +421,7 @@ def fig_2(_data, _meta):
 
     plt.tight_layout(w_pad=-0.05)
     plt.close("all")
-    return f, axes
+    return (f, axes)
 
 def fig_3():
     pass

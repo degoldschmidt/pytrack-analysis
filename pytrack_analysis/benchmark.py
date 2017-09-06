@@ -81,7 +81,7 @@ class Multibench(object):
             Option for silenced tests using ``sys.stdout = open(os.devnull, "w")`` (default: True)
         """
         print("*** RUNNING BENCHMARK ***")
-        print("#times: {}\nSTDOUT silenced: {}\n***".format(times, SILENT))
+        print("#times: {}\nSTDOUT silenced: {}\n***\n".format(times, SILENT))
         self.t = np.zeros(times)
         self.stdout = sys.stdout
         self.silenced = SILENT
@@ -109,6 +109,8 @@ class Multibench(object):
         for i,thistime in enumerate(self.t):
             t_end = "\t" if self.silenced else "\n"
             print("#{}".format(i+1), end=t_end, file=self.stdout, flush=True)
+            if not self.silenced:
+                print("---\n")
             with Benchmark(self.msg) as result:
                 res = self.f()
             self.t[i] = result.time

@@ -365,7 +365,7 @@ class Kinematics(object):
             for gene in this_exp.last["genotype"]:
                 print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
         if _VERBOSE: print()
-        return [etho_data, visit_data, encounter_data]
+        return {"etho": etho_data, "visit": visit_data, "encounter": encounter_data}
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)
