@@ -71,21 +71,24 @@ def main():
         try:
             segments_data[data_types[ix]] = datahook(_file)
         except FileNotFoundError:
-            segments_data[data_types[ix]] = stats.segments(kinematic_data[ix])
+            segments_data[data_types[ix]] = stats.segments(kinematic_data[data_types[ix]])
             segments_data[data_types[ix]].to_csv(_file, index=False, sep='\t', encoding='utf-8')
+
+    encounter_rate = stats.frequency(segments_data['encounter'], 1, 'session')
     print("\n[DONE]\n***\n")
+
 
     ### Eventually plotting
     if PLOT_IT:
         figures = {}
         plot_data = {
-                        'A':    segments_data['visit'].query("state == 1"),   # yeast visits (total durations)
+                        'A':    segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'total_length [min]']],   # yeast visits (total durations)
                         'B':    segments_data['encounter'],                   # yeast encounter rate (#encounters/time spent outside)
                         'C':    segments_data['encounter'],                   # probability stopping (#encounters with visit/#encounters)
                         'D':    segments_data['visit'].query("state == 1"),   # yeast visits (avg durations)
                         'E':    segments_data['visit'].query("state == 1"),   # yeast visits (number vs avg duration)
         }
-        print(plot_data['A'])
+        #print(plot_data['A'])
         print("***\nPlotting data for Fig. 3...\n", flush=True)
         figures["fig_3"] = fig_3()
         print("\n[DONE]\n***\n")

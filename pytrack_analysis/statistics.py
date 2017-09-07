@@ -112,6 +112,24 @@ class Statistics(object):
         logger.info( "initialized Kinematics pipeline (version: "+str(self)+")")
 
     @logged_f(LOG_PATH)
+    def frequency(self, _df, _value, _each, _off=0):
+        outdict = {
+                    'session': [],
+                    'genotype': [],
+                    'mating': [],
+                    'metabolic': [],
+                    'rate [1/s]': [],
+                    'rate [1/min]': [],
+        }
+        if len(_each) > 0:
+            for each in _df.drop_duplicates(_each)[_each]:
+                only_this = _df.query('session == "{:}" & state == {:}'.format(each, _value)) # & state == "{:}"; _value
+                num_encounters = len(only_this.index)
+                time_spent_outside = np.sum(_df.query('session == "{:}" & state == {:}'.format(each, _off))['length [s]'])
+                print(each, num_encounters, num_encounters/(time_spent_outside/60.))
+        return pd.DataFrame(outdict)
+
+    @logged_f(LOG_PATH)
     def rle(self, inarray):
             """ run length encoding. Partial credit to R rle function.
                 Multi datatype arrays catered for including non Numpy
