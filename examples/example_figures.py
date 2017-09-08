@@ -375,15 +375,6 @@ def fig_2(_data, _meta):
                 x = np.arange(lx[0],lx[1],smpl)
                 for ic, color in enumerate(['#ffffff', '#c97aaa', '#5bd5ff', '#04bf11', '#f0e442', '#000000']):
                     ax.vlines(x[a==ic],ieth,ieth+1, colors=color, lw=0.1)
-            """
-            temporary plot (start)
-            """
-            #if col == 4: ## TODO temp
-            #    ax.set_ylim([0, 12]) ## TODO temp
-            #else:
-            """
-            temporary plot (end)
-            """
             ax.set_ylim([0, max_nethos])
             ax.set_yticks([nethos[col], nethos[col]+1, nethos[col]])
             ax.get_yaxis().set_tick_params(length=2, pad=0.0)
