@@ -29,7 +29,7 @@ def stars(p):
 
 def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                 dodge=False, orient=None, color=None, palette=None, table=False,
-                size=5, edgecolor="gray", linewidth=0, ax=None, **kwargs):
+                size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, **kwargs):
     # default parameters
     defs = {
                 'ps':   2,          # pointsize for swarmplot (3)
@@ -61,7 +61,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     # actual plotting using seaborn functions
     # boxplot
     ax = sns.boxplot(x=sorted_x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
-                        orient=orient, color=color, palette=palette, saturation=defs['sat'],
+                        orient=orient, color=color, palette=colors, saturation=defs['sat'],
                         width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
     # swarmplot
     ax = sns.swarmplot(x=sorted_x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
@@ -98,15 +98,15 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
         plt.subplots_adjust(left=0.2, bottom=0.2, top=0.9, hspace=0.4, wspace=0.5)
     return ax
 
-def generate_data():
+def generate_data(dim):
     ### Generating fake example data
-    categories = ['A','B','C','B','C']
-    states = [False,False,False,True,True]
+    categories = ['A','C','A','B','C']
+    states = [False,False,True,True,True]
     listdfs = []
     means = [0.1, 0.1, 0.3, 1.5, 2.]
     stds = [0.1, 0.15, 0.25, 0.7, 1.]
     siz = 20
-    for ix, acat in enumerate(categories):
+    for ix, acat in enumerate(categories[:dim]):
         y = np.clip(stds[ix]*np.random.randn(siz)+means[ix], 0, None)
         dfdict = {}
         dfdict['category'] = [acat]*siz
@@ -120,7 +120,8 @@ def generate_data():
 if __name__ == "__main__":
     import pandas as pd
     ### some data
-    many_df = [generate_data() for i in range(6)]
+    colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+    many_df = [generate_data(4) for i in range(6)]
 
     # The actual magic
     f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     ix = 0
     for row in axes:
         for ax in row:
-            ax = swarmbox(x=['state', 'category'], y='value', data=many_df[ix], ax=ax)
+            ax = swarmbox(x=['state', 'category'], y='value', data=many_df[ix], colors=colors, ax=ax)
             ix += 1
     f.suptitle('Careful, this is artificial data!')
     #plt.show()
