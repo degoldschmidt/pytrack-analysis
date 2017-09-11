@@ -2,9 +2,12 @@
 from __future__ import unicode_literals
 import numpy as np
 import matplotlib
+import platform
 matplotlib.use('TKAgg')
 matplotlib.rcParams['font.family'] = 'sans-serif'
 matplotlib.rcParams['font.sans-serif'] = 'Helvetica Neue'
+if platform.system() == "Darwin":
+    matplotlib.rcParams['font.sans-serif'] = 'Helvetica'
 matplotlib.rcParams['text.latex.unicode'] = True
 matplotlib.rcParams['font.weight'] = 'light'
 import matplotlib.pyplot as plt
@@ -29,9 +32,9 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                 size=5, edgecolor="gray", linewidth=0, ax=None, **kwargs):
     # default parameters
     defs = {
-                'ps':   3,          # pointsize for swarmplot
+                'ps':   2,          # pointsize for swarmplot (3)
                 'pc':   '#666666',  # pointcolor for swarmplot
-                'w':    .35,        # boxwidth for boxplot
+                'w':    .5,         # boxwidth for boxplot (0.35)
                 'lw':   0.0,        # linewidth for boxplot
                 'sat':  1.,         # saturation for boxplot
                 'mlw':  0.3,        # width for median lines
@@ -62,7 +65,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                         width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
     # swarmplot
     ax = sns.swarmplot(x=sorted_x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
-                        dodge=dodge, orient=orient, color=defs['pc'], palette=palette, size=3, ax=ax, **kwargs)
+                        dodge=dodge, orient=orient, color=defs['pc'], palette=palette, size=defs['ps'], ax=ax, **kwargs)
     # median lines
     medians = data.groupby(sorted_x)[y].median()
     dx = defs['mlw']
@@ -85,20 +88,17 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
             else:
                 cells.append([str(entry[ix]) for entry in unique_ones])
         rows = x
-        condition_table = plt.table(cellText=cells, cellLoc='center', rowLabels=rows, loc='bottom', fontsize=12, bbox=[0.00, -0.25, 1., 0.2])
+        condition_table = ax.table(cellText=cells, cellLoc='center', rowLabels=rows, rowLoc = 'right', loc='bottom', fontsize=12, bbox=[0.00, -0.25, 1., 0.2])
         for k,v in condition_table._cells.items():
             this_text = condition_table._cells[k]._text.get_text()
             if this_text == u"\u2B24" or this_text == u"\u25EF":
-                print(this_text) #DejaVu Sans
                 condition_table._cells[k]._text.set_fontname("DejaVu Sans")
                 condition_table._cells[k]._text.set_fontsize(36)
         # Adjust layout to make room for the table:
-        plt.subplots_adjust(left=0.2, bottom=0.2)
-    #plt.tight_layout()
+        plt.subplots_adjust(left=0.2, bottom=0.2, top=0.9, hspace=0.4, wspace=0.5)
     return ax
 
-if __name__ == "__main__":
-    import pandas as pd
+def generate_data():
     ### Generating fake example data
     categories = ['A','B','C','B','C']
     states = [False,False,False,True,True]
@@ -113,11 +113,23 @@ if __name__ == "__main__":
         dfdict['value'] = y
         dfdict['state'] = [states[ix]]*siz
         listdfs.append(pd.DataFrame(dfdict))
-    df = pd.concat(listdfs, ignore_index=True)
+    return pd.concat(listdfs, ignore_index=True)
+
+
+
+if __name__ == "__main__":
+    import pandas as pd
+    ### some data
+    many_df = [generate_data() for i in range(6)]
 
     # The actual magic
-    f, ax = plt.subplots(1)
-    ax = swarmbox(x=['state', 'category'], y='value', data=df, ax=ax)
-    ax.set_title('Careful, this is artificial data!')
+    f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
+    print(f.get_size_inches())
+    ix = 0
+    for row in axes:
+        for ax in row:
+            ax = swarmbox(x=['state', 'category'], y='value', data=many_df[ix], ax=ax)
+            ix += 1
+    f.suptitle('Careful, this is artificial data!')
     #plt.show()
     f.savefig("here.pdf")
