@@ -12,10 +12,11 @@ from pytrack_analysis import Statistics
 from pytrack_analysis import Multibench
 from example_figures import fig_3
 
+
 ### GLOBAL OPTIONS ON HOW TO RUN THE script
 MAKE_IT = False     # overwrites datahook (be careful!)
 PLOT_IT = True      # plots figure
-SAVE_IT = False     # saves figures
+SAVE_IT = True      # saves figures
 ###
 
 def datahook(_file):
@@ -90,7 +91,7 @@ def main():
         }
         #print(plot_data['A'])
         print("***\nPlotting data for Fig. 3...\n", flush=True)
-        figures["fig_3"] = fig_3()
+        figures["fig_3"] = fig_3(plot_data)
         print("\n[DONE]\n***\n")
     #log.close()
     #log.show()

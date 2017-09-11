@@ -19,7 +19,7 @@ setup(
     license="GPLv3",
     keywords=['tracking', 'data analysis', 'fly'],
     url="https://pypi.python.org/pypi/pytrack-analysis",
-    packages=['pytrack_analysis', 'tests'],
+    packages=['pytrack_analysis', 'plotting', 'tests'],
     python_requires='>=3.6',
     long_description=read('README.md'),
     classifiers=[

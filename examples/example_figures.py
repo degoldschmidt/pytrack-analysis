@@ -7,6 +7,8 @@ matplotlib.rcParams['font.sans-serif'] = 'Helvetica Neue'
 matplotlib.rcParams['font.weight'] = 'light'
 import matplotlib.pyplot as plt
 
+from plotting import swarmbox
+
 #### plotting
 def stars(p):
    if p < 0.0001:
@@ -414,8 +416,12 @@ def fig_2(_data, _meta):
     plt.close("all")
     return (f, axes)
 
-def fig_3():
-    pass
+def fig_3(data):
+     f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
+     print(f.get_size_inches())
+     colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+     axes[0, 0] = swarmbox.swarmbox(x=['mating', 'metabolic'], y='total_length [min]', data=data['A'], colors=colors, ax=axes[0, 0])
+     return (f, axes)
 
 def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):
     ## step 0: reduce data
