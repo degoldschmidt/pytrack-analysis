@@ -417,11 +417,26 @@ def fig_2(_data, _meta):
     return (f, axes)
 
 def fig_3(data):
-     f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
-     print(f.get_size_inches())
-     colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
-     axes[0, 0] = swarmbox.swarmbox(x=['mating', 'metabolic'], y='total_length [min]', data=data['A'], colors=colors, ax=axes[0, 0])
-     return (f, axes)
+      import seaborn as sns; sns.set(color_codes=True)
+      sns.set_style('ticks')
+      f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
+      print("Figure size:", f.get_size_inches())
+      colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+      axes[0, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Total duration\nof yeast visits\n[min]', data=data['A'], colors=colors, ax=axes[0, 0], order=[[False, True], ['++', '+', '-']])
+      axes[0, 1] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=colors, ax=axes[0, 1], order=[[False, True], ['++', '+', '-']])
+      #axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Probability of\nstopping at a\nyeast patch', data=data['C'], colors=colors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
+      axes[1, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Mean duration\nof yeast visits\n[min]', data=data['D'], colors=colors, ax=axes[1, 0], order=[[False, True], ['++', '+', '-']])
+      axes[1, 1] = plt.subplot2grid((2, 3), (1, 1), colspan=2)
+      sns.despine(ax=axes[1, 1], trim=True, offset=10)
+      x = 'Number of yeast visits'
+      y = 'Mean duration\nof yeast visits\n[min]'
+      axes[1, 1].plot(data['E'][x], data['E'][y], 'k.')
+      fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
+      textprop = fm.FontProperties(fname=fontfile)
+      axes[1, 1].set_xlabel(x, fontproperties=textprop, fontsize=12)
+      axes[1, 1].set_ylabel(y, fontproperties=textprop, fontsize=12)
+      axes[1, 2].axis("off")
+      return (f, axes)
 
 def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):
     ## step 0: reduce data

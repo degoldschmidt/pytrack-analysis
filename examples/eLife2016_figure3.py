@@ -62,7 +62,7 @@ def main():
             load_data = True
     if load_data:
         kinematic_data = kinematics.run_many(group, _VERBOSE=True)
-        for ix, _data in enumerate(kinematic_data):
+        for ix, _data in enumerate(kinematic_data.values()):
             _data.to_csv(filenames[ix], index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of behavioral discrete-valued time series
@@ -82,12 +82,31 @@ def main():
     ### Eventually plotting
     if PLOT_IT:
         figures = {}
+        ### new mapping for plotting
+        segments_data['visit']['mating'] = segments_data['visit']['mating'].map({1: True, 2: False})
+        segments_data['visit']['metabolic'] = segments_data['visit']['metabolic'].map({1: '+', 2: '-', 3: '++'})
+        encounter_rate['mating'] = encounter_rate['mating'].map({1: True, 2: False})
+        encounter_rate['metabolic'] = encounter_rate['metabolic'].map({1: '+', 2: '-', 3: '++'})
+
+        # data for Fig. 3A
+        a_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'total_length [min]']]
+        a_data = a_data.rename(columns = {'total_length [min]': 'Total duration\nof yeast visits\n[min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
+
+        b_data = encounter_rate[['mating', 'metabolic', 'session', 'rate [1/min]']]
+        b_data = b_data.rename(columns = {'rate [1/min]': 'Rate of yeast\nencounters\n[1/min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
+
+        d_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'mean_length [min]']]
+        d_data = d_data.rename(columns = {'mean_length [min]': 'Mean duration\nof yeast visits\n[min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
+
+        e_data = segments_data['visit'].query("state == 1 & mating == 1").drop_duplicates('session')[['num_segments', 'mean_length [min]', 'metabolic']]
+        e_data = e_data.rename(columns = {'mean_length [min]': 'Mean duration\nof yeast visits\n[min]', 'num_segments': 'Number of yeast visits'})
+
         plot_data = {
-                        'A':    segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'total_length [min]']],   # yeast visits (total durations)
-                        'B':    segments_data['encounter'],                   # yeast encounter rate (#encounters/time spent outside)
-                        'C':    segments_data['encounter'],                   # probability stopping (#encounters with visit/#encounters)
-                        'D':    segments_data['visit'].query("state == 1"),   # yeast visits (avg durations)
-                        'E':    segments_data['visit'].query("state == 1"),   # yeast visits (number vs avg duration)
+                        'A':    a_data,                     # yeast visits (total durations)
+                        'B':    b_data,                     # yeast encounter rate (#encounters/time spent outside)
+                        'C':    segments_data['encounter'], # probability stopping (#encounters with visit/#encounters)
+                        'D':    d_data,                     # yeast visits (avg durations)
+                        'E':    e_data,                     # yeast visits (number vs avg duration)
         }
         #print(plot_data['A'])
         print("***\nPlotting data for Fig. 3...\n", flush=True)

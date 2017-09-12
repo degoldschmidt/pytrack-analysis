@@ -10,6 +10,7 @@ if platform.system() == "Darwin":
     matplotlib.rcParams['font.sans-serif'] = 'Helvetica'
 matplotlib.rcParams['text.latex.unicode'] = True
 matplotlib.rcParams['font.weight'] = 'light'
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 
 import seaborn as sns
@@ -27,6 +28,10 @@ def stars(p):
     else:
         return "ns"
 
+def merge(a,b):
+    for ax, bx in zip(a,b):
+        yield ax + bx
+
 def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                 dodge=False, orient=None, color=None, palette=None, table=False,
                 size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, **kwargs):
@@ -43,28 +48,43 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     # multiconditions
     if type(x) is str:
         sorted_x = x
+        sorted_order = order
     elif type(x) is list:
         if len(x) > 1:
             table=True
             all_combins = data[x].apply(tuple, axis=1)
             unique_ones = np.unique(all_combins)
+            extra = []
+            for each_tuple in unique_ones:
+                number = 0.0
+                if type(order) is list:
+                    for lvl, orders in enumerate(order):
+                        for index, item in enumerate(orders):
+                            if each_tuple[lvl] == item:
+                                number += index*10**(-lvl)
+                    extra.append((number,))
+            merged = list(merge(unique_ones, extra))
+            merged = sorted(merged, key=lambda x: x[2])
+            print("Swarmbox plot for multiple categories:", merged)
             data['metacat'] = [-1]*len(data.index)
-            for ix, cat in enumerate(unique_ones):
-                data.loc[all_combins==cat, 'metacat'] = ix
+            for ix, cat in enumerate(merged):
+                data.loc[all_combins==cat[:-1], 'metacat'] = ix
             sorted_x = 'metacat'
+            sorted_order = None
         else:
             sorted_x = x
+            sorted_order = order
 
     # axis dimensions
     #ax.set_ylim([-2.,max_dur + 2.]) # this is needed for swarmplot to work!!!
 
     # actual plotting using seaborn functions
     # boxplot
-    ax = sns.boxplot(x=sorted_x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
+    ax = sns.boxplot(x=sorted_x, y=y, hue=hue, data=data, order=sorted_order, hue_order=hue_order,
                         orient=orient, color=color, palette=colors, saturation=defs['sat'],
                         width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
     # swarmplot
-    ax = sns.swarmplot(x=sorted_x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
+    ax = sns.swarmplot(x=sorted_x, y=y, hue=hue, data=data, order=sorted_order, hue_order=hue_order,
                         dodge=dodge, orient=orient, color=defs['pc'], palette=palette, size=defs['ps'], ax=ax, **kwargs)
     # median lines
     medians = data.groupby(sorted_x)[y].median()
@@ -77,6 +97,13 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     sns.despine(ax=ax, bottom=True, trim=True)
     ax.get_xaxis().set_visible(False)
 
+    fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
+    print("Load font:", fontfile)
+    textprop = fm.FontProperties(fname=fontfile)
+    ax.set_ylabel(y, fontproperties=textprop, fontsize=12)
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(textprop)
+
     # Add a table at the bottom of the axes
     ### requires UNICODE encoding
     if table:
@@ -86,16 +113,31 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
                 #cells.append([ "⬤" if entry[ix] else "◯" for entry in unique_ones])
                 cells.append([u"\u2B24" if entry[ix] else u"\u25EF" for entry in unique_ones])
             else:
-                cells.append([str(entry[ix]) for entry in unique_ones])
+                cells.append([str(entry[ix]) for entry in merged])
         rows = x
-        condition_table = ax.table(cellText=cells, cellLoc='center', rowLabels=rows, rowLoc = 'right', loc='bottom', fontsize=12, bbox=[0.00, -0.25, 1., 0.2])
+        xtrarows = [each.count("\n") for each in rows]
+        nrows = len(rows)
+        for each in xtrarows:
+            nrows += each
+        print("#rows:", nrows)
+        condition_table = ax.table(cellText=cells, cellLoc='center', rowLabels=rows, rowLoc = 'right', loc='bottom', fontsize=12, bbox=[0.00, -0.35, 1., 0.3])
         for k,v in condition_table._cells.items():
             this_text = condition_table._cells[k]._text.get_text()
             if this_text == u"\u2B24" or this_text == u"\u25EF":
                 condition_table._cells[k]._text.set_fontname("DejaVu Sans")
                 condition_table._cells[k]._text.set_fontsize(36)
+            else:
+                condition_table._cells[k]._text.set_fontproperties(textprop)
+        table_props = condition_table.properties()
+        table_cells = table_props['celld']
+        for pos, cell in table_cells.items():
+            cell.set_height(xtrarows[pos[0]]+1)
+            cell.set_linewidth(0.5)
+            cell.set_edgecolor('#424242')
+        acells = table_props['child_artists']
+
         # Adjust layout to make room for the table:
-        plt.subplots_adjust(left=0.2, bottom=0.2, top=0.9, hspace=0.4, wspace=0.5)
+        plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=0.75)
     return ax
 
 def generate_data(dim):

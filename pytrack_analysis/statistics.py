@@ -126,7 +126,15 @@ class Statistics(object):
                 only_this = _df.query('session == "{:}" & state == {:}'.format(each, _value)) # & state == "{:}"; _value
                 num_encounters = len(only_this.index)
                 time_spent_outside = np.sum(_df.query('session == "{:}" & state == {:}'.format(each, _off))['length [s]'])
-                print(each, num_encounters, num_encounters/(time_spent_outside/60.))
+                outdict['session'].append(each)
+                geno = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['genotype'].iloc[0]
+                outdict['genotype'].append(geno)
+                mate = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['mating'].iloc[0]
+                outdict['mating'].append(mate)
+                metab = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['metabolic'].iloc[0]
+                outdict['metabolic'].append(metab)
+                outdict['rate [1/s]'].append(num_encounters/time_spent_outside)
+                outdict['rate [1/min]'].append(num_encounters/(time_spent_outside/60.))
         return pd.DataFrame(outdict)
 
     @logged_f(LOG_PATH)
@@ -158,8 +166,11 @@ class Statistics(object):
                     'metabolic': [],
                     'state': [],
                     'length [s]': [],
+                    'num_segments': [],
                     'total_length [s]': [],
                     'total_length [min]': [],
+                    'mean_length [s]': [],
+                    'mean_length [min]': [],
                     'cumulative_length [s]': [],
                     'cumulative_length [min]': [],
                     'frame_index': [],
@@ -171,31 +182,35 @@ class Statistics(object):
             metabolic = self.db.session(col).dict['Metabolic'] # read out metabolic state of session from database
             dt = 1/self.db.session(col).dict['framerate'] # read out framerate of session from database
 
-            lengths, pos, behavior_class = self.rle(_X[col])
+            lengths, pos, state = self.rle(_X[col])
             sums = []
+            means = []
             cums = np.zeros(len(lengths), dtype=np.int)
-            unique_behaviors = np.sort(np.unique(behavior_class))
-            sums_check = np.zeros(len(unique_behaviors), dtype=np.int)
-            for i, each_class in enumerate(unique_behaviors): ## find unique behavioral class values
-                sums.append(np.sum(lengths[behavior_class == each_class]))
-                cums[behavior_class == each_class] = np.cumsum(lengths[behavior_class == each_class])
+            unique_states = np.sort(np.unique(state))
+            sums_check = np.zeros(len(unique_states), dtype=np.int)
+            for i, each_class in enumerate(unique_states): ## find unique state values
+                sums.append(np.sum(lengths[state == each_class]))
+                cums[state == each_class] = np.cumsum(lengths[state == each_class])
+                means.append(np.mean(lengths[state == each_class]))
 
                 ## checking whether total duration is calculated correctly
                 for entry in _X[col]:
                     if entry == each_class:
                         sums_check[i] += 1
                 assert (sums[i] == sums_check[i]),"Total duration is not calculated correctly! {} != {}".format(sums[i], sums_check[i])
-
             for index, each_len in enumerate(lengths):
-                this_behavior = int(behavior_class[index])
+                this_state = int(state[index])
                 outdict['session'].append(session)
                 outdict['genotype'].append(genotype)
                 outdict['mating'].append(mating)
                 outdict['metabolic'].append(metabolic)
-                outdict['state'].append(this_behavior)
+                outdict['state'].append(this_state)
                 outdict['length [s]'].append(each_len*dt)
-                outdict['total_length [s]'].append(sums[this_behavior]*dt)
-                outdict['total_length [min]'].append(sums[this_behavior]*dt/60.)
+                outdict['num_segments'].append(len(lengths))
+                outdict['total_length [s]'].append(sums[this_state]*dt)
+                outdict['total_length [min]'].append(sums[this_state]*dt/60.)
+                outdict['mean_length [s]'].append(means[this_state]*dt)
+                outdict['mean_length [min]'].append(means[this_state]*dt/60.)
                 outdict['cumulative_length [s]'].append(cums[index]*dt)
                 outdict['cumulative_length [min]'].append(cums[index]*dt/60.)
                 outdict['frame_index'].append(pos[index])
