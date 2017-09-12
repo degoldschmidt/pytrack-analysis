@@ -418,6 +418,7 @@ def fig_2(_data, _meta):
 
 def fig_3(data):
       import seaborn as sns; sns.set(color_codes=True)
+      import matplotlib.font_manager as fm
       sns.set_style('ticks')
       f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
       print("Figure size:", f.get_size_inches())
