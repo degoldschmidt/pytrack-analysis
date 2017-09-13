@@ -206,7 +206,7 @@ class Statistics(object):
                 outdict['metabolic'].append(metabolic)
                 outdict['state'].append(this_state)
                 outdict['length [s]'].append(each_len*dt)
-                outdict['num_segments'].append(len(lengths))
+                outdict['num_segments'].append(np.sum(state == this_state))
                 outdict['total_length [s]'].append(sums[this_state]*dt)
                 outdict['total_length [min]'].append(sums[this_state]*dt/60.)
                 outdict['mean_length [s]'].append(means[this_state]*dt)

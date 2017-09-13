@@ -2,11 +2,11 @@
 from __future__ import unicode_literals
 import numpy as np
 import matplotlib
-import platform
+import sys
 matplotlib.use('TKAgg')
 matplotlib.rcParams['font.family'] = 'sans-serif'
 matplotlib.rcParams['font.sans-serif'] = 'Helvetica Neue'
-if platform.system() == "Darwin":
+if sys.platform == "Darwin":
     matplotlib.rcParams['font.sans-serif'] = 'Helvetica'
 matplotlib.rcParams['text.latex.unicode'] = True
 matplotlib.rcParams['font.weight'] = 'light'
@@ -98,6 +98,9 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
     ax.get_xaxis().set_visible(False)
 
     fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
+    print(sys.platform)
+    if sys.platform == "darwin":
+        fontfile = "/Users/degoldschmidt/Library/Fonts/Quicksand-Regular.ttf"
     print("Load font:", fontfile)
     textprop = fm.FontProperties(fname=fontfile)
     ax.set_ylabel(y, fontproperties=textprop, fontsize=12)
@@ -125,7 +128,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
             this_text = condition_table._cells[k]._text.get_text()
             if this_text == u"\u2B24" or this_text == u"\u25EF":
                 condition_table._cells[k]._text.set_fontname("DejaVu Sans")
-                condition_table._cells[k]._text.set_fontsize(36)
+                condition_table._cells[k]._text.set_fontsize(28)
             else:
                 condition_table._cells[k]._text.set_fontproperties(textprop)
         table_props = condition_table.properties()
