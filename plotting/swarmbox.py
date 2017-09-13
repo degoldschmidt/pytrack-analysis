@@ -128,7 +128,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
             this_text = condition_table._cells[k]._text.get_text()
             if this_text == u"\u2B24" or this_text == u"\u25EF":
                 condition_table._cells[k]._text.set_fontname("DejaVu Sans")
-                condition_table._cells[k]._text.set_fontsize(28)
+                condition_table._cells[k]._text.set_fontsize(18)
             else:
                 condition_table._cells[k]._text.set_fontproperties(textprop)
         table_props = condition_table.properties()
@@ -140,7 +140,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
         acells = table_props['child_artists']
 
         # Adjust layout to make room for the table:
-        plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=0.75)
+        plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=1.)
     return ax
 
 def generate_data(dim):

@@ -76,6 +76,7 @@ def main():
             segments_data[data_types[ix]].to_csv(_file, index=False, sep='\t', encoding='utf-8')
 
     encounter_rate = stats.frequency(segments_data['encounter'], 1, 'session')
+    #visit_ratio = stats.visit_ratio(segments_data['encounter'], segments_data['visit'])
     print("\n[DONE]\n***\n")
 
 
@@ -95,6 +96,8 @@ def main():
         b_data = encounter_rate[['mating', 'metabolic', 'session', 'rate [1/min]']]
         b_data = b_data.rename(columns = {'rate [1/min]': 'Rate of yeast\nencounters\n[1/min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
 
+        c_data = 0.0    #encounter_
+
         d_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'mean_length [min]']]
         d_data = d_data.rename(columns = {'mean_length [min]': 'Mean duration\nof yeast visits\n[min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
 
@@ -102,11 +105,11 @@ def main():
         e_data = e_data.rename(columns = {'mean_length [min]': 'Mean duration\nof yeast visits\n[min]', 'num_segments': 'Number of yeast visits'})
 
         plot_data = {
-                        'A':    a_data,                     # yeast visits (total durations)
-                        'B':    b_data,                     # yeast encounter rate (#encounters/time spent outside)
-                        'C':    segments_data['encounter'], # probability stopping (#encounters with visit/#encounters)
-                        'D':    d_data,                     # yeast visits (avg durations)
-                        'E':    e_data,                     # yeast visits (number vs avg duration)
+                        'A':    a_data, # yeast visits (total durations)
+                        'B':    b_data, # yeast encounter rate (#encounters/time spent outside)
+                        'C':    b_data, # probability stopping (#encounters with visit/#encounters)
+                        'D':    d_data, # yeast visits (avg durations)
+                        'E':    e_data, # yeast visits (number vs avg duration)
         }
         #print(plot_data['A'])
         print("***\nPlotting data for Fig. 3...\n", flush=True)

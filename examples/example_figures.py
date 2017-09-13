@@ -420,17 +420,19 @@ def fig_2(_data, _meta):
 def fig_3(data):
       import seaborn as sns; sns.set(color_codes=True)
       import matplotlib.font_manager as fm
-      from matplotlib.colors import Colormap
+      import matplotlib.cm as cm
+      import matplotlib.colors as colors
+
       sns.set_style('ticks')
       f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
       print("Figure size:", f.get_size_inches())
-      colors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
-      axes[0, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Total duration\nof yeast visits\n[min]', data=data['A'], colors=colors, ax=axes[0, 0], order=[[False, True], ['++', '+', '-']])
-      axes[0, 1] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=colors, ax=axes[0, 1], order=[[False, True], ['++', '+', '-']])
+      swarmcolors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+      axes[0, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Total duration\nof yeast visits\n[min]', data=data['A'], colors=swarmcolors, ax=axes[0, 0], order=[[False, True], ['++', '+', '-']])
+      axes[0, 1] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 1], order=[[False, True], ['++', '+', '-']])
+      axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
       #axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Probability of\nstopping at a\nyeast patch', data=data['C'], colors=colors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
-      axes[1, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Mean duration\nof yeast visits\n[min]', data=data['D'], colors=colors, ax=axes[1, 0], order=[[False, True], ['++', '+', '-']])
+      axes[1, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Mean duration\nof yeast visits\n[min]', data=data['D'], colors=swarmcolors, ax=axes[1, 0], order=[[False, True], ['++', '+', '-']])
       axes[1, 1] = plt.subplot2grid((2, 3), (1, 1), colspan=2)
-
       x = 'Number of yeast visits'
       y = 'Mean duration\nof yeast visits\n[min]'
       axes[1, 1].plot(data['E'][x], data['E'][y], 'k.', zorder=3)
@@ -438,14 +440,16 @@ def fig_3(data):
       if sys.platform == "darwin":
           fontfile = "/Users/degoldschmidt/Library/Fonts/Quicksand-Regular.ttf"
       textprop = fm.FontProperties(fname=fontfile)
-      axes[1, 1].set_xlim([0.,400])
-      sns.despine(ax=axes[1, 1], trim=True, offset=1)
+      axes[1, 1].set_xlim([0.,420])
+      sns.despine(ax=axes[1, 1], trim=True, offset=2.5)
       isolines = [5, 20, 35, 50, 65, 80, 95]
-      lines_col = Colormap("winter", N=len(isolines))
+      lines_col = cm.get_cmap("winter", len(isolines))
+      listcolors = [colors.rgb2hex(lines_col(i)[:3]) for i in range(lines_col.N)]
+
       xline = np.arange(1, axes[1, 1].get_xlim()[1], axes[1, 1].get_xlim()[1]/1000)
       for ix, iso in enumerate(isolines):
-          axes[1, 1].plot(xline, iso/xline, '-', color='#888888')
-      axes[1, 1].set_xlim([0.,400])
+          axes[1, 1].plot(xline, iso/xline, '-', color=listcolors[ix])
+      axes[1, 1].set_xlim([0.,420])
       axes[1, 1].set_ylim([0.,3.])
       axes[1, 1].set_xlabel(x, fontproperties=textprop, fontsize=12)
       axes[1, 1].set_ylabel(y, fontproperties=textprop, fontsize=12)
@@ -453,7 +457,7 @@ def fig_3(data):
           xtic.set_fontproperties(textprop)
       for ytic in axes[1, 1].get_yticklabels():
           ytic.set_fontproperties(textprop)
-      axes[1, 1].set_position([0.5, 0.125, 0.33, 0.33])
+      axes[1, 1].set_position([0.45, 0.125, 0.48, 0.312]) #0.42
       axes[1, 2].axis("off")
       return (f, axes)
 
