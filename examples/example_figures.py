@@ -456,7 +456,7 @@ def fig_3(data):
       axes[1, 1].set_ylim([-0.3,3.])
       axes[1, 1].set_xlabel(x, fontproperties=textprop, fontsize=12)
       axes[1, 1].set_ylabel(y, fontproperties=textprop, fontsize=12)
-      axes[1, 1].set_legend()
+      axes[1, 1].legend()
       for xtic in axes[1, 1].get_xticklabels():
           xtic.set_fontproperties(textprop)
       for ytic in axes[1, 1].get_yticklabels():
