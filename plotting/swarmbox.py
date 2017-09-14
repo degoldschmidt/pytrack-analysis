@@ -114,7 +114,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
         for ix, each_row in enumerate(x):
             if data[each_row].dtype == bool:
                 #cells.append([ "⬤" if entry[ix] else "◯" for entry in unique_ones])
-                cells.append([u"\u2B24" if entry[ix] else u"\u25EF" for entry in unique_ones])
+                cells.append([u"\u25CF" if entry[ix] else u"\u25CB" for entry in unique_ones])
             else:
                 cells.append([str(entry[ix]) for entry in merged])
         rows = x
@@ -126,9 +126,9 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None,
         condition_table = ax.table(cellText=cells, cellLoc='center', rowLabels=rows, rowLoc = 'right', loc='bottom', fontsize=12, bbox=[0.00, -0.35, 1., 0.3])
         for k,v in condition_table._cells.items():
             this_text = condition_table._cells[k]._text.get_text()
-            if this_text == u"\u2B24" or this_text == u"\u25EF":
-                condition_table._cells[k]._text.set_fontname("DejaVu Sans")
-                condition_table._cells[k]._text.set_fontsize(18)
+            if this_text == u"\u25CF" or this_text == u"\u25CB":
+                condition_table._cells[k]._text.set_fontname("Arial Unicode MS")
+                condition_table._cells[k]._text.set_fontsize(24)
             else:
                 condition_table._cells[k]._text.set_fontproperties(textprop)
         table_props = condition_table.properties()

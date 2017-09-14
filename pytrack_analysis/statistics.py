@@ -200,6 +200,9 @@ class Statistics(object):
                 assert (sums[i] == sums_check[i]),"Total duration is not calculated correctly! {} != {}".format(sums[i], sums_check[i])
             for index, each_len in enumerate(lengths):
                 this_state = int(state[index])
+
+                if session == "CANS_001":
+                    print("state=", this_state,"#segm:", np.sum(state == this_state))
                 outdict['session'].append(session)
                 outdict['genotype'].append(genotype)
                 outdict['mating'].append(mating)
@@ -216,28 +219,20 @@ class Statistics(object):
                 outdict['frame_index'].append(pos[index])
         return pd.DataFrame(outdict)
 
-        @logged_f(LOG_PATH)
-        def visit_ratio(self, _encounters, _visits):
-            outdict = {
-                        'session': [],
-                        'genotype': [],
-                        'mating': [],
-                        'metabolic': [],
-                        'ratio': [],
-            }
-            all_sessions = _encounters.drop_duplicates('session')['session']
-            if len(_each) > 0:
-                for each_session in all_sessions:
-                    only_this = _df.query('session == "{:}" & state == {:}'.format(each, _value)) # & state == "{:}"; _value
-                    num_encounters = len(only_this.index)
-                    time_spent_outside = np.sum(_df.query('session == "{:}" & state == {:}'.format(each, _off))['length [s]'])
-                    outdict['session'].append(each)
-                    geno = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['genotype'].iloc[0]
-                    outdict['genotype'].append(geno)
-                    mate = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['mating'].iloc[0]
-                    outdict['mating'].append(mate)
-                    metab = _df.drop_duplicates(_each).query('session == "{:}"'.format(each))['metabolic'].iloc[0]
-                    outdict['metabolic'].append(metab)
-                    outdict['rate [1/s]'].append(num_encounters/time_spent_outside)
-                    outdict['rate [1/min]'].append(num_encounters/(time_spent_outside/60.))
-            return pd.DataFrame(outdict)
+    @logged_f(LOG_PATH)
+    def visit_ratio(self, _encounters, _visits):
+        outdict = {
+                    'session': [],
+                    'genotype': [],
+                    'mating': [],
+                    'metabolic': [],
+                    'state': [],
+                    'ratio': [],
+        }
+        all_sessions = _encounters.drop_duplicates('session')['session']
+        for each_session in all_sessions:
+            unique_states = np.sort(np.unique(_encounters.query("session == '{}'".format(each_session))['state']))
+            if each_session == 'CANS_001':
+                print(unique_states)
+            session_ratio = 0.0
+        return pd.DataFrame(outdict)

@@ -76,7 +76,7 @@ def main():
             segments_data[data_types[ix]].to_csv(_file, index=False, sep='\t', encoding='utf-8')
 
     encounter_rate = stats.frequency(segments_data['encounter'], 1, 'session')
-    #visit_ratio = stats.visit_ratio(segments_data['encounter'], segments_data['visit'])
+    visit_ratio = stats.visit_ratio(segments_data['encounter'], segments_data['visit'])
     print("\n[DONE]\n***\n")
 
 
@@ -88,6 +88,8 @@ def main():
         segments_data['visit']['metabolic'] = segments_data['visit']['metabolic'].map({1: '+', 2: '-', 3: '++'})
         encounter_rate['mating'] = encounter_rate['mating'].map({1: True, 2: False})
         encounter_rate['metabolic'] = encounter_rate['metabolic'].map({1: '+', 2: '-', 3: '++'})
+
+        print(segments_data['visit'].head(10))
 
         # data for Fig. 3A
         a_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'total_length [min]']]

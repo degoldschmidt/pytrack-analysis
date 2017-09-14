@@ -426,7 +426,7 @@ def fig_3(data):
       sns.set_style('ticks')
       f, axes = plt.subplots(2,3, figsize=(8,6), dpi=300)
       print("Figure size:", f.get_size_inches())
-      swarmcolors = ['#dd1c77', '#f9c6dd', '#2ca25f', '#99d8b3', '#b9eec3']
+      swarmcolors = ['#dd1c77', '#f9c6dd', '#0e803f', '#4ed586', '#b9eec3']
       axes[0, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Total duration\nof yeast visits\n[min]', data=data['A'], colors=swarmcolors, ax=axes[0, 0], order=[[False, True], ['++', '+', '-']])
       axes[0, 1] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 1], order=[[False, True], ['++', '+', '-']])
       axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
@@ -435,9 +435,9 @@ def fig_3(data):
       axes[1, 1] = plt.subplot2grid((2, 3), (1, 1), colspan=2)
       x = 'Number of yeast visits'
       y = 'Mean duration\nof yeast visits\n[min]'
-      axes[1, 1].plot(data['E'].query("metabolic == '++'")[x], data['E'].query("metabolic == '++'")[y], '.', markersize=10, color=swarmcolors[2], mew=.5, mec='k', zorder=3, label='AA++')
-      axes[1, 1].plot(data['E'].query("metabolic == '+'")[x], data['E'].query("metabolic == '+'")[y], '.', markersize=10, color=swarmcolors[3], mew=.5, mec='k', zorder=3, label='AA+')
-      axes[1, 1].plot(data['E'].query("metabolic == '-'")[x], data['E'].query("metabolic == '-'")[y], '.', markersize=10, color=swarmcolors[4], mew=.5, mec='k', zorder=3, label='AA-')
+      axes[1, 1].plot(data['E'].query("metabolic == '++'")[x], data['E'].query("metabolic == '++'")[y], '.', markersize=10, color=swarmcolors[2], mew=.5, mec='k', zorder=3, label='Mated, AA++')
+      axes[1, 1].plot(data['E'].query("metabolic == '+'")[x], data['E'].query("metabolic == '+'")[y], '.', markersize=10, color=swarmcolors[3], mew=.5, mec='k', zorder=3, label='Mated, AA+')
+      axes[1, 1].plot(data['E'].query("metabolic == '-'")[x], data['E'].query("metabolic == '-'")[y], '.', markersize=10, color=swarmcolors[4], mew=.5, mec='k', zorder=3, label='Mated, AA-')
       fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
       if sys.platform == "darwin":
           fontfile = "/Users/degoldschmidt/Library/Fonts/Quicksand-Regular.ttf"
