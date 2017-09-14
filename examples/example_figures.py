@@ -435,16 +435,16 @@ def fig_3(data):
       axes[1, 1] = plt.subplot2grid((2, 3), (1, 1), colspan=2)
       x = 'Number of yeast visits'
       y = 'Mean duration\nof yeast visits\n[min]'
-      axes[1, 1].plot(data['E'].query("metabolic == '++'")[x], data['E'].query("metabolic == '++'")[y], '.', markersize=10, color=swarmcolors[2], zorder=3, label='AA++')
-      axes[1, 1].plot(data['E'].query("metabolic == '+'")[x], data['E'].query("metabolic == '+'")[y], '.', markersize=10, color=swarmcolors[3], zorder=3, label='AA+')
-      axes[1, 1].plot(data['E'].query("metabolic == '-'")[x], data['E'].query("metabolic == '-'")[y], '.', markersize=10, color=swarmcolors[4], zorder=3, label='AA-')
+      axes[1, 1].plot(data['E'].query("metabolic == '++'")[x], data['E'].query("metabolic == '++'")[y], '.', markersize=10, color=swarmcolors[2], mew=.5, mec='k', zorder=3, label='AA++')
+      axes[1, 1].plot(data['E'].query("metabolic == '+'")[x], data['E'].query("metabolic == '+'")[y], '.', markersize=10, color=swarmcolors[3], mew=.5, mec='k', zorder=3, label='AA+')
+      axes[1, 1].plot(data['E'].query("metabolic == '-'")[x], data['E'].query("metabolic == '-'")[y], '.', markersize=10, color=swarmcolors[4], mew=.5, mec='k', zorder=3, label='AA-')
       fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
       if sys.platform == "darwin":
           fontfile = "/Users/degoldschmidt/Library/Fonts/Quicksand-Regular.ttf"
       textprop = fm.FontProperties(fname=fontfile)
       axes[1, 1].set_xlim([0.,420])
-      axes[1, 1].set_ylim([-0.3,3.])
-      sns.despine(ax=axes[1, 1], trim=True, offset=2.5)
+      axes[1, 1].set_ylim([-0.1,5.])
+      sns.despine(ax=axes[1, 1], trim=True)
       isolines = [5, 20, 35, 50, 65, 80, 95]
       lines_col = cm.get_cmap("Reds", len(isolines)+1)
       listcolors = [colors.rgb2hex(lines_col(i)[:3]) for i in range(lines_col.N)]
@@ -453,7 +453,7 @@ def fig_3(data):
       for ix, iso in enumerate(isolines):
           axes[1, 1].plot(xline, iso/xline, '-', color=listcolors[ix+1])
       axes[1, 1].set_xlim([0.,420])
-      axes[1, 1].set_ylim([-0.3,3.])
+      axes[1, 1].set_ylim([-0.1,5.])
       axes[1, 1].set_xlabel(x, fontproperties=textprop, fontsize=12)
       axes[1, 1].set_ylabel(y, fontproperties=textprop, fontsize=12)
       axes[1, 1].legend()
