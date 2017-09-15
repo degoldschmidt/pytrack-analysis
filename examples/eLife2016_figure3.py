@@ -76,7 +76,7 @@ def main():
             segments_data[data_types[ix]].to_csv(_file, index=False, sep='\t', encoding='utf-8')
 
     encounter_rate = stats.frequency(segments_data['encounter'], 1, 'session')
-    visit_ratio = stats.visit_ratio(segments_data['encounter'], segments_data['visit'])
+    visit_ratio = stats.visit_ratio(segments_data['encounter'], kinematic_data['encounter'], segments_data['visit'], kinematic_data['visit'])
     print("\n[DONE]\n***\n")
 
 
@@ -88,8 +88,8 @@ def main():
         segments_data['visit']['metabolic'] = segments_data['visit']['metabolic'].map({1: '+', 2: '-', 3: '++'})
         encounter_rate['mating'] = encounter_rate['mating'].map({1: True, 2: False})
         encounter_rate['metabolic'] = encounter_rate['metabolic'].map({1: '+', 2: '-', 3: '++'})
-
-        print(segments_data['visit'].head(10))
+        visit_ratio['mating'] = visit_ratio['mating'].map({1: True, 2: False})
+        visit_ratio['metabolic'] = visit_ratio['metabolic'].map({1: '+', 2: '-', 3: '++'})
 
         # data for Fig. 3A
         a_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'total_length [min]']]
@@ -98,7 +98,8 @@ def main():
         b_data = encounter_rate[['mating', 'metabolic', 'session', 'rate [1/min]']]
         b_data = b_data.rename(columns = {'rate [1/min]': 'Rate of yeast\nencounters\n[1/min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
 
-        c_data = 0.0    #encounter_
+        c_data = visit_ratio.query("state == 1")[['mating', 'metabolic', 'session', 'ratio']]
+        c_data = c_data.rename(columns = {'ratio': 'Ratio of\nof yeast visits\nper encounter', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
 
         d_data = segments_data['visit'].query("state == 1").drop_duplicates('session')[['mating', 'metabolic', 'session', 'mean_length [min]']]
         d_data = d_data.rename(columns = {'mean_length [min]': 'Mean duration\nof yeast visits\n[min]', 'mating': 'Mated', 'metabolic': 'AA\npre-diet'})
@@ -109,7 +110,7 @@ def main():
         plot_data = {
                         'A':    a_data, # yeast visits (total durations)
                         'B':    b_data, # yeast encounter rate (#encounters/time spent outside)
-                        'C':    b_data, # probability stopping (#encounters with visit/#encounters)
+                        'C':    c_data, # probability stopping (#encounters with visit/#encounters)
                         'D':    d_data, # yeast visits (avg durations)
                         'E':    e_data, # yeast visits (number vs avg duration)
         }

@@ -205,8 +205,8 @@ class Kinematics(object):
         visits = self.two_pixel_rule(visits, head_pos, join=[1,2])
         encounters = self.two_pixel_rule(encounters, head_pos, join=[1,2])
 
-        mask_yeast = (ethogram == 1) & (visits == 1) & (amin <= 2.5)
-        mask_sucrose = (ethogram == 1) & (visits == 2) & (amin <= 2.5)
+        mask_yeast = (ethogram == 1) & (visits == 1) & (amin <= 2.5)    # yeast
+        mask_sucrose = (ethogram == 1) & (visits == 2) & (amin <= 2.5)  # sucrose
         ethogram[mask_yeast] = 4     ## yeast micromovement
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
         ethogram = self.two_pixel_rule(ethogram, head_pos, join=[4])

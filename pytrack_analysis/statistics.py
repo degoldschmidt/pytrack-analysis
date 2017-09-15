@@ -165,6 +165,7 @@ class Statistics(object):
                     'mating': [],
                     'metabolic': [],
                     'state': [],
+                    'length': [],
                     'length [s]': [],
                     'num_segments': [],
                     'total_length [s]': [],
@@ -200,14 +201,12 @@ class Statistics(object):
                 assert (sums[i] == sums_check[i]),"Total duration is not calculated correctly! {} != {}".format(sums[i], sums_check[i])
             for index, each_len in enumerate(lengths):
                 this_state = int(state[index])
-
-                if session == "CANS_001":
-                    print("state=", this_state,"#segm:", np.sum(state == this_state))
                 outdict['session'].append(session)
                 outdict['genotype'].append(genotype)
                 outdict['mating'].append(mating)
                 outdict['metabolic'].append(metabolic)
                 outdict['state'].append(this_state)
+                outdict['length'].append(each_len)
                 outdict['length [s]'].append(each_len*dt)
                 outdict['num_segments'].append(np.sum(state == this_state))
                 outdict['total_length [s]'].append(sums[this_state]*dt)
@@ -220,7 +219,7 @@ class Statistics(object):
         return pd.DataFrame(outdict)
 
     @logged_f(LOG_PATH)
-    def visit_ratio(self, _encounters, _visits):
+    def visit_ratio(self, _encounter_segments, _encounter_vectors, _visit_segments, _visit_vectors):
         outdict = {
                     'session': [],
                     'genotype': [],
@@ -229,10 +228,34 @@ class Statistics(object):
                     'state': [],
                     'ratio': [],
         }
-        all_sessions = _encounters.drop_duplicates('session')['session']
+        all_sessions = _encounter_segments.drop_duplicates('session')['session']
         for each_session in all_sessions:
-            unique_states = np.sort(np.unique(_encounters.query("session == '{}'".format(each_session))['state']))
-            if each_session == 'CANS_001':
-                print(unique_states)
-            session_ratio = 0.0
+            _encounter_vector = _encounter_vectors[each_session]
+            _visit_vector = _visit_vectors[each_session]
+            unique_states = np.sort(np.unique( _encounter_segments.query("session == '{}'".format(each_session))['state'] ))
+            session_ratio = [0, 0] ## yeast, sucrose
+            for ix, state in enumerate(unique_states[1:]):
+                outdict['session'].append(each_session)
+                outdict['genotype'].append( _encounter_segments.query("session == '{}'".format(each_session))['genotype'].iloc[0] )
+                outdict['mating'].append( _encounter_segments.query("session == '{}'".format(each_session))['mating'].iloc[0] )
+                outdict['metabolic'].append( _encounter_segments.query("session == '{}'".format(each_session))['metabolic'].iloc[0] )
+                outdict['state'].append(state)
+                #rand_segm = np.random.choice(_encounter_segments.query("state == {}".format(state)).index) TODO for testing
+                #print(rand_segm) TODO for testing
+                for index, row in _encounter_segments.query("session == '{}' & state == {}".format(each_session, state)).iterrows():
+                    start = row['frame_index']
+                    end = row['frame_index']+row['length']
+                    #print("index:{:04d}\tstart:{:06d}\tend:{:06d}".format(index, start, end))
+                    enc = np.array(_encounter_vector[start:end])
+                    vis = np.array(_visit_vector[start:end])
+                    if not np.all(enc == state):
+                        print("Session:", each_session)
+                        print("This should not happen:", enc, state)
+                    #if index == rand_segm: TODO for testing
+                    #    print(state, vis, state in vis) TODO for testing
+                    if np.any(enc == vis):
+                        session_ratio[ix] += 1
+                num_encs = _encounter_segments.query("session == '{}' & state == {}".format(each_session, state))['num_segments'].iloc[0]
+                #print("count = {},\tnums = {}".format(session_ratio[ix], num_encs)) TODO for testing
+                outdict['ratio'].append(session_ratio[ix]/num_encs)
         return pd.DataFrame(outdict)

@@ -8,7 +8,7 @@ matplotlib.rcParams['font.weight'] = 'light'
 import matplotlib.pyplot as plt
 import sys
 
-from plotting import swarmbox
+from niceplot import swarmbox
 
 #### plotting
 def stars(p):
@@ -429,8 +429,7 @@ def fig_3(data):
       swarmcolors = ['#dd1c77', '#f9c6dd', '#0e803f', '#4ed586', '#b9eec3']
       axes[0, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Total duration\nof yeast visits\n[min]', data=data['A'], colors=swarmcolors, ax=axes[0, 0], order=[[False, True], ['++', '+', '-']])
       axes[0, 1] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 1], order=[[False, True], ['++', '+', '-']])
-      axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Rate of yeast\nencounters\n[1/min]', data=data['B'], colors=swarmcolors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
-      #axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Probability of\nstopping at a\nyeast patch', data=data['C'], colors=colors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
+      axes[0, 2] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Ratio of\nof yeast visits\nper encounter', data=data['C'], colors=swarmcolors, ax=axes[0, 2], order=[[False, True], ['++', '+', '-']])
       axes[1, 0] = swarmbox.swarmbox(x=['Mated', 'AA\npre-diet'], y='Mean duration\nof yeast visits\n[min]', data=data['D'], colors=swarmcolors, ax=axes[1, 0], order=[[False, True], ['++', '+', '-']])
       axes[1, 1] = plt.subplot2grid((2, 3), (1, 1), colspan=2)
       x = 'Number of yeast visits'
@@ -463,6 +462,10 @@ def fig_3(data):
           ytic.set_fontproperties(textprop)
       axes[1, 1].set_position([0.45, 0.125, 0.48, 0.312]) #0.42
       axes[1, 2].axis("off")
+      for item in axes[0, 0].get_children():
+         print(item.__class__.__name__)
+         if item.__class__.__name__ is 'Text':
+            print("Text:", item.get_text())
       return (f, axes)
 
 def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):
