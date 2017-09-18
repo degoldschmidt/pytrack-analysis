@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import sys
 
 from niceplot import swarmbox
+from niceplot import styla
 
 #### plotting
 def stars(p):
@@ -419,7 +420,6 @@ def fig_2(_data, _meta):
 
 def fig_3(data):
       import seaborn as sns; sns.set(color_codes=True)
-      import matplotlib.font_manager as fm
       import matplotlib.cm as cm
       import matplotlib.colors as colors
 
@@ -437,10 +437,6 @@ def fig_3(data):
       axes[1, 1].plot(data['E'].query("metabolic == '++'")[x], data['E'].query("metabolic == '++'")[y], '.', markersize=10, color=swarmcolors[2], mew=.5, mec='k', zorder=3, label='Mated, AA++')
       axes[1, 1].plot(data['E'].query("metabolic == '+'")[x], data['E'].query("metabolic == '+'")[y], '.', markersize=10, color=swarmcolors[3], mew=.5, mec='k', zorder=3, label='Mated, AA+')
       axes[1, 1].plot(data['E'].query("metabolic == '-'")[x], data['E'].query("metabolic == '-'")[y], '.', markersize=10, color=swarmcolors[4], mew=.5, mec='k', zorder=3, label='Mated, AA-')
-      fontfile = "C:\\Windows\\Fonts\\Quicksand-Regular.ttf"
-      if sys.platform == "darwin":
-          fontfile = "/Users/degoldschmidt/Library/Fonts/Quicksand-Regular.ttf"
-      textprop = fm.FontProperties(fname=fontfile)
       axes[1, 1].set_xlim([0.,420])
       axes[1, 1].set_ylim([-0.1,5.])
       sns.despine(ax=axes[1, 1], trim=True)
@@ -453,19 +449,20 @@ def fig_3(data):
           axes[1, 1].plot(xline, iso/xline, '-', color=listcolors[ix+1])
       axes[1, 1].set_xlim([0.,420])
       axes[1, 1].set_ylim([-0.1,5.])
-      axes[1, 1].set_xlabel(x, fontproperties=textprop, fontsize=12)
-      axes[1, 1].set_ylabel(y, fontproperties=textprop, fontsize=12)
+      axes[1, 1].set_xlabel(x)
+      axes[1, 1].set_ylabel(y)
       axes[1, 1].legend()
-      for xtic in axes[1, 1].get_xticklabels():
-          xtic.set_fontproperties(textprop)
-      for ytic in axes[1, 1].get_yticklabels():
-          ytic.set_fontproperties(textprop)
       axes[1, 1].set_position([0.45, 0.125, 0.48, 0.312]) #0.42
       axes[1, 2].axis("off")
+      for row in axes:
+          for ax in row:
+              ax = styla.set_font("Quicksand-Regular", ax=ax)
+      """
       for item in axes[0, 0].get_children():
          print(item.__class__.__name__)
          if item.__class__.__name__ is 'Text':
             print("Text:", item.get_text())
+      """
       return (f, axes)
 
 def cum_plot(data, time=None, unit=None, value=None, color=None, estimator=np.median, upper=360000, ax=None):

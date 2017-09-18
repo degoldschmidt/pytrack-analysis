@@ -34,6 +34,24 @@ def datahook(_file):
         print("Opened datahook in", _file)
         return data
 
+def get_kinematics(_files):
+    load_data = False
+    kinematic_data = {}
+    for ix, eachfile in enumerate(_files):
+        thistype = os.path.basename(eachfile).split("_")[0]
+        try:
+            kinematic_data[thistype] = datahook(eachfile)
+        except FileNotFoundError:
+            print("[ERROR] File not found:", eachfile)
+            load_data = True
+    if load_data:
+        group = db.experiment("CANS").select()
+        kinematics = Kinematics(db)
+        kinematic_data = kinematics.run_many(group, _VERBOSE=True)
+        for ix, _data in enumerate(kinematic_data.values()):
+            _data.to_csv(_files[ix], index=False, sep='\t', encoding='utf-8')
+    return kinematic_data
+
 def main():
     # filename of this script
     thisscript = os.path.basename(__file__).split('.')[0]
@@ -42,32 +60,14 @@ def main():
     log = Logger(profile, scriptname=thisscript)
 
     print("***\nProcessing data for Fig. 3...\n", flush=True)
-    ### select all sesson from CANS
-    group = db.experiment("CANS").select()
-    # initialize kinematics object
-    kinematics = Kinematics(db)
-    # initialize statistics object
-    stats = Statistics(db)
-
-    ### Kinematic analysis of trials
     data_types = ["etho", "visit", "encounter"]
-    filenames = [os.path.join(get_out(profile), each + "_kinematics.csv") for each in data_types]
-    load_data = False
-    kinematic_data = {}
-    for ix, _file in enumerate(filenames):
-        try:
-            kinematic_data[data_types[ix]] = datahook(_file)
-        except FileNotFoundError:
-            print("[ERROR] File not found:", _file)
-            load_data = True
-    if load_data:
-        kinematic_data = kinematics.run_many(group, _VERBOSE=True)
-        for ix, _data in enumerate(kinematic_data.values()):
-            _data.to_csv(filenames[ix], index=False, sep='\t', encoding='utf-8')
 
     ### Statistical analysis of behavioral discrete-valued time series
     filenames = [os.path.join(get_out(profile), each + "_segments.csv") for each in data_types]
     segments_data = {}
+    stats = Statistics(db)
+    kine_files = [os.path.join(get_out(profile), each + "_kinematics.csv") for each in data_types]
+    kinematic_data = get_kinematics(kine_files)
     for ix, _file in enumerate(filenames):
         try:
             segments_data[data_types[ix]] = datahook(_file)
@@ -121,7 +121,7 @@ def main():
     #log.close()
     #log.show()
 
-    del kinematics
+    #del kinematics
     del stats
     del db
 
