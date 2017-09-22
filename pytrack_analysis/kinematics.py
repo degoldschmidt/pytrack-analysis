@@ -180,12 +180,15 @@ class Kinematics(object):
 
         ethogram[ethogram == -1] = 1 # new micromovement
 
+        ethogram = self.two_pixel_rule(ethogram, head_pos, join=[1])
+
         visits = np.zeros(ethogram.shape)
         encounters = np.zeros(ethogram.shape)
         encounter_index = np.zeros(ethogram.shape, dtype=np.int) - 1
 
         substrates = np.array(_meta.dict["SubstrateType"])
-        visits[amin <= 2.5] = imin[amin <= 2.5]%2+1
+        visit_mask = (amin <= 2.5) & (ethogram == 1)    # distance < 2.5 mm and Micromovement
+        visits[visit_mask] = imin[visit_mask]%2+1
         encounters[amin <= 3] = imin[amin <= 3]%2+1
         encounter_index[amin <= 3] = imin[amin <= 3]
         encounters[encounter_index > 11] = (imin[encounter_index > 11]+1)%2+1
@@ -209,7 +212,6 @@ class Kinematics(object):
         mask_sucrose = (ethogram == 1) & (visits == 2) & (amin <= 2.5)  # sucrose
         ethogram[mask_yeast] = 4     ## yeast micromovement
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
-        ethogram = self.two_pixel_rule(ethogram, head_pos, join=[4])
 
         return  pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits}), pd.DataFrame({"encounters": encounters}), pd.DataFrame({"encounter_index": encounter_index})
 

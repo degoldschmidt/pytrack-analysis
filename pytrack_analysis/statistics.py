@@ -187,13 +187,12 @@ class Statistics(object):
             sums = []
             means = []
             cums = np.zeros(len(lengths), dtype=np.int)
-            unique_states = np.sort(np.unique(state))
+            unique_states = np.arange(np.max(np.unique(state))+1)               ### state indices are arranged as integers (some states might not be in given session)
             sums_check = np.zeros(len(unique_states), dtype=np.int)
             for i, each_class in enumerate(unique_states): ## find unique state values
                 sums.append(np.sum(lengths[state == each_class]))
                 cums[state == each_class] = np.cumsum(lengths[state == each_class])
                 means.append(np.mean(lengths[state == each_class]))
-
                 ## checking whether total duration is calculated correctly
                 for entry in _X[col]:
                     if entry == each_class:

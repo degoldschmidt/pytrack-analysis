@@ -14,13 +14,16 @@ from example_figures import fig_3
 
 
 ### GLOBAL OPTIONS ON HOW TO RUN THE script
-MAKE_IT = False     # overwrites datahook (be careful!)
+MAKE_IT_ALL = False      # overwrites datahook (be careful!)
+MAKE_IT = True      # overwrites datahook (be careful!)
 PLOT_IT = True      # plots figure
 SAVE_IT = True      # saves figures
 ###
 
 def datahook(_file):
-    if MAKE_IT:
+    if MAKE_IT_ALL:
+        raise FileNotFoundError
+    elif MAKE_IT and "kinematics" not in _file:
         raise FileNotFoundError
     else:
         this_size = os.path.getsize(_file)
@@ -34,7 +37,7 @@ def datahook(_file):
         print("Opened datahook in", _file)
         return data
 
-def get_kinematics(_files):
+def get_kinematics(_files, _db):
     load_data = False
     kinematic_data = {}
     for ix, eachfile in enumerate(_files):
@@ -45,8 +48,8 @@ def get_kinematics(_files):
             print("[ERROR] File not found:", eachfile)
             load_data = True
     if load_data:
-        group = db.experiment("CANS").select()
-        kinematics = Kinematics(db)
+        group = _db.experiment("CANS").select()
+        kinematics = Kinematics(_db)
         kinematic_data = kinematics.run_many(group, _VERBOSE=True)
         for ix, _data in enumerate(kinematic_data.values()):
             _data.to_csv(_files[ix], index=False, sep='\t', encoding='utf-8')
@@ -67,7 +70,7 @@ def main():
     segments_data = {}
     stats = Statistics(db)
     kine_files = [os.path.join(get_out(profile), each + "_kinematics.csv") for each in data_types]
-    kinematic_data = get_kinematics(kine_files)
+    kinematic_data = get_kinematics(kine_files, db)
     for ix, _file in enumerate(filenames):
         try:
             segments_data[data_types[ix]] = datahook(_file)
