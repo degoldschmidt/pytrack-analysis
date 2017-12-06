@@ -73,8 +73,9 @@ def check_meta(_dict, _dir):
     """
     flag = 0
     for key,val in _dict.items():
-        for expkeys in val.keys():
-            if not expkeys in os.listdir(_dir):
+        for session in val:
+            yamlfile = session[:-3]+"yaml"
+            if not yamlfile in os.listdir(_dir):
                 flag = 1
     return (flag == 0)
 
@@ -83,11 +84,10 @@ def check_data(_dict, _dir):
     Checks and returns boolean, whether all data files are in given directory
     """
     flag = 0
-    for key,val in _dict.items():
-        for expkeys, v2 in val.items():
-            for session in v2:
-                if not session in os.listdir(_dir):
-                    flag = 1
+    for key, val in _dict.items():
+        for session in val:
+            if not session in os.listdir(_dir):
+                flag = 1
     return (flag == 0)
 
 def check_time(_tstamps, _dir):
@@ -102,6 +102,7 @@ def check_time(_tstamps, _dir):
             flag = 1
     return (flag == 0)
 
+# test(os.path.dirname(_filename), dictstruct, timestamps)
 def test(_dir, _dict, _tstamps, _VERBOSE=True):
     """
     Returns flags of several data integrity tests for given file structure from database file
@@ -206,62 +207,17 @@ class Database(object):
         test(os.path.dirname(_filename), dictstruct, timestamps)
         self.struct = GraphDict(dictstruct)
         self.dir = os.path.dirname(_filename)
-        self.name = os.path.basename(_filename).split(".")[0]
-        basename = os.path.basename(_filename)
-        self.last = {"genotype":[], "mating":[], "metabolic":[]}
-        self.all_conds = {"genotype":[], "mating":[], "metabolic":[]}
+        self.name = os.path.basename(_filename)
 
-        ### set up experiments
-        self.experiments = []
-        for key in dictstruct[basename].keys():
-            jfile = os.path.join(self.dir, key)
-            self.experiments.append(Experiment(jfile, in_pynb=in_pynb))
-            #### TODO: this needs to be generic!!!
-            if "CANS" in key:
-                self.experiments[-1].all_conds["genotype"].append("Canton S")
-                self.experiments[-1].all_conds["mating"].append("Mated")
-                self.experiments[-1].all_conds["mating"].append("Virgin")
-                self.experiments[-1].all_conds["metabolic"].append("AA+ rich")
-                self.experiments[-1].all_conds["metabolic"].append("AA-")
-                self.experiments[-1].all_conds["metabolic"].append("AA+ suboptimal")
-            elif "ORCO" in key:
-                self.experiments[-1].all_conds["genotype"].append("Canton S")
-                self.experiments[-1].all_conds["genotype"].append("Or83b-/-")
-                self.experiments[-1].all_conds["genotype"].append("Or83b+/-")
-                self.experiments[-1].all_conds["mating"].append("Mated")
-                self.experiments[-1].all_conds["metabolic"].append("AA-")
-            elif "TBEH" in key:
-                self.experiments[-1].all_conds["genotype"].append("Canton S")
-                self.experiments[-1].all_conds["genotype"].append("tbetah")
-                self.experiments[-1].all_conds["mating"].append("Mated")
-                self.experiments[-1].all_conds["mating"].append("Virgin")
-                self.experiments[-1].all_conds["metabolic"].append("AA-")
-        # count genotypes, mating and metabolic
-        lens = []
-        for each in ['Genotype', 'Mating', 'Metabolic']:
-            lens.append(len(self.experiments[-1].dict[each].keys()))
-        self.counts = np.zeros((lens[0], lens[1], lens[2]))
+        ### set up sessions
+        self.sessions = []
+        for session in dictstruct[self.name]:
+            mfile = os.path.join(self.dir, session[:-3]+'yaml')
+            self.sessions.append(Session(self.dir, session, mfile, in_pynb=in_pynb))
 
     def show_data(self):
         for exp in self.experiments:
             exp.show_data()
-
-    def experiment(self, identifier):
-        """
-        identifier: int or string identifying the experiment
-        """
-        if identifier == "":
-            endstr = ""
-            for ses in self.sessions:
-                endstr += str(ses)+"\n"
-            return endstr
-        elif type(identifier) is int:
-            return self.experiments[identifier]
-        elif type(identifier) is str:
-            for exp in self.experiments:
-                if exp.name == identifier:
-                    return exp
-        return "[ERROR]: experiment not found."
 
     def find(self, eqs):
         """
@@ -301,10 +257,9 @@ class Database(object):
         return filestruct, timestamps
 
     def session(self, arg):
-        for exp in self.experiments:
-            for ses in exp.sessions:
-                if arg == ses.name:
-                    return ses
+        for ses in self.sessions:
+            if arg == ses.name:
+                return ses
         return None
 
     def select(self, **kwargs):
@@ -329,160 +284,26 @@ class Database(object):
     def __str__(self):
         return str(self.struct)
 
-
-class Experiment(object):
-    def __init__(self, _file, in_pynb=False):
-        self.dict = json2dict(_file)
-        self.file = _file
-        self.name = _file.split(os.sep)[-1].split(".")[0]
-        self.data = None    # this is supposed to be a pandas dataframe
-        self.datdescr = {}
-
-        ### set up sessions inside experiment
-        self.sessions = []
-        for key, val in self.dict.items():
-            if self.name in key:
-                self.sessions.append(Session(val, _file, key, self.name, in_pynb=in_pynb))
-
-        self.all_conds = {"genotype":[], "mating":[], "metabolic":[]}
-        self.last = {"genotype":[], "mating":[], "metabolic":[]}
-        # count genotypes, mating and metabolic
-        lens = []
-        for each in ['Genotype', 'Mating', 'Metabolic']:
-            lens.append(len(self.dict[each].keys()))
-        self.counts = np.zeros((lens[0], lens[1], lens[2]))
-        for session in self.sessions:
-            igene = session.Genotype-1
-            imate = session.Mating-1
-            imetab = session.Metabolic-1
-            self.counts[igene, imate, imetab] += 1
-
-    def __getattr__(self, name):
-        return self.dict[name]
-
-    def __str__(self):
-        return self.name +" <class '"+ self.__class__.__name__+"'>"
-
-    def add_data(self, title, data, descr=""):
-        if title in self.datdescr.keys():
-            if not query_yn("Data \'{:}\' does seem to exist in the dataframe. Do you want to overwrite the data?".format(title)):
-                return None
-        if self.data is None:
-            self.data = data
-            if len(data.columns) == 1:
-                self.data.rename(inplace=True, columns = {data.columns[0] : title})
-                #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
-            #else:
-                #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
-        else:
-            try:
-                self.data = pd.concat([self.data, data], axis=1)
-                if len(data.columns) == 1:
-                    self.data.rename(inplace=True, columns = {data.columns[0] : title})
-                    #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
-                #else:
-                    #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
-            except:
-                print(title, "given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
-        self.datdescr[title] = descr
-
-    def count(self, genotype, mating, metabolic):
-        out = []
-        for mate in mating:
-            indc = []
-            for gene in genotype:
-                for metab in metabolic:
-                    igene = self.name2int("Genotype", gene)
-                    imate = self.name2int("Mating", mate)
-                    imetab = self.name2int("Metabolic", metab)
-                    indc.append(self.counts[igene, imate, imetab])
-            out.append(indc)
-        return out[0], out[1]
-
-    def int2name(self, key, arg):
-        if type(arg) is int:
-            return self.dict[key][str(arg)]
-        else:
-            return self.dict[key][arg]
-
-    def last_select(self, arg):
-        if arg in self.last:
-            return self.last[arg][0]
-        else:
-            return None
-
-    def name2int(self, key, arg):
-        for ix, val in enumerate(self.dict[key].values()):
-            if val == arg:
-                return ix
-
-    def show_data(self):
-        print()
-        print("=====")
-        print(self.name, '[EXPERIMENT]')
-        if self.data is None:
-            print("EMPTY data")
-        else:
-            print("-----")
-            print("Found {} columns:".format(len(self.data.columns)) )
-            print("...\n" + str(self.data.count()))
-            print("-----")
-        if query_yn("Want to print out session data?"):
-            for session in self.sessions:
-                session.show_data()
-
-    def session(self, identifier):
-        """
-        identifier: int or string identifying the experiment
-        """
-        if identifier == "":
-            endstr = ""
-            for ses in self.sessions:
-                endstr += str(ses)+"\n"
-            return endstr
-        if type(identifier) is int:
-            return self.sessions[identifier]
-        elif type(identifier) is str:
-            for ses in self.sessions:
-                if ses.name == identifier:
-                    return ses
-            for ses in self.sessions:
-                if identifier in ses.name:
-                    return ses
-        return "[ERROR]: session not found."
-
-    def select(self, **kwargs):
-        outlist = []
-        self.last = self.all_conds.copy()
-        for key, value in kwargs.items():
-            self.last[key] = value
-
-        for ses in self.sessions:
-            this_gen = self.int2name("Genotype", ses.Genotype)
-            this_mate = self.int2name("Mating", ses.Mating)
-            this_metab = self.int2name("Metabolic", ses.Metabolic)
-            if (this_gen in self.last["genotype"]) or len(self.last["genotype"]) == 0:
-                if (this_mate in self.last["mating"]) or len(self.last["mating"]) == 0:
-                    if (this_metab in self.last["metabolic"]) or len(self.last["metabolic"]) == 0:
-                        outlist.append(ses)
-        return outlist
-
-
 class Session(object):
     """
     Session class creates an object that hold meta-data of single session and has the functionality to load data into pd.DataFrame or np.ndarray
     """
-    def __init__(self, _dict, _file, _key, _exp, in_pynb=False):
-        self.dict = _dict
+    def __init__(self, _dir, _file, _mfile, in_pynb=False):
+        self.dir = _dir
         self.file = _file
-        self.name = _key
-        self.exp = _exp
+        self.exp = _file[:4]
+        self.name = _file.split('.')[0]
         self.in_pynb = in_pynb
         self.data = None    # this is supposed to be a pandas dataframe
         self.datdescr = {}
 
-    def __getattr__(self, name):
-        return self.dict[name]
+        with open(_mfile) as f:
+            self.metadata = yaml.safe_load(f)
+
+        new_list = []
+        for k, v in self.metadata["food_spots"].items():
+            new_list.append(v)
+        self.metadata["food_spots"] = new_list
 
     def __str__(self):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
@@ -495,9 +316,6 @@ class Session(object):
             self.data = data
             if len(data.columns) == 1:
                 self.data.rename(inplace=True, columns = {data.columns[0] : title})
-                #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
-            #else:
-                #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
         else:
             try:
                 self.data = pd.concat([self.data, data], axis=1)
@@ -505,9 +323,6 @@ class Session(object):
                     data = data.to_frame()
                 if len(data.columns) == 1:
                     self.data.rename(inplace=True, columns = {data.columns[0] : title})
-                    #print("Added {:} to dataframe. [{:} rows x {:} column]".format(title, len(data), len(data.columns)))
-                #else:
-                    #print("Added {:} to dataframe. [{:} rows x {:} columns]".format(title, len(data), len(data.columns)))
             except:
                 print(title)
                 print("Given data does not fit format of stored dataframe. Maybe data belongs to experiment or database.")
@@ -528,9 +343,9 @@ class Session(object):
 
     def keys(self):
         str = ""
-        lkeys = self.dict.keys()
+        lkeys = self.metadata.keys()
         for i, k in enumerate(lkeys):
-            str += "({:})\t{:}\n".format(i,k,self.dict[k])
+            str += "({:})\t{:}\n".format(i,k,self.metadata[k])
         str += "\n"
         return str
 
@@ -545,14 +360,12 @@ class Session(object):
 
 
     def load(self, load_as="pd"):
-        meta_data = self
-        filedir = os.path.dirname(self.file)
-        filename = filedir + os.sep + self.name +".csv"
+        meta_data = self.metadata
+        csv_file = os.path.join(self.dir, self.file)
         if load_as == "pd":
-            data = pd.read_csv(filename, sep="\t", escapechar="#")
-            data = data.rename(columns = {" body_x":'body_x'})    ### TODO: fix this in data conversion
+            data = pd.read_csv(csv_file, sep="\t", index_col=0)
         elif load_as == "np":
-            data = np.loadtxt(filename)
+            data = np.loadtxt(csv_file)
         else:
             print("[ERROR]: session not found.")                  ### TODO
         return data, meta_data
@@ -574,9 +387,9 @@ class Session(object):
 Meta-data for session {:}
 =================================\n\n
 """.format(self.name)
-        lkeys = self.dict.keys()
+        lkeys = self.metadata.keys()
         for i, k in enumerate(lkeys):
-            str += "({:})\t{:}:\n\t\t\t{:}\n\n".format(i,k,self.dict[k])
+            str += "({:})\t{:}:\n\t\t\t{:}\n\n".format(i,k,self.metadata[k])
         str += "\n"
         return str
 

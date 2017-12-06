@@ -13,89 +13,11 @@ from ._globals import *
 from pkg_resources import get_distribution
 __version__ = get_distribution('pytrack_analysis').version
 
-###
-# GLOBAL CONSTANTS (based on OS)
-###
-PROFILE, NAME, OS = get_globals()
-
-def get_log_path(_file):
-    with open(_file, 'r') as stream:
-        profile = yaml.load(stream)
-    try:
-        return profile[profile['active']]['systems'][NAME]['log']
-    except KeyError:
-        return profile[profile['active']]['systems'][NAME.lower()]['log']
-
-
-def get_log(_module, _func, _logfile):
-    """
-    The main entry point of the logging
-    """
-    logger = logging.getLogger(_module.__class__.__name__+"."+_func)
-    logger.setLevel(logging.DEBUG)
-
-    # create the logging file handler
-    if not os.path.exists(_logfile):
-        print("created file:"+_logfile)
-        with open(_logfile, 'w+') as f:
-            f.close()
-    fh = logging.FileHandler(_logfile)
-
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    # add handler to logger object
-    if not len(logger.handlers):
-        logger.addHandler(fh)
-    return logger
-
-
-def logged_f(_logfile):
-    def wrapper(func):
-        @wraps(func)
-        def func_wrapper(*args, **kwargs):
-            logger = get_log(args[0], func.__name__, _logfile)
-            if func.__name__ == "__init__":
-                logger.info("Initializing: "+ args[0].__class__.__name__+" (version: "+args[0].vcommit+")")
-            else:
-                logger.info("calling: "+func.__name__)
-            # if you want names and values as a dictionary:
-            if len(args) > 0:
-                args_name = inspect.getargspec(func)[0]
-                args_dict = dict(zip(args_name, [type(arg) for arg in args]))
-                logger.info("takes arg: "+str(args_dict))
-            if len(args) == 0:
-                logger.info("takes arg: "+str(None))
-            if len(kwargs) > 0:
-                kwargs_name = list(kwargs.keys())
-                kwargs_values = [type(v) for v in kwargs.values()]
-                kwargs_dict = dict(zip(kwargs_name, kwargs_values))
-                logger.info("takes kwarg: "+str(kwargs_dict))
-            if len(kwargs) == 0:
-                logger.info("takes kwarg: "+str(None))
-            out = func(*args, **kwargs)
-            logger.info("returns: "+str(type(out)))
-            for handler in logger.handlers:
-                handler.close()
-            return out
-        return func_wrapper
-    return wrapper
-
-LOG_PATH = get_log_path(PROFILE)
-
-def get_path(outstr):
-    print(outstr+"\t"+LOG_PATH)
-
-def get_func():
-    out = traceback.extract_stack(None, 2)[0][2]
-    return out
-
-
 """
 Kinematics class: loads centroid data and metadata >> processes and returns kinematic data
 """
 class Kinematics(object):
 
-    #@Logger.logged
     def __init__(self, _db):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
@@ -103,16 +25,11 @@ class Kinematics(object):
         ## overrides path-to-file and hash of last file-modified commit (version)
         self.filepath = os.path.realpath(__file__)
         self.vcommit = __version__
-        self.print_header = False
+        self.print_header = True
 
         ## reference to database (not a copy!!!)
         self.db = _db
 
-        ## logging
-        logger = get_log(self, get_func(), LOG_PATH)
-        logger.info( "initialized Kinematics pipeline (version: "+str(self)+")")
-
-    @logged_f(LOG_PATH)
     def angular_speed(self, _X, _meta):
         angle = np.array(_X["heading"])
         speed = np.diff(angle)
@@ -122,7 +39,6 @@ class Kinematics(object):
         df = pd.DataFrame({"speed": np.append(0,speed)})
         return df
 
-    @logged_f(LOG_PATH)
     def distance(self, _X, _Y):
         x1, y1 = np.array(_X[_X.columns[0]]), np.array(_X[_X.columns[1]])
         x2, y2 = np.array(_Y[_Y.columns[0]]), np.array(_Y[_Y.columns[1]])
@@ -132,7 +48,6 @@ class Kinematics(object):
         df = pd.DataFrame({'distance': dist})
         return df
 
-    @logged_f(LOG_PATH)
     def distance_to_patch(self, _X, _meta):
         xfly, yfly = np.array(_X["head_x"]), np.array(_X["head_y"])
         dist = {}
@@ -146,7 +61,6 @@ class Kinematics(object):
         df = df[["dist_patch_"+str(i) for i in range(19)]] ## sorted now
         return df
 
-    @logged_f(LOG_PATH)
     def classify_behavior(self, _X, _Y, _Z, head_pos, _meta):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
@@ -215,11 +129,9 @@ class Kinematics(object):
 
         return  pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits}), pd.DataFrame({"encounters": encounters}), pd.DataFrame({"encounter_index": encounter_index})
 
-    #@logged(TODO)
     def forward_speed(self, _X):
         pass
 
-    @logged_f(LOG_PATH)
     def heading_angle(self, _X):
         """
         Returns angular heading for given body and head positions.
@@ -238,7 +150,6 @@ class Kinematics(object):
         df = pd.DataFrame({"heading": angle})
         return df
 
-    @logged_f(LOG_PATH)
     def linear_speed(self, _X, _meta):
         speeds = {}
         for i, col_pair in enumerate(_X.columns[::2]):
@@ -248,7 +159,6 @@ class Kinematics(object):
             speeds[col_pair.split('_')[0]+"_speed"] = np.append(0, np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"])
         return pd.DataFrame(speeds)
 
-    @logged_f(LOG_PATH)
     def rle(self, inarray):
             """ run length encoding. Partial credit to R rle function.
                 Multi datatype arrays catered for including non Numpy
@@ -264,7 +174,6 @@ class Kinematics(object):
                 p = np.cumsum(np.append(0, z))[:-1] # positions
                 return(z, p, ia[i])
 
-    @logged_f(LOG_PATH)
     def run(self, _session, _VERBOSE=False, _ALL=False):
         """
         returns ethogram and visits from running kinematics analysis for given session
@@ -273,7 +182,7 @@ class Kinematics(object):
         # this prints out header
         if _VERBOSE and self.print_header:
             self.print_header = False
-            header = "{0:10s}   {1:10s}   {2:10s}   {3:10s}".format("Session","Genotype", "Mating", "Metabolic")
+            header = "{0:10s}   {1:10s}".format("Session", "Metabolic")
             print(header, flush=True)
             autolen = len(header)
             print("-"*autolen)
@@ -286,18 +195,18 @@ class Kinematics(object):
             this_session = _session
         # load raw data and meta data
         raw_data, meta_data = this_session.load()
-        #print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))
+        print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))
         # this prints out details of each session
         if _VERBOSE:
-            print("{0:10s}   {1:10s}   {2:10s}   {3:10s}".format(this_session.name,
-             self.db.experiment(this_session.exp).Genotype[str(this_session.Genotype)],
-             self.db.experiment(this_session.exp).Mating[str(this_session.Mating)],
-             self.db.experiment(this_session.exp).Metabolic[str(this_session.Metabolic)]), flush=True)
+            print("{0:10s}   {1:10s}".format(this_session.name, str(meta_data['metabolic'])), flush=True)
+
+
         # get frame duration from framerate
-        dt = 1/meta_data.framerate
+        dt = raw_data['frame_dt']
         ## STEP 1: NaN removal + interpolation + px-to-mm conversion
         clean_data = prep.interpolate(raw_data)
-        clean_data = prep.to_mm(clean_data, meta_data.px2mm)
+        clean_data = prep.to_mm(clean_data, meta_data.px_per_mm)
+        """
         ## STEP 2: Gaussian filtering
         window_len = 16 # = 0.32 s
         smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
@@ -345,6 +254,7 @@ class Kinematics(object):
             return smoothed_data, distance_patch, speeds, angular_heading, angular_speed, etho_vector, visits, encounters, encounter_index
         else:
             return etho_vector, visits, encounters, encounter_index
+        """
 
     def run_many(self, _group, _VERBOSE=True):
         if _VERBOSE: print()
@@ -352,11 +262,10 @@ class Kinematics(object):
         etho_data = {} # dict for DataFrame
         visit_data = {} # dict for DataFrame
         encounter_data = {} # dict for DataFrame
-        ### count all mated and virgin sessions in that group (TODO: just count one of them)
-        this_exp = self.db.experiment(_group[0].exp)
-        num_mated, num_virgins = this_exp.count(this_exp.last["genotype"], ['Mated', 'Virgin'], this_exp.last["metabolic"])
         for session in _group:
-            etho, visits, encounters, encounter_index = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+            #etho, visits, encounters, encounter_index =
+            self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+        """
             etho_data[session.name] = etho['ethogram'] # save session ethogram in dict
             visit_data[session.name] = visits['visits'] # save session visits in dict
             encounter_data[session.name] = encounters['encounters'] # save session encounters in dict
@@ -368,6 +277,7 @@ class Kinematics(object):
                 print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
         if _VERBOSE: print()
         return {"etho": etho_data, "visit": visit_data, "encounter": encounter_data}
+        """
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)
@@ -387,10 +297,8 @@ class Kinematics(object):
         else:
             return _dts
 
-    #@logged(TODO)
     def sideward_speed(self, _X):
         pass
-
 
     def __repr__(self):
         return self.__class__.__name__
