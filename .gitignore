@@ -104,3 +104,5 @@ buildit.sh
 plotting/here.pdf
 
 here.pdf
+
+pytrack_analysis/metapacker.py
