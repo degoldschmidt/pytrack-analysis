@@ -205,7 +205,7 @@ class Kinematics(object):
         dt = raw_data['frame_dt']
         ## STEP 1: NaN removal + interpolation + px-to-mm conversion
         clean_data = prep.interpolate(raw_data)
-        clean_data = prep.to_mm(clean_data, meta_data.px_per_mm)
+        clean_data = prep.to_mm(clean_data, meta_data['px_per_mm'])
         """
         ## STEP 2: Gaussian filtering
         window_len = 16 # = 0.32 s
