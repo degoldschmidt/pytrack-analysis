@@ -257,8 +257,10 @@ class Database(object):
         return filestruct, timestamps
 
     def session(self, arg):
+        name = "{}_{:03d}".format(self.name[:4], arg)
+        print(name)
         for ses in self.sessions:
-            if arg == ses.name:
+            if name == ses.name:
                 return ses
         return None
 

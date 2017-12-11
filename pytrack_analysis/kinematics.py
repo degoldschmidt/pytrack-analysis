@@ -30,14 +30,13 @@ class Kinematics(object):
         ## reference to database (not a copy!!!)
         self.db = _db
 
-    def angular_speed(self, _X, _meta):
-        angle = np.array(_X["heading"])
-        speed = np.diff(angle)
+    def angular_speed(self, _X, _dt):
+        angle = np.array(_X)
+        speed = np.append(0, np.diff(angle))
         speed[speed>180] -= 360.  ## correction for circularity
         speed[speed<-180] += 360.  ## correction for circularity
-        speed *= _meta.dict["framerate"]
-        df = pd.DataFrame({"speed": np.append(0,speed)})
-        return df
+        #speed = np.divide(speed, _dt)
+        return speed/_dt
 
     def distance(self, _X, _Y):
         x1, y1 = np.array(_X[_X.columns[0]]), np.array(_X[_X.columns[1]])
@@ -48,20 +47,13 @@ class Kinematics(object):
         df = pd.DataFrame({'distance': dist})
         return df
 
-    def distance_to_patch(self, _X, _meta):
+    def distance_to_patch(self, _X, _patch, ix):
         xfly, yfly = np.array(_X["head_x"]), np.array(_X["head_y"])
-        dist = {}
-        for ip, patch in enumerate(_meta.patches()):
-            xp, yp = patch["position"][0], patch["position"][1]
-            dist_sq = np.square(xfly - xp) + np.square(yfly - yp)
-            key = "dist_patch_"+str(ip) # column header
-            dist[key] = np.sqrt(dist_sq)
-            #dist[key][dist[key]==np.nan] = -1 # NaNs to -1
-        df = pd.DataFrame(dist)
-        df = df[["dist_patch_"+str(i) for i in range(19)]] ## sorted now
-        return df
+        xp, yp = _patch["x"], _patch["y"]
+        dist_sq = np.square(xfly - xp) + np.square(yfly - yp)
+        return np.sqrt(dist_sq)
 
-    def classify_behavior(self, _X, _Y, _Z, head_pos, _meta):
+    def classify_behavior(self, _kinedata, _meta):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
         ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
@@ -74,18 +66,19 @@ class Kinematics(object):
                 4: "yeast micromovement",
                 5: "sucrose micromovement"}
         """
-        speed = np.array(_X["head"])
-        bspeed = np.array(_X["body"])
-        smoother = np.array(_X["smoother_head"])
-        turn = np.array(_Y["speed"])
-        aps = np.zeros((len(_Z.columns), speed.shape[0])) ## all patches distances
-        for i,col in enumerate(_Z.columns):
-            aps[i,:] = np.array(_Z[col])
+        head_pos = _kinedata[['head_x', 'head_y']]
+        speed = np.array(_kinedata["smooth_head_speed"])
+        bspeed = np.array(_kinedata["smooth_body_speed"])
+        smoother = np.array(_kinedata["smoother_head_speed"])
+        turn = np.array(_kinedata["angular_speed"])
+        all_spots = ['distance_patch_'+str(ix) for ix in range(12)]
+        aps = np.array(_kinedata[all_spots]).T
         amin = np.amin(aps, axis=0) # all patches minimum distance
         imin = np.argmin(aps, axis=0) # number of patch with minimum distance
 
         ethogram = np.zeros(speed.shape, dtype=np.int) - 1 ## non-walking/-classified
         ethogram[speed > 2] = 2      ## walking
+        ethogram[speed > 20] = 6      ## jumps or mistracking
 
         mask = (ethogram == 2) & (bspeed < 4) & (np.abs(turn) >= 125.)
         ethogram[mask] = 3           ## sharp turn
@@ -100,15 +93,12 @@ class Kinematics(object):
         encounters = np.zeros(ethogram.shape)
         encounter_index = np.zeros(ethogram.shape, dtype=np.int) - 1
 
-        substrates = np.array(_meta.dict["SubstrateType"])
+        substrate_dict = {'10% yeast':1, '20 mM sucrose': 2}
+        substrates = np.array([substrate_dict[each_spot['substrate']] for each_spot in _meta['food_spots']])
         visit_mask = (amin <= 2.5) & (ethogram == 1)    # distance < 2.5 mm and Micromovement
-        visits[visit_mask] = imin[visit_mask]%2+1
-        encounters[amin <= 3] = imin[amin <= 3]%2+1
+        visits[visit_mask] = substrates[imin[visit_mask]]
+        encounters[amin <= 3] = substrates[imin[amin <= 3]]
         encounter_index[amin <= 3] = imin[amin <= 3]
-        encounters[encounter_index > 11] = (imin[encounter_index > 11]+1)%2+1
-        visits[encounter_index > 11] = (imin[encounter_index > 11]+1)%2+1
-        encounters[encounter_index == 18] = 0
-        visits[encounter_index == 18] = 0
 
         for i in range(1, amin.shape[0]):
             if encounter_index[i-1] >= 0:
@@ -127,7 +117,7 @@ class Kinematics(object):
         ethogram[mask_yeast] = 4     ## yeast micromovement
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
 
-        return  pd.DataFrame({"ethogram": ethogram}), pd.DataFrame({"visits": visits}), pd.DataFrame({"encounters": encounters}), pd.DataFrame({"encounter_index": encounter_index})
+        return  ethogram, visits, encounters, encounter_index
 
     def forward_speed(self, _X):
         pass
@@ -146,18 +136,16 @@ class Kinematics(object):
         dx, dy = xh-xb, yh-yb
         angle = np.arctan2(dy,dx)
         angle = np.degrees(angle)
+        return angle
 
-        df = pd.DataFrame({"heading": angle})
-        return df
-
-    def linear_speed(self, _X, _meta):
-        speeds = {}
-        for i, col_pair in enumerate(_X.columns[::2]):
-            xfly, yfly = np.array(_X[_X.columns[i]]), np.array(_X[_X.columns[i+1]])
-            xdiff = np.diff(xfly)
-            ydiff = np.diff(yfly)
-            speeds[col_pair.split('_')[0]+"_speed"] = np.append(0, np.sqrt( np.square(xdiff) + np.square(ydiff) ) * _meta.dict["framerate"])
-        return pd.DataFrame(speeds)
+    def linear_speed(self, _X, _Y, _dt):
+        xfly, yfly = np.array(_X), np.array(_Y)
+        xdiff = np.append(0, np.diff(xfly))
+        ydiff = np.append(0, np.diff(yfly))
+        xdiff = np.divide(xdiff, _dt)
+        ydiff = np.divide(ydiff, _dt)
+        speed =  np.sqrt( np.square(xdiff) + np.square(ydiff) )
+        return speed
 
     def rle(self, inarray):
             """ run length encoding. Partial credit to R rle function.
@@ -195,89 +183,90 @@ class Kinematics(object):
             this_session = _session
         # load raw data and meta data
         raw_data, meta_data = this_session.load()
-        print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))
+        #print("Raw data: {} rows x {} cols".format(len(raw_data.index), len(raw_data.columns)))
         # this prints out details of each session
         if _VERBOSE:
             print("{0:10s}   {1:10s}".format(this_session.name, str(meta_data['metabolic'])), flush=True)
 
 
         # get frame duration from framerate
-        dt = raw_data['frame_dt']
+        dt = 0.0333### np.array(raw_data['frame_dt'])
         ## STEP 1: NaN removal + interpolation + px-to-mm conversion
-        clean_data = prep.interpolate(raw_data)
-        clean_data = prep.to_mm(clean_data, meta_data['px_per_mm'])
-        """
+        raw_data[['body_x','body_y', 'head_x', 'head_y']] = prep.interpolate(raw_data[['body_x','body_y', 'head_x', 'head_y']])
+        pxmm = 1./meta_data['px_per_mm']
+        raw_data[['body_x','body_y', 'head_x', 'head_y', 'major', 'minor']] = prep.to_mm(raw_data[['body_x','body_y', 'head_x', 'head_y', 'major', 'minor']], pxmm)
+
+
         ## STEP 2: Gaussian filtering
         window_len = 16 # = 0.32 s
-        smoothed_data = prep.gaussian_filter(clean_data, _len=window_len, _sigma=window_len/10)
-        ## STEP 3: Distance from patch
-        distance_patch = self.distance_to_patch(clean_data[['head_x', 'head_y']], meta_data)
-        ## STEP 4: Linear Speed
-        speed = self.linear_speed(smoothed_data, meta_data)
-        window_len = 60 # = 1.2 s
-        smooth_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
-        window_len = 120 # = 1.2 s
-        smoother_speed = prep.gaussian_filter(speed, _len=window_len, _sigma=window_len/10)
-        speeds = pd.DataFrame({"head": smooth_speed["head_speed"], "body": smooth_speed["body_speed"], "smoother_head": smoother_speed["head_speed"]})
-        ## STEP 5: Angular Heading & Speed
-        angular_heading = self.heading_angle(smoothed_data)
-        angular_speed = self.angular_speed(angular_heading, meta_data)
-        ## STEP 6: Ethogram classification, encounters & visits
-        meta_data.dict["etho_class"] = {    0: "resting",
-                                            1: "micromovement",
-                                            2: "walking",
-                                            3: "sharp turn",
-                                            4: "yeast micromovement",
-                                            5: "sucrose micromovement"}
-        etho_vector, visits, encounters, encounter_index = self.classify_behavior(speeds, angular_speed, distance_patch, smoothed_data[["head_x", "head_y"]], meta_data)
-        ## STEP 7: SAVING DATA TO DATABASE
-        if _ALL:
-            this_session.add_data("head_pos", smoothed_data[['head_x', 'head_y']], descr="Head positions of fly in [mm].")
-            this_session.add_data("body_pos", smoothed_data[['body_x', 'body_y']], descr="Body positions of fly in [mm].")
-            this_session.add_data("distance_patches", distance_patch, descr="Distances between fly and individual patches in [mm].")
-            this_session.add_data("head_speed", speeds['head'], descr="Gaussian-filtered (60 frames) linear speeds of head trajectory of fly in [mm/s].")
-            this_session.add_data("body_speed", speeds['body'], descr="Gaussian-filtered (60 frames) linear speeds of body trajectory of fly in [mm/s].")
-            this_session.add_data("smoother_head_speed", speeds['smoother_head'], descr="Gaussian-filtered (120 frames) linear speeds of body trajectory of fly in [mm/s]. This is for classifying resting bouts.")
-            this_session.add_data("angle", angular_heading, descr="Angular heading of fly in [o].")
-            this_session.add_data("angular_speed", angular_speed, descr="Angular speed of fly in [o/s].")
-            this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
-            this_session.add_data("visits", visits, descr="Food patch visits. 0: none, 1: yeast, 2: sucrose.")
-            this_session.add_data("encounters", encounters, descr="Food patch encounters. 0: none, 1: yeast, 2: sucrose.")
-            this_session.add_data("encounter_index", encounter_index, descr="Food patch encounters. Value is index of patch (-1: none; 0: patch 0, and so on)")
-        else:
-            this_session.add_data("ethogram", etho_vector, descr="Ethogram classification. Dictionary is given to meta_data[\"etho_class\"].")
-            this_session.add_data("visits", visits, descr="Food patch visits. 1: yeast, 2: sucrose.")
-            this_session.add_data("encounters", encounters, descr="Food patch encounters. 0: none, 1: yeast, 2: sucrose.")
-            this_session.add_data("encounter_index", encounter_index, descr="Food patch encounters. Value is index of patch (-1: none; 0: patch 0, and so on)")
-        ## RETURN
-        if _ALL:
-            return smoothed_data, distance_patch, speeds, angular_heading, angular_speed, etho_vector, visits, encounters, encounter_index
-        else:
-            return etho_vector, visits, encounters, encounter_index
-        """
+        raw_data[['body_x','body_y', 'head_x', 'head_y']] = prep.gaussian_filter(raw_data[['body_x','body_y', 'head_x', 'head_y']], _len=window_len, _sigma=window_len/10)
 
-    def run_many(self, _group, _VERBOSE=True):
+        kinematic_data = raw_data
+        kinematic_data.index = raw_data.index
+        kinematic_data['frame_dt'] = dt
+        kinematic_data['major'] = np.array(raw_data['major'])
+        kinematic_data['minor'] = np.array(raw_data['minor'])
+
+        ## STEP 3: Distance from patch
+        for ix, each_spot in enumerate(meta_data['food_spots']):
+            each_spot['x'] *= pxmm
+            each_spot['y'] *= pxmm
+            kinematic_data['distance_patch_'+str(ix)] = self.distance_to_patch(kinematic_data[['head_x', 'head_y']], each_spot, ix)
+
+        ## STEP 4: Linear Speed
+        kinematic_data['head_speed'] = self.linear_speed(kinematic_data['head_x'], kinematic_data['head_y'], dt)
+        kinematic_data['body_speed'] = self.linear_speed(kinematic_data['body_x'], kinematic_data['body_y'], dt)
+
+        window_len = 60 # = 1.2 s
+        kinematic_data['smooth_head_speed'] = prep.gaussian_filter_np(kinematic_data['head_speed'], _len=window_len, _sigma=window_len/10)
+        kinematic_data['smooth_body_speed'] = prep.gaussian_filter_np(kinematic_data['body_speed'], _len=window_len, _sigma=window_len/10)
+        window_len = 120 # = 1.2 s
+        kinematic_data['smoother_head_speed'] = prep.gaussian_filter_np(kinematic_data['smooth_head_speed'], _len=window_len, _sigma=window_len/10)
+        kinematic_data['smoother_body_speed'] = prep.gaussian_filter_np(kinematic_data['smooth_body_speed'], _len=window_len, _sigma=window_len/10)
+
+        ## STEP 5: Angular Heading & Speed
+        kinematic_data['angle'] = self.heading_angle(kinematic_data[['body_x', 'body_y', 'head_x', 'head_y']])
+        kinematic_data['angular_speed'] = self.angular_speed(kinematic_data['angle'], dt)
+
+        ## STEP 6: Ethogram classification, encounters & visits
+        meta_data["etho_class"] = {    0: "resting",
+                                       1: "micromovement",
+                                       2: "walking",
+                                       3: "sharp turn",
+                                       4: "yeast micromovement",
+                                       5: "sucrose micromovement",
+                                       6: "Jumps/NA"}
+        etho_vector, visits, encounters, encounter_index = self.classify_behavior(kinematic_data, meta_data)
+        kinematic_data['etho'] = etho_vector
+        kinematic_data['visit'] = visits
+        kinematic_data['encounter'] = encounters
+        kinematic_data['encounter_index'] = encounter_index
+        return kinematic_data
+
+    def run_many(self, _group, _VERBOSE=False, output=""):
         if _VERBOSE: print()
         self.print_header = _VERBOSE # this is needed to print header for multi run
         etho_data = {} # dict for DataFrame
         visit_data = {} # dict for DataFrame
         encounter_data = {} # dict for DataFrame
+        etho_data['id'] = []
+        etho_data['metabolic'] = []
+        etho_data['yeast'] = []
+        etho_data['sucrose'] = []
+        outfile = os.path.join(output, 'etho_lens.csv')
         for session in _group:
             #etho, visits, encounters, encounter_index =
-            self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
-        """
-            etho_data[session.name] = etho['ethogram'] # save session ethogram in dict
-            visit_data[session.name] = visits['visits'] # save session visits in dict
-            encounter_data[session.name] = encounters['encounters'] # save session encounters in dict
-        etho_data = pd.DataFrame(etho_data) #create DataFrame
-        visit_data = pd.DataFrame(visit_data) #create DataFrame
-        encounter_data = pd.DataFrame(encounter_data) #create DataFrame
-        for i, metab in enumerate(this_exp.last["metabolic"]):
-            for gene in this_exp.last["genotype"]:
-                print( "Analyzed {2} mated {0} females and {3} virgin {0} females [genotype: {1}]".format(metab, gene, int(num_mated[i]), int(num_virgins[i])) )
-        if _VERBOSE: print()
-        return {"etho": etho_data, "visit": visit_data, "encounter": encounter_data}
-        """
+            data = self.run(session.name, _VERBOSE=_VERBOSE) # run session with print out
+            etho = np.array(data['etho'])
+            N = [ np.sum(etho==each) for each in range(7)]
+            etho_data['id'].append(session.name)
+            etho_data['metabolic'].append(session.metadata['metabolic'])
+            etho_data['yeast'].append(N[4])
+            etho_data['sucrose'].append(N[5])
+            print(session.name, session.metadata['metabolic'], N[4], N[5])
+        ethoDF = pd.DataFrame(etho_data)
+        ethoDF.to_csv(outfile, index=False, sep='\t', encoding='utf-8')
+        return data
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)

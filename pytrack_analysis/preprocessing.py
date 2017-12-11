@@ -18,6 +18,9 @@ def gaussian_filter(_df, _len=16, _sigma=1.6):
         cols[:,len(header)-1] = gaussian_filtered(_df[column], _len=_len, _sigma=_sigma)
     return pd.DataFrame(cols, columns=header)
 
+def gaussian_filter_np(_X, _len=16, _sigma=1.6):
+    return gaussian_filtered(_X, _len=_len, _sigma=_sigma)
+
 def gaussian_filtered(_X, _len=16, _sigma=1.6):
     norm = np.sqrt(2*np.pi)*_sigma ### Scipy's gaussian window is not normalized
     window = signal.gaussian(_len+1, std=_sigma)/norm
