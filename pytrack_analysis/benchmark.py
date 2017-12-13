@@ -61,7 +61,7 @@ class Benchmark(object):
 class Multibench(object):
     """ Class used for performing multiple benchmark test of a given function and measuring time performance """
 
-    def __init__(self, msg, times=1, fmt="%0.9g", SILENT=True):
+    def __init__(self, msg, times=1, fmt="%0.9g", SILENT=True, SLIM=False):
         """
         Creates an object that when called, performs benchmark test for variable number of repititions
 
@@ -79,17 +79,23 @@ class Multibench(object):
             String formatter for time (default: decimal precision to ns)
         SILENT : boolean
             Option for silenced tests using ``sys.stdout = open(os.devnull, "w")`` (default: True)
+        SLIM : boolean
+            Option for silenced benchmark (default: False)
         """
-        print("*** RUNNING BENCHMARK ***")
-        print("#times: {}\nSTDOUT silenced: {}\n***\n".format(times, SILENT))
+        if not SLIM:
+            print("*** RUNNING BENCHMARK ***")
+            print("#times: {}\nSTDOUT silenced: {}\n***\n".format(times, SILENT))
         self.t = np.zeros(times)
         self.stdout = sys.stdout
         self.silenced = SILENT
+        self.slimmed = SLIM
         if not SILENT:
             self.msg = msg
         else:
             self.msg = ""
             sys.stdout = open(os.devnull, "w")
+        if SLIM:
+            self.msg = ""
 
     def __call__(self, f):
         """
@@ -108,13 +114,15 @@ class Multibench(object):
         self.f = f
         for i,thistime in enumerate(self.t):
             t_end = "\t" if self.silenced else "\n"
-            print("#{}".format(i+1), end=t_end, file=self.stdout, flush=True)
-            if not self.silenced:
+            if not self.slimmed:
+                print("#{}".format(i+1), end=t_end, file=self.stdout, flush=True)
+            if not self.silenced and not self.slimmed:
                 print("---\n")
             with Benchmark(self.msg) as result:
                 res = self.f()
             self.t[i] = result.time
-            print("= {} s".format(result.time), file=self.stdout)
+            if not self.slimmed:
+                print("= {} s".format(result.time), file=self.stdout)
         #sys.stdout.close()
         sys.stdout = self.stdout
         return res

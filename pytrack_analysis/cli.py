@@ -4,7 +4,7 @@ import sys
 """
 Returns arguments from CLI (CLI)
 """
-def get_args(*args):
+def get_args(*args, SILENT=True):
     ### parsing arguments
     parser = argparse.ArgumentParser()
     for arg in args:
@@ -14,7 +14,21 @@ def get_args(*args):
             parser.add_argument('-'+arg[0], action='store', dest=arg[1], help=arg[2])
         elif type(arg) is tuple:
             parser.add_argument('-'+arg[0], action='store', dest=arg[1], help=arg[2])
+    if not SILENT:
+        print("Parsing arguments...")
+        dict_args = vars(parser.parse_args())
+        for k, v in dict_args.items():
+            print("{}: {}".format(k, v))
     return parser.parse_args()
+
+"""
+Print function for same line printing
+"""
+def flprint(*args):
+    out = ""
+    for arg in args:
+        out += arg
+    print(out, flush=True, end="")
 
 """
 Ask a yes/no question via raw_input() and return their answer.

@@ -4,6 +4,7 @@ from functools import wraps
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from ._globals import *
+from pytrack_analysis.cli import query_yn, flprint
 
 """
 profile.py
@@ -17,6 +18,7 @@ Contains functions for creating a project profile for analysis.
 # GLOBAL CONSTANTS (based on OS)
 ###
 PROFILE, NAME, OS = get_globals()
+print(PROFILE, NAME, OS)
 
 def get_profile( _name, _user, script=""):
     """
@@ -33,12 +35,39 @@ def get_profile( _name, _user, script=""):
     ### Read YAML profile file
     with open(PROFILE, 'r') as stream:
         profile = yaml.load(stream)
+    if profile is None:
+        profile = {}
 
     ### If _name is 'all', then just return profile (NO changes)
     if _name == 'all':
         return profile
 
-    ### PROJECT EXISTS (update date, activity, systems, etc.)
+    ### Is system registered?
+    try:
+        if NAME in profile['SYSTEMS'].keys():
+            print("nice")
+        else:
+            if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
+                systems = profile["SYSTEMS"]
+                systems[NAME] = {}
+                basefolder = set_base()
+    except (TypeError, KeyError) as error:
+        profile["SYSTEMS"] = {}
+        if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
+            systems = profile["SYSTEMS"]
+            systems[NAME] = {}
+            basefolder = set_base()
+
+    """
+    if _name in profile['$PROJECTS']:
+        project = profile[_name]
+        project["last active"] = nowdate
+        profile["active"] = _name
+    """
+
+    return profile
+    """
+    ### PROJECT EXISTS (only update date, activity, systems, etc.)
     if _name in profile['$PROJECTS']:
         NEW_PROJ = True
         project = profile[_name]
@@ -130,6 +159,7 @@ def get_profile( _name, _user, script=""):
     with io.open(PROFILE, 'w+', encoding='utf8') as outfile:
         yaml.dump(profile, outfile, default_flow_style=False, allow_unicode=True)
     return profile
+    """
 
 def get_db(profile):
     """ Returns active system's database file location """
@@ -146,6 +176,17 @@ def get_log(profile):
 def get_plot(profile):
     """ Returns active system's plot path """
     return profile[profile['active']]['systems'][NAME]['plot']
+
+def set_base(forced=False):
+    """ Returns base directory chosen from TKinter filedialog GUI """
+    if not forced:
+        asksave = messagebox.askquestion("Set base directory path", "Are you sure you want to set a new path for the base?", icon='warning')
+        if asksave == "no":
+            return None
+    flprint("Set database...")
+    base = filedialog.askdirectory(title="Load base directory")
+    print(base)
+    return base
 
 def set_database(forced=False):
     """ Returns database file location and video directory chosen from TKinter filedialog GUI """
@@ -222,3 +263,6 @@ def show_profile(profile):
                 sys.stdout.write(RESET)
             print(lines)
         sys.stdout.write(RESET)
+
+def get_scriptname(name):
+    return os.path.basename(name).split('.')[0]
