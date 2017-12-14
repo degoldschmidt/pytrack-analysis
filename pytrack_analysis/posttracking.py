@@ -5,17 +5,17 @@ from pytrack_analysis.cli import colorprint
 """
 Returns dictionary of all raw data files
 """
-def get_files(raw, session, video):
+def get_files(raw, session, video_folder):
     session_folder = os.path.join(raw, "{:02d}".format(session))
     if os.path.isdir(session_folder):
-        print("\nStart post-tracking analysis for session: {:02d}".format(session))
+        print("\nStart post-tracking analysis for video session: {:02d}".format(session))
         dtstamp, timestampstr = get_time(session_folder)
         file_dict = {
                         "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
                         "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
                         "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
                         "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                        "video" : [os.path.join(video, eachfile) for eachfile in os.listdir(video) if timestampstr in eachfile][0],
+                        "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
                     }
         print("[post_tracking]\tTimestamp:", dtstamp.strftime("%A, %d. %B %Y %H:%M"))
         return file_dict, dtstamp, timestampstr
