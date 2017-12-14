@@ -20,7 +20,7 @@ Contains functions for creating a project profile for analysis.
 PROFILE, NAME, OS = get_globals()
 print(PROFILE, NAME, OS)
 
-def get_profile( _name, _user, script=""):
+def get_profile( _name, _user, script="", VERBOSE=True):
     """
     Returns profile as dictionary. If the given project name or user name is not in the profile, it will create new entries.
 
@@ -29,34 +29,59 @@ def get_profile( _name, _user, script=""):
     * _user: username
     * script: scriptname
     """
+    if not VERBOSE:
+        flprint("Setting up profile...")
     tk.Tk().withdraw()    # Tkinter window suppression
     nowdate = date.now().strftime("%Y-%m-%d %H:%M:%S")    # current timestamp in given format
 
     ### Read YAML profile file
-    with open(PROFILE, 'r') as stream:
-        profile = yaml.load(stream)
-    if profile is None:
+    try:
+        with open(PROFILE, 'r') as stream:
+            profile = yaml.load(stream)
+        if profile is None:
+            profile = {}
+    except FileNotFoundError:
         profile = {}
 
     ### If _name is 'all', then just return profile (NO changes)
-    if _name == 'all':
+    if _name == '%all':
         return profile
 
     ### Is system registered?
     try:
         if NAME in profile['SYSTEMS'].keys():
-            print("nice")
+            print("System \'{:}\' found.".format(NAME))
+            systems = profile["SYSTEMS"]
+            systems[NAME]['python'] = sys.version
         else:
-            if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
-                systems = profile["SYSTEMS"]
-                systems[NAME] = {}
-                basefolder = set_base()
-    except (TypeError, KeyError) as error:
-        profile["SYSTEMS"] = {}
-        if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
+            print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
             systems = profile["SYSTEMS"]
             systems[NAME] = {}
-            basefolder = set_base()
+            systems[NAME] = set_system(systems[NAME])
+    except (TypeError, KeyError) as error:
+        profile["SYSTEMS"] = {}
+        print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
+        systems = profile["SYSTEMS"]
+        systems[NAME] = {}
+        systems[NAME] = set_system(systems[NAME])
+
+    ### Is project registered?
+    try:
+        if NAME in profile['PROJECTS'].keys():
+            print("Project \'{:}\' found.".format(NAME))
+            systems = profile["SYSTEMS"]
+            systems[NAME]['python'] = sys.version
+        else:
+            print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
+            systems = profile["SYSTEMS"]
+            systems[NAME] = {}
+            systems[NAME] = set_system(systems[NAME])
+    except (TypeError, KeyError) as error:
+        profile["SYSTEMS"] = {}
+        print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
+        systems = profile["SYSTEMS"]
+        systems[NAME] = {}
+        systems[NAME] = set_system(systems[NAME])
 
     """
     if _name in profile['$PROJECTS']:
@@ -64,7 +89,8 @@ def get_profile( _name, _user, script=""):
         project["last active"] = nowdate
         profile["active"] = _name
     """
-
+    with io.open(PROFILE, 'w+', encoding='utf8') as outfile:
+        yaml.dump(profile, outfile, default_flow_style=False, allow_unicode=True)
     return profile
     """
     ### PROJECT EXISTS (only update date, activity, systems, etc.)
@@ -223,6 +249,12 @@ def set_output(forced=False):
         check_folder(each)
     ### RETURN
     return out, log, plot
+
+def set_system(_dict):
+    basefolder = set_base(forced=True)
+    _dict['base'] = basefolder
+    _dict["python"] = sys.version
+    return _dict
 
 def show_profile(profile):
     """ Command-line output of profile with colored formatting (active project is bold green) """
