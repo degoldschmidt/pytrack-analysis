@@ -2,6 +2,23 @@ import argparse
 import sys
 
 """
+Print function for same line printing
+"""
+def colorprint(*args, color="default"):
+    out = ""
+    for arg in args:
+        out += arg
+
+    if color == 'success':
+        colorstr = '\x1b[0;32;40m'
+    if color == 'warning':
+        colorstr = '\x1b[0;30;43m'
+    if color == 'error':
+        colorstr = '\x1b[0;37;43m'
+
+    print(colorstr + out + '\x1b[0m')
+
+"""
 Returns arguments from CLI (CLI)
 """
 def get_args(*args, SILENT=True):

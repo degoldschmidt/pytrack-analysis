@@ -1,4 +1,6 @@
 import os
+import pandas as pd
+from pytrack_analysis.cli import colorprint
 
 """
 Returns list of directories in given path d with full path (DATAIO)
@@ -10,7 +12,7 @@ def flistdir(d):
 Returns list of raw data for filenames (DATAIO)
 """
 def get_data(filenames, columns=['datetime', 'elapsed_time', 'frame_dt', 'body_x', 'body_y', 'angle', 'major', 'minor'], units=['Datetime', 's', 's', 'px', 'px', 'rad', 'px', 'px']):
-    print("Loading raw data...", flush=True, end="")
+    print("[data_io]\tLoading raw data...", flush=True, end="")
     renaming = columns
     data_units = {}
     try:
@@ -26,5 +28,5 @@ def get_data(filenames, columns=['datetime', 'elapsed_time', 'frame_dt', 'body_x
         data[-1].columns = renaming
         # datetime strings to datetime objects
         data[-1]['datetime'] =  pd.to_datetime(data[-1]['datetime'])
-    print("done.")
+    colorprint("done.", color='success')
     return data, units

@@ -17,175 +17,131 @@ Contains functions for creating a project profile for analysis.
 ###
 # GLOBAL CONSTANTS (based on OS)
 ###
-PROFILE, NAME, OS = get_globals()
-print(PROFILE, NAME, OS)
+PROFILE, SYSNAME, OS = get_globals()
+print(PROFILE, SYSNAME, OS)
 
-def get_profile( _name, _user, script="", VERBOSE=True):
+def get_profile(_id, _user, script="", VERBOSE=True):
     """
     Returns profile as dictionary. If the given project name or user name is not in the profile, it will create new entries.
 
     Arguments:
-    * _name: project name or 'all' (all projects)
+    * _name: project id or '%all' (all projects)
     * _user: username
     * script: scriptname
     """
     if not VERBOSE:
         flprint("Setting up profile...")
     tk.Tk().withdraw()    # Tkinter window suppression
-    nowdate = date.now().strftime("%Y-%m-%d %H:%M:%S")    # current timestamp in given format
 
-    ### Read YAML profile file
-    try:
-        with open(PROFILE, 'r') as stream:
-            profile = yaml.load(stream)
-        if profile is None:
-            profile = {}
-    except FileNotFoundError:
-        profile = {}
+    # Profile object from file
+    profile = Profile(PROFILE)
 
-    ### If _name is 'all', then just return profile (NO changes)
-    if _name == '%all':
-        return profile
+    # system registration
+    profile.set_system(SYSNAME)
 
-    ### Is system registered?
-    try:
-        if NAME in profile['SYSTEMS'].keys():
-            print("System \'{:}\' found.".format(NAME))
-            systems = profile["SYSTEMS"]
-            systems[NAME]['python'] = sys.version
-        else:
-            print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
-            systems = profile["SYSTEMS"]
-            systems[NAME] = {}
-            systems[NAME] = set_system(systems[NAME])
-    except (TypeError, KeyError) as error:
-        profile["SYSTEMS"] = {}
-        print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
-        systems = profile["SYSTEMS"]
-        systems[NAME] = {}
-        systems[NAME] = set_system(systems[NAME])
+    # project registration
+    profile.set_project(_id, script)
 
-    ### Is project registered?
-    try:
-        if NAME in profile['PROJECTS'].keys():
-            print("Project \'{:}\' found.".format(NAME))
-            systems = profile["SYSTEMS"]
-            systems[NAME]['python'] = sys.version
-        else:
-            print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
-            systems = profile["SYSTEMS"]
-            systems[NAME] = {}
-            systems[NAME] = set_system(systems[NAME])
-    except (TypeError, KeyError) as error:
-        profile["SYSTEMS"] = {}
-        print("System \'{:}\' does not seem to exist in the profile.".format(NAME))
-        systems = profile["SYSTEMS"]
-        systems[NAME] = {}
-        systems[NAME] = set_system(systems[NAME])
+    # user registration
+    #profile.set_project(_user)
 
-    """
-    if _name in profile['$PROJECTS']:
-        project = profile[_name]
-        project["last active"] = nowdate
-        profile["active"] = _name
-    """
-    with io.open(PROFILE, 'w+', encoding='utf8') as outfile:
-        yaml.dump(profile, outfile, default_flow_style=False, allow_unicode=True)
+    # submit profile
+    with io.open(PROFILE, 'w+', encoding='utf8') as f:
+        yaml.dump(profile.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
+
     return profile
-    """
-    ### PROJECT EXISTS (only update date, activity, systems, etc.)
-    if _name in profile['$PROJECTS']:
-        NEW_PROJ = True
-        project = profile[_name]
-        project["last active"] = nowdate
-        profile["active"] = _name
 
-        ### CURRENT COMPUTERNAME IS NOT IN PROFILE (update systems incl. paths)
+class Profile(object):
+    def __init__(self, _file):
+        ### Read YAML profile file
         try:
-            systems = project["systems"]
-            if NAME not in systems.keys():
-                if query_yn("System \'{:}\' does not seem to exist in the profile. DO you want to set up a new systems profile? (Opens TKinter GUI)".format(NAME)):
-                    profile["activesys"] = NAME
-                    systems[NAME] = {}
-                    system = systems[NAME]
-                    system["os"] = OS
-                    system["python"] = sys.version
-                    ### SET UP DATABASE LOCATION
-                    dbfile, viddir = set_database(forced=True)
-                    if dbfile is not None and viddir is not None:
-                        system["database"] = dbfile
-                        system["videos"] = viddir
-                    ### SET UP OUTPUT LOCATION
-                    out, log, plot = set_output(forced=True)
-                    if out is not None:
-                        system["output"] = out
-                        system["log"] = log
-                        system["plot"] = plot
-                else:
-                    pass
-            else:
-                profile["activesys"] = NAME
-                system = systems[NAME]
-                system["python"] = sys.version
-        except (AttributeError, TypeError):
-            # might be empty
-            project["systems"] = {}
+            with open(_file, 'r') as stream:
+                self.dict = yaml.load(stream)
+            if self.dict is None:
+                self.dict = {}
+        except FileNotFoundError:
+            self.dict = {}
 
+    def get_folders(self):
+        system = self.dict["SYSTEMS"][self.activesys]
+        project = self.dict["PROJECTS"][self.active]
+        return {
+                    "raw": os.path.join(system['base'], project['raw']),
+                    "videos": os.path.join(system['base'], project['videos']),
+                    "manual": os.path.join(system['base'], project['manual']),
+            }
 
-    ### CREATE NEW PROJECT
-    else:
-        NEW_PROJ = query_yn("DO you want to create a new project: {:}?".format(_name))
-        if NEW_PROJ:
-            profile["$PROJECTS"].append(_name)
-            profile[_name] = {}
-            project = profile[_name]
-            project["users"] = []
-            project["users"].append(_user)
-            project["created"] = nowdate
-            project["last active"] = nowdate
-            profile["active"] = _name
-            project["systems"] = {}
-            systems = project["systems"]
-            ### ADD COMPUTERNAME TO PROFILE
-            systems[NAME] = {}
-            system = systems[NAME]
-            system["os"] = OS
-            system["python"] = sys.version
-            ### SET UP DATABASE LOCATION
-            dbfile, viddir = set_database(forced=True)
-            if dbfile is not None and viddir is not None:
-                system["database"] = dbfile
-                system["videos"] = viddir
-            ### SET UP OUTPUT LOCATION
-            out, log, plot = set_output(forced=True)
-            if out is not None:
-                system["output"] = out
-                system["log"] = log
-                system["plot"] = plot
-            print("Created [PROJECT] {:}.".format(_name))
+    def Nvids(self):
+        system = self.dict["SYSTEMS"][self.activesys]
+        project = self.dict["PROJECTS"][self.active]
+        folder = os.path.join(system['base'], project['videos'])
+        return len([i for i in os.listdir(folder) if ".avi" in i])
 
-    if NEW_PROJ:
-        ### CREATE NEW USER
-        profile["activeuser"] = _user
-        users = profile['$USERS']
-        if _user not in users:
-            if query_yn("DO you want to create a new user: {:}?".format(_user)):
-                users.append(_user)
+    def set_project(self, _name, _script):
+        if 'PROJECTS' not in self.dict.keys():
+            self.dict["PROJECTS"] = {}
+        if _name in self.dict['PROJECTS'].keys():
+            print("Project \'{:}\' found.".format(_name))
+            projects = self.dict["PROJECTS"]
+            projects[_name]['last modified'] = date.now().strftime("%Y-%m-%d %H:%M:%S")
+            if _script not in projects[_name]['scripts']:
+                projects[_name]['scripts'].append(_script)
+        else:
+            print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
+            projects = self.dict["PROJECTS"]
+            base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
+            projects[_name] = {
+                'base': os.path.dirname(base),
+                'raw': os.path.join(base, 'raw'),
+                'videos': os.path.join(base, 'videos'),
+                'manual': os.path.join(base, 'manual'),
+                'out': os.path.join(base, 'out'),
+                'scripts': [_script],
+                'created':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        self.active = _name
 
-        ### ADD USER TO PROJECT
-        if _user not in project["users"]:
-            if query_yn("DO you want to add user to project: {:}?".format(_name)):
-                project["users"].append(_user)
+    def set_system(self, _name):
+        if 'SYSTEMS' not in self.dict.keys():
+            self.dict["SYSTEMS"] = {}
+        if _name in self.dict['SYSTEMS'].keys():
+            print("System \'{:}\' found.".format(_name))
+            systems = self.dict["SYSTEMS"]
+            systems[_name]['python'] = sys.version
+        else:
+            print("System \'{:}\' does not seem to exist in the profile.".format(_name))
+            systems = self.dict["SYSTEMS"]
+            systems[_name] = {'base': set_dir('system directory', forced=True), 'python': sys.version}
+        self.experiments = read_exps(self.dict["SYSTEMS"][_name]['base'])
+        if len(self.experiments) == 0:
+            del self.dict["SYSTEMS"][_name]
+            self.set_system(_name)
+        self.activesys = _name
 
-        print("***")
-        print("Loading [PROJECT] {:}".format(_name))
-        print()
+def read_exps(_dir):
+    try:
+        with open(os.path.join(_dir, 'list_experiments.txt'), 'r') as f:
+            lns = f.readlines()
+    except FileNotFoundError:
+        print("list_experiments.txt not found in base folder {}.".format(_dir))
+        lns = []
+    outdict = {}
+    for ln in lns:
+        splitln = ln.split(" ")
+        outdict[splitln[0]] = splitln[1][:-1]
+    return outdict
 
-    ### RETURN
-    with io.open(PROFILE, 'w+', encoding='utf8') as outfile:
-        yaml.dump(profile, outfile, default_flow_style=False, allow_unicode=True)
-    return profile
-    """
+def set_dir(_title, forced=False):
+    """ Returns base directory chosen from TKinter filedialog GUI """
+    if not forced:
+        asksave = messagebox.askquestion(_title, "Are you sure you want to set a new path?", icon='warning')
+        if asksave == "no":
+            return None
+    flprint("Set {}...".format(_title))
+    base = filedialog.askdirectory(title=_title)
+    print(base)
+    return base
 
 def get_db(profile):
     """ Returns active system's database file location """
@@ -203,16 +159,7 @@ def get_plot(profile):
     """ Returns active system's plot path """
     return profile[profile['active']]['systems'][NAME]['plot']
 
-def set_base(forced=False):
-    """ Returns base directory chosen from TKinter filedialog GUI """
-    if not forced:
-        asksave = messagebox.askquestion("Set base directory path", "Are you sure you want to set a new path for the base?", icon='warning')
-        if asksave == "no":
-            return None
-    flprint("Set database...")
-    base = filedialog.askdirectory(title="Load base directory")
-    print(base)
-    return base
+
 
 def set_database(forced=False):
     """ Returns database file location and video directory chosen from TKinter filedialog GUI """
@@ -249,12 +196,6 @@ def set_output(forced=False):
         check_folder(each)
     ### RETURN
     return out, log, plot
-
-def set_system(_dict):
-    basefolder = set_base(forced=True)
-    _dict['base'] = basefolder
-    _dict["python"] = sys.version
-    return _dict
 
 def show_profile(profile):
     """ Command-line output of profile with colored formatting (active project is bold green) """
