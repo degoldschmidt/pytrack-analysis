@@ -75,7 +75,7 @@ class Profile(object):
         system = self.dict["SYSTEMS"][self.activesys]
         project = self.dict["PROJECTS"][self.active]
         folder = os.path.join(system['base'], project['videos'])
-        return len([i for i in os.listdir(folder) if ".avi" in i])
+        return 72##len([i for i in os.listdir(folder) if ".avi" in i])
 
     def set_project(self, _name, _script):
         if 'PROJECTS' not in self.dict.keys():
@@ -86,6 +86,9 @@ class Profile(object):
             projects[_name]['last modified'] = date.now().strftime("%Y-%m-%d %H:%M:%S")
             if _script not in projects[_name]['scripts']:
                 projects[_name]['scripts'].append(_script)
+            base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
+            for each in ['raw', 'videos', 'manual', 'out']:
+                projects[_name][each] = os.path.join(base, each)
         else:
             print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
             projects = self.dict["PROJECTS"]

@@ -4,7 +4,7 @@ import sys
 """
 Print function for same line printing
 """
-def colorprint(*args, color="default"):
+def colorprint(*args, color="default", sln=False):
     out = ""
     for arg in args:
         out += arg
@@ -15,8 +15,12 @@ def colorprint(*args, color="default"):
         colorstr = '\x1b[0;30;43m'
     if color == 'error':
         colorstr = '\x1b[0;37;43m'
-
-    print(colorstr + out + '\x1b[0m')
+    if color == 'namespace':
+        colorstr = '\x1b[0;36;40m'
+    if sln:
+        flprint(colorstr + out + '\x1b[0m')
+    else:
+        print(colorstr + out + '\x1b[0m')
 
 """
 Returns arguments from CLI (CLI)
