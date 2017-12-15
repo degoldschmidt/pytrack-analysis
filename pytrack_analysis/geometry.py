@@ -1,4 +1,7 @@
 import numpy as np
+from pytrack_analysis.cli import colorprint, flprint, prn
+
+NAMESPACE = 'geometry'
 
 """
 Returns angle between to given points centered on pt1 (GEOMETRY)
@@ -29,9 +32,11 @@ def rot(angle, in_degrees=False):
 """
 Returns rotated vector for given angle in two dimensions (GEOMETRY)
 """
+"""
 def rot(angle, in_degrees=False):
     if in_degrees:
         rads = np.radians(angle)
         return np.array([[np.cos(rads), -np.sin(rads)],[np.sin(rads), np.cos(rads)]])
     else:
         return np.array([[np.cos(angle), -np.sin(angle)],[np.sin(angle), np.cos(angle)]])
+"""

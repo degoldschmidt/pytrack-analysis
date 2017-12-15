@@ -14,7 +14,7 @@ def colorprint(*args, color="default", sln=False):
     if color == 'warning':
         colorstr = '\x1b[0;30;43m'
     if color == 'error':
-        colorstr = '\x1b[0;37;43m'
+        colorstr = '\x1b[1;31;40m'
     if color == 'namespace':
         colorstr = '\x1b[0;36;40m'
     if sln:
@@ -50,6 +50,13 @@ def flprint(*args):
     for arg in args:
         out += arg
     print(out, flush=True, end="")
+
+"""
+Print function for namespace printing
+"""
+def prn(name):
+    outname = "["+name+"]\t"
+    colorprint(outname, color='namespace', sln=True)
 
 """
 Ask a yes/no question via raw_input() and return their answer.
