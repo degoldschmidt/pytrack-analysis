@@ -31,13 +31,21 @@ def get_food(filenames, arenas):
     prn(__name__)
     flprint("loading food spots data...")
     data = []
+    skip = False
     for each in filenames:
+        np.warnings.filterwarnings("ignore")
         eachdata = np.loadtxt(each)
-        if len(eachdata.shape) == 1:
+        np.warnings.filterwarnings("default")
+        if eachdata.shape[0] == 0:
+            skip = True
+        elif len(eachdata.shape) == 1:
             eachdata = np.reshape(eachdata, (1, 2))
         ## load data
         data.append(eachdata)
-    data = validate_food(data, arenas)
+    if not skip:
+        data = validate_food(data, arenas)
+    else:
+        data = None
     if data is None:
         colorprint("ERROR: no inner spots detected. please redo food spot detection in Bonsai.", color='error')
     else:

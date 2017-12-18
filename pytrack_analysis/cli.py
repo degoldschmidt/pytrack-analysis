@@ -12,7 +12,7 @@ def colorprint(*args, color="default", sln=False):
     if color == 'success':
         colorstr = '\x1b[0;32;40m'
     if color == 'warning':
-        colorstr = '\x1b[0;30;43m'
+        colorstr = '\x1b[1;33;40m'
     if color == 'error':
         colorstr = '\x1b[1;31;40m'
     if color == 'namespace':

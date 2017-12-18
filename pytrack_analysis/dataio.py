@@ -58,7 +58,7 @@ def get_frame_skips(datal, dt='frame_dt', println=False, printmore=False):
     for odata in datal:
         oframeskips = np.array(odata.loc[:,dt])
         if np.any(oframeskips != frameskips):
-            prn(__file__)
+            prn(__name__)
             colorprint('WARNING: not same frameskips', color='warning')
     total = frameskips.shape[0]
     strict_skips = np.sum(frameskips > (1/30)+(1/30))

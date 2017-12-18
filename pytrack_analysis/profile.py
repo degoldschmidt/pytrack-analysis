@@ -89,6 +89,8 @@ class Profile(object):
             base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
             for each in ['raw', 'videos', 'manual', 'out']:
                 projects[_name][each] = os.path.join(base, each)
+            if not os.path.isdir(projects[_name]['videos']):
+                projects[_name]['videos'] = "/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         else:
             print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
             projects = self.dict["PROJECTS"]
@@ -103,6 +105,8 @@ class Profile(object):
                 'created':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
+            if not os.path.isdir(projects[_name]['videos']):
+                projects[_name]['videos'] = "/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         self.active = _name
 
     def set_system(self, _name):
