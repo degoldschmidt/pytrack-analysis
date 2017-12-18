@@ -47,37 +47,6 @@ def get_files(raw, session, video_folder):
     else:
         print("Session {:02d} not found. {}".format(session, session_folder))
 
-
-"""
-Returns number of frame skips, big frame skips (more than 10 frames) and maximum skipped time between frames
-"""
-def get_frame_skips(datal, dt='frame_dt', println=False, printmore=False):
-    frameskips = np.array(datal[0].loc[:,dt])
-    max_skip = np.amax(frameskips)
-    max_skip_arg = frameskips.argmax()
-    for odata in datal:
-        oframeskips = np.array(odata.loc[:,dt])
-        if np.any(oframeskips != frameskips):
-            prn(__name__)
-            colorprint('WARNING: not same frameskips', color='warning')
-    total = frameskips.shape[0]
-    strict_skips = np.sum(frameskips > (1/30)+(1/30))
-    easy_skips = np.sum(frameskips > (1/30)+(1/3))
-    if println:
-        if 100*strict_skips/total < 0.1:
-            prn(__name__)
-            print('detected frameskips: {:} ({:3.3f}% of all frames)'.format(strict_skips, 100*strict_skips/total))
-        else:
-            prn(__name__)
-            flprint('detected frameskips: ')
-            colorprint('{:} ({:3.3f}% of all frames)'.format(strict_skips, 100*strict_skips/total))
-    if printmore:
-        prn(__name__)
-        print('skips of more than 1 frames (>{:1.3f} s): {:} ({:3.3f}% of all frames)'.format((1/30)+(1/30), strict_skips, 100*strict_skips/total))
-        prn(__name__)
-        print('skips of more than 10 frames (>{:1.3f} s): {:} ({:3.3f}% of all frames)'.format((1/30)+(1/3), easy_skips, 100*easy_skips/total))
-    return {"Strict frameskips": strict_skips,"Long frameskips": easy_skips, "Max frameskip duration":  max_skip, "Max frameskip index": max_skip_arg}
-
 """
 Returns frame dimensions as tuple (height, width, channels) (DATAIO)
 """
@@ -169,6 +138,14 @@ def get_session_list(N, *args):
     return outlist
 
 """
+Returns datetime for session start (DATAIO)
+"""
+def get_session_start(filename):
+    from datetime import datetime
+    filestart = np.loadtxt(filename, dtype=bytes).astype(str)
+    return datetime.strptime(filestart[1][:19], '%Y-%m-%dT%H:%M:%S')
+
+"""
 Returns timestamp from session folder
 """
 def get_time(session):
@@ -180,15 +157,31 @@ def get_time(session):
     dtstamp = datetime.strptime(timestampstr, "%Y-%m-%dT%H_%M_%S")
     return dtstamp, timestampstr[:-3]
 
+"""
+Returns translated data for given session start (PROCESSING)
+"""
+def translate_to(data, start, time=''):
+    mask = (data[time] > start)
+    data = data.loc[mask]
+    return data, data.index[0]
+
 class RawData(object):
-    def __init__(self, _exp_id, _session_id, _folders):
+    def __init__(self, _exp_id, _session_id, _folders, columns=None, units=None):
         ### get timestamp and all files from session folder
         self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'])
+        self.starttime = get_session_start(self.allfiles['timestart'])
 
-        ### load raw data
+        ### load raw data and define columns/units
         self.raw_data = get_data(self.allfiles['data'])
         self.data_units = None
-
+        assert len(columns) == len(units), 'Error: dimension of given columns is unequal to given units.'
+        self.data_units = units
+        for each_df in self.raw_data:
+            # renaming columns with standard header
+            each_df.columns = columns
+            if "Datetime" in units:
+                # datetime strings to datetime objects
+                each_df['datetime'] =  pd.to_datetime(each_df['datetime'])
         ### check whether dataframes are of same dimensions
         lens = []
         for each_df in self.raw_data:
@@ -198,12 +191,30 @@ class RawData(object):
         for i, each_df in enumerate(self.raw_data):
             each_df = each_df.iloc[:minlen]
 
+        ### move to start position
+        self.first_frame = []
+        for ix, each_df in enumerate(self.raw_data):
+            self.raw_data[ix], first_frame = translate_to(each_df, self.starttime, time='datetime')
+            self.first_frame.append(int(first_frame))
+
         ### getting metadata for each arena
-        self.labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
+        self.labels = {'topleft': 0, 'topright': 1, 'bottomleft': 2, 'bottomright': 3}
         ### arenas
-        self.arenas = get_geom(self.allfiles['geometry'], self.labels)
+        self.arenas = get_geom(self.allfiles['geometry'], self.labels.keys())
         ### food spots
-        food_spots = get_food(self.allfiles['food'], self.arenas)
+        self.food_spots = get_food(self.allfiles['food'], self.arenas)
+
+        ### center around arena center
+        for ix, each_df in enumerate(self.raw_data):
+            each_df['body_x'] = each_df['body_x']  - self.arenas[ix].x
+            each_df['body_y'] = each_df['body_y']  - self.arenas[ix].y
+
+    def get(self, _index):
+        out = None
+        if _index in self.labels.keys():
+            out = copy.deepcopy(self)
+        return out
+
 
         """
         meta['datadir'] = os.path.join(os.path.dirname(_folders['raw']), "{:02d}".format(each_session))
@@ -219,22 +230,6 @@ class RawData(object):
 
         ### detect food spots
         #food_spots = get_food_spots()
-
-    def analyze_frameskips(self, dt=None):
-        if dt is None:
-            self.skips = get_frame_skips(self.raw_data, println=True)
-        else:
-            self.skips = get_frame_skips(self.raw_data, dt=dt, println=True)
-
-    def define(self, columns=None, units=None):
-        assert len(columns) == len(units), 'Error: dimension of given columns is unequal to given units.'
-        self.data_units = units
-        for each_df in self.raw_data:
-            # renaming columns with standard header
-            each_df.columns = columns
-            if "Datetime" in units:
-                # datetime strings to datetime objects
-                each_df[units == "Datetime"] =  pd.to_datetime(each_df['datetime'])
 
     def set_scale(self, _which, _value, unit=None):
         if _which == 'diameter':

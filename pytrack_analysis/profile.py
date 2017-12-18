@@ -78,6 +78,7 @@ class Profile(object):
         return 72##len([i for i in os.listdir(folder) if ".avi" in i])
 
     def set_project(self, _name, _script):
+        system = self.dict["SYSTEMS"][self.activesys]
         if 'PROJECTS' not in self.dict.keys():
             self.dict["PROJECTS"] = {}
         if _name in self.dict['PROJECTS'].keys():
@@ -89,7 +90,8 @@ class Profile(object):
             base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
             for each in ['raw', 'videos', 'manual', 'out']:
                 projects[_name][each] = os.path.join(base, each)
-            if not os.path.isdir(projects[_name]['videos']):
+            video = os.path.join(system['base'], projects[_name]['videos'])
+            if not os.path.isdir(video):
                 projects[_name]['videos'] = "/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         else:
             print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
