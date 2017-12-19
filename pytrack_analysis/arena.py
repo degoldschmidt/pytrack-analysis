@@ -13,8 +13,11 @@ class Arena(object):
         self.r = _r
         self.spots = SpotCollection()
 
-    def set_scale(self, _val):
+    def set_rscale(self, _val):
         self.pxmm = self.r/_val
+
+    def set_scale(self, _val):
+        self.pxmm = _val
 
 class ArenaCollection(object):
     def __init__(self):
@@ -29,6 +32,9 @@ class ArenaCollection(object):
             return self.arenas[self.labels[_index.lower()]]
     def __getitem__(self, key):
         return self.arenas[key]
+    def set_rscale(self, _val):
+        for each_arena in self.arenas:
+            each_arena.set_rscale(_val)
     def set_scale(self, _val):
         for each_arena in self.arenas:
             each_arena.set_scale(_val)

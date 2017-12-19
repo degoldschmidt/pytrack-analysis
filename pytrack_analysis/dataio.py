@@ -215,29 +215,23 @@ class RawData(object):
             out = copy.deepcopy(self)
         return out
 
-
-        """
-        meta['datadir'] = os.path.join(os.path.dirname(_folders['raw']), "{:02d}".format(each_session))
-        meta['experiment'] = _exp_id
-        meta['num_frames'] = get_num_frames(raw_data)
-        for each_condition in meta['variables']:
-            for each_file in meta["files"]:
-                if each_condition in each_file:
-                    conditions = pd.read_csv(each_file, sep='\t', index_col='ix')
-        """
-        ### detect arena geometry
-        #arena = get_arena_geometry()
-
-        ### detect food spots
-        #food_spots = get_food_spots()
-
     def set_scale(self, _which, _value, unit=None):
-        if _which == 'diameter':
-            outval = _value/2
-        elif _which == 'radius':
+        if _which == 'fix_scale':
             outval = _value
-        if unit == 'cm':
-            outval *= 10
-        elif unit == 'm':
-            outval *= 1000
-        self.arenas.set_scale(outval)
+            if unit == 'px':
+                outval = 1/_value
+            self.arenas.set_scale(outval)
+        else:
+            if _which == 'diameter':
+                outval = _value/2
+            if unit == 'cm':
+                outval *= 10
+            elif unit == 'm':
+                outval *= 1000
+            self.arenas.set_rscale(outval)
+
+        for ix, each_df in enumerate(self.raw_data):
+            scale = self.arenas[ix].pxmm
+            for jx, each_col in enumerate(each_df.columns):
+                if self.data_units[jx] == 'px':
+                    each_df[each_col] *= 1/scale
