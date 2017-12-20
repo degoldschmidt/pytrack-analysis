@@ -171,10 +171,13 @@ class RawData(object):
         self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'])
         self.starttime = get_session_start(self.allfiles['timestart'])
 
+        ### define video
+        self.video_file = self.allfiles['video']
+
         ### load raw data and define columns/units
         self.raw_data = get_data(self.allfiles['data'])
         self.data_units = None
-        assert len(columns) == len(units), 'Error: dimension of given columns is unequal to given units.'
+        assert len(columns) == len(units), 'Error: dimension of given columns is unequal to given units'
         self.data_units = units
         for each_df in self.raw_data:
             # renaming columns with standard header
@@ -192,10 +195,8 @@ class RawData(object):
             each_df = each_df.iloc[:minlen]
 
         ### move to start position
-        self.first_frame = []
         for ix, each_df in enumerate(self.raw_data):
-            self.raw_data[ix], first_frame = translate_to(each_df, self.starttime, time='datetime')
-            self.first_frame.append(int(first_frame))
+            self.raw_data[ix], self.first_frame = translate_to(each_df, self.starttime, time='datetime')
 
         ### getting metadata for each arena
         self.labels = {'topleft': 0, 'topright': 1, 'bottomleft': 2, 'bottomright': 3}
@@ -234,4 +235,11 @@ class RawData(object):
             scale = self.arenas[ix].pxmm
             for jx, each_col in enumerate(each_df.columns):
                 if self.data_units[jx] == 'px':
-                    each_df[each_col] *= 1/scale
+                    self.raw_data[ix][each_col] *= 1/scale
+        for i, each in enumerate(self.data_units):
+            if each == 'px':
+                self.data_units[i] = 'mm'
+
+    def show(self):
+        for i,each in enumerate(self.raw_data[0].columns):
+            print('{}: {} [{}]'.format(i, each, self.data_units[i]))

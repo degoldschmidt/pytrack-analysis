@@ -7,10 +7,11 @@ from pytrack_analysis.food_spots import SpotCollection
 This is a class for arena
 """
 class Arena(object):
-    def __init__(self, _x, _y, _r):
+    def __init__(self, _x, _y, _r, _l):
         self.x = _x
         self.y = _y
         self.r = _r
+        self.name = _l
         self.spots = SpotCollection()
 
     def set_rscale(self, _val):
@@ -48,9 +49,10 @@ def get_geom(filename, labels):
     data = pd.read_csv(filename, sep="\s+")
     data = np.array(data.loc[len(data.index)-1])
     arenas = ArenaCollection()
+    labels = list(arenas.labels.keys())
     for each_arena in range(4):
         index = 9 + 3*each_arena
         radius = 0.25*(data[index]+data[index+1]) + 30 ### radius = half of mean of major and minor
-        arenas.add(Arena(data[2*each_arena], data[2*each_arena+1], radius))
+        arenas.add(Arena(data[2*each_arena], data[2*each_arena+1], radius, labels[each_arena]))
     colorprint("done.", color='success')
     return arenas

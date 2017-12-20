@@ -2,8 +2,31 @@ import os
 import numpy as np
 from pytrack_analysis.cli import colorprint, flprint, prn
 
-def mistracks(data):
-    pass
+def mistracks(dataobj, x=None, y=None, major=None, thresholds=(4, 5)):
+    for i, data in enumerate(dataobj.raw_data):
+        # get displacements
+        dx = np.append(0,np.diff(data[x]))
+        dy = np.append(0,np.diff(data[y]))
+        displ = np.sqrt(dx**2 + dy**2)
+        displ[np.isnan(displ)] = 0
+        # get major axis length
+        maj = data[major]
+        # two thresholds
+        threshold = thresholds[0]
+        speed_threshold = thresholds[1]
+        # bitwise or
+        mask = (maj>threshold) | (displ>speed_threshold)
+        # get mistracked frames
+        mistracks = data.index[mask]
+        # output to console
+        prn(__name__)
+        flprint('Arena', dataobj.arenas[i].name,'- mistracked frames: ')
+        if len(mistracks)<300:
+            print(len(mistracks))
+        else:
+            colorprint(str(len(mistracks)), color='warning')
+        # mistracked framed get NaNs
+        dataobj.raw_data[i].loc[mistracks, ['body_x', 'body_y', 'angle', 'major', 'minor']] = np.nan
 
 
 def frameskips(data, dt=None):
