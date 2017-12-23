@@ -69,6 +69,7 @@ class Profile(object):
                     "raw": os.path.join(system['base'], project['raw']),
                     "videos": os.path.join(system['base'], project['videos']),
                     "manual": os.path.join(system['base'], project['manual']),
+                    "processed": os.path.join(system['base'], project['processed']),
             }
 
     def Nvids(self):
@@ -88,7 +89,7 @@ class Profile(object):
             if _script not in projects[_name]['scripts']:
                 projects[_name]['scripts'].append(_script)
             base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
-            for each in ['raw', 'videos', 'manual', 'out']:
+            for each in ['raw', 'videos', 'manual', 'out', 'processed']:
                 projects[_name][each] = os.path.join(base, each)
             video = os.path.join(system['base'], projects[_name]['videos'])
             if not os.path.isdir(video):
@@ -102,6 +103,7 @@ class Profile(object):
                 'raw': os.path.join(base, 'raw'),
                 'videos': os.path.join(base, 'videos'),
                 'manual': os.path.join(base, 'manual'),
+                'processed': os.path.join(base, 'processed'),
                 'out': os.path.join(base, 'out'),
                 'scripts': [_script],
                 'created':  date.now().strftime("%Y-%m-%d %H:%M:%S"),

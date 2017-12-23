@@ -25,22 +25,21 @@ def colorprint(*args, color="default", sln=False):
 """
 Returns arguments from CLI (CLI)
 """
-def get_args(*args, SILENT=True):
+def get_args(var_args, opt_args,SILENT=True):
     ### parsing arguments
     parser = argparse.ArgumentParser()
-    for arg in args:
-        if type(arg) is str:
-            parser.add_argument('-'+arg, action='store', dest=arg, help='Store variable '+arg)
-        elif type(arg) is list:
-            parser.add_argument('-'+arg[0], action='store', dest=arg[1], help=arg[2])
-        elif type(arg) is tuple:
-            parser.add_argument('-'+arg[0], action='store', dest=arg[1], help=arg[2])
+    for arg in var_args:
+        parser.add_argument('-'+arg[0], action='store', dest=arg[1], help=arg[2])
+    for arg in opt_args:
+        parser.add_argument("--"+arg[0], help=arg[1], action="store_true")
     if not SILENT:
         print("Parsing arguments...")
         dict_args = vars(parser.parse_args())
         for k, v in dict_args.items():
             print("{}: {}".format(k, v))
     return parser.parse_args()
+
+
 
 """
 Print function for same line printing

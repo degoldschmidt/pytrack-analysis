@@ -42,9 +42,10 @@ def plot_along(f, ax):
 """
 Plotting trajectory in arenas
 """
-def plot_fly(data, x=None, y=None, arena=None, spots=None, title=None):
+def plot_fly(data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, title=None):
     f, ax = plt.subplots()
     ax.plot(data[x], data[y])
+    ax.plot(data[hx], data[hy], 'r-')
     ax.set_aspect('equal')
     return f, ax
 
@@ -52,7 +53,7 @@ def plot_fly(data, x=None, y=None, arena=None, spots=None, title=None):
 Plotting overlay
 """
 def plot_overlay(datal, frame, x=None, y=None, arena=None, scale=0, trace=0, video=None):
-    vid = imageio.get_reader(video, 'ffmpeg')
+    vid = imageio.get_reader(video)
     f, ax = plt.subplots()
     image = vid.get_data(frame)
     ax.imshow(image)

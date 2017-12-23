@@ -131,4 +131,4 @@ class Multibench(object):
         """
         Print-out when object is destroyed
         """
-        print("Test {:} for {:} repititions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)), file=sys.stdout)
+        print("Test {:} for {:} repetitions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)), file=sys.stdout)
