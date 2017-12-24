@@ -100,7 +100,7 @@ def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, video=None, start=N
     for t in range(start, start+head_x.shape[0], skip):
         ### load image
         this_frame = vid.get_data(t)
-        if (t-start)%1000==0:
+        if (t-start)%10000==0:
             print(t)
         if not (np.isnan(head_x[t-start]) and np.isnan(head_y[t-start])):
             headpx[t:t+skip] = get_patch_average(head_x[t-start], head_y[t-start], image=this_frame)
