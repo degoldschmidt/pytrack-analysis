@@ -100,12 +100,12 @@ def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, video=None, start=N
     for t in range(start, start+head_x.shape[0], skip):
         ### load image
         this_frame = vid.get_data(t)
-        if (t-start)%10000==0:
-            print(t)
         if not (np.isnan(head_x[t-start]) and np.isnan(head_y[t-start])):
             headpx[t:t+skip] = get_patch_average(head_x[t-start], head_y[t-start], image=this_frame)
         if not (np.isnan(tail_x[t-start]) and np.isnan(tail_y[t-start])):
             tailpx[t:t+skip] = get_patch_average(tail_x[t-start], tail_y[t-start], image=this_frame)
+        if (t-start)%10000==0:
+            print(t, headpx[t:t+skip], tailpx[t:t+skip])
     pixeldiff = tailpx - headpx
     warnings.filterwarnings("default")
     vid.close()
