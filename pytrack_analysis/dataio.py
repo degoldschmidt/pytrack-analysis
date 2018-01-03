@@ -29,18 +29,26 @@ def get_data(filenames):
 """
 Returns dictionary of all raw data files
 """
-def get_files(raw, session, video_folder):
+def get_files(raw, session, video_folder, noVideo=False):
     session_folder = os.path.join(raw, "{:02d}".format(session))
     if os.path.isdir(session_folder):
         print("\nStart post-tracking analysis for video session: {:02d}".format(session))
         dtstamp, timestampstr = get_time(session_folder)
-        file_dict = {
-                        "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
-                        "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
-                        "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
-                        "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                        "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
-                    }
+        if noVideo:
+                file_dict = {
+                                "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
+                                "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
+                                "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
+                                "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
+                            }
+        else:
+                file_dict = {
+                                "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
+                                "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
+                                "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
+                                "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
+                                "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
+                            }
         prn(__name__)
         print("Timestamp:", dtstamp.strftime("%A, %d. %B %Y %H:%M"))
         return file_dict, dtstamp, timestampstr
@@ -166,13 +174,17 @@ def translate_to(data, start, time=''):
     return data, data.index[0]
 
 class RawData(object):
-    def __init__(self, _exp_id, _session_id, _folders, columns=None, units=None):
+    def __init__(self, _exp_id, _session_id, _folders, columns=None, units=None, noVideo=False):
         ### get timestamp and all files from session folder
-        self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'])
+        self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'], noVideo=noVideo)
         self.starttime = get_session_start(self.allfiles['timestart'])
+        if noVideo:
+            prn(__name__)
+            colorprint("Warning: no video!", color='warning')
 
         ### define video
-        self.video_file = self.allfiles['video']
+        if not noVideo:
+            self.video_file = self.allfiles['video']
 
         ### load raw data and define columns/units
         self.raw_data = get_data(self.allfiles['data'])
