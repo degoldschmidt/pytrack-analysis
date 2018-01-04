@@ -97,7 +97,7 @@ def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, arena=None, spots=
             ax.set_aspect("equal")
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
-            plt.axis('off')
+            ax.axis('off')
     return f, axes
 
 """
