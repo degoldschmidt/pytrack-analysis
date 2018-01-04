@@ -69,6 +69,7 @@ class Profile(object):
                     "raw": os.path.join(system['base'], project['raw']),
                     "videos": os.path.join(system['base'], project['videos']),
                     "manual": os.path.join(system['base'], project['manual']),
+                    "out": os.path.join(system['base'], project['out']),
                     "processed": os.path.join(system['base'], project['processed']),
             }
 

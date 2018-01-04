@@ -54,7 +54,7 @@ def get_head_tail(data, x=None, y=None, angle=None, major=None):
     head_y = np.array(data[y] + 0.5*data[major]*np.sin(data[angle]))
     tail_x = np.array(data[x] - 0.5*data[major]*np.cos(data[angle]))
     tail_y = np.array(data[y] - 0.5*data[major]*np.sin(data[angle]))
-    return np.vstack([head_x, head_y, tail_x, tail_y])
+    return {'head_x': head_x, 'head_y': head_y, 'tail_x': tail_x, 'tail_y': tail_y}
 
 def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5)):
     # get displacements

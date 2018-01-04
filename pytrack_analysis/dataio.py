@@ -222,6 +222,15 @@ class RawData(object):
             each_df['body_x'] = each_df['body_x']  - self.arenas[ix].x
             each_df['body_y'] = each_df['body_y']  - self.arenas[ix].y
 
+    def flip_y(self):
+        for ix, each_df in enumerate(self.raw_data):
+            for each_spot in self.arenas[ix].spots:
+                each_spot.ry *= -1
+            for jx, each_col in enumerate(each_df.columns):
+                if '_y' in each_col:
+                    self.raw_data[ix][each_col] *= -1
+
+
     def get(self, _index):
         out = None
         if _index in self.labels.keys():
