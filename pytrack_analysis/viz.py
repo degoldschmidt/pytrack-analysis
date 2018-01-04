@@ -70,7 +70,8 @@ def plot_fly(data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, tit
 Plotting trajectory intervals in arenas
 """
 def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, title=None):
-    f, axes = plt.subplots(math.ceil(n/4), 4, figsize=(2*4, 2*math.ceil(n/4)), dpi=300)
+    sc = 3
+    f, axes = plt.subplots(math.ceil(n/4), 4, figsize=(sc*4, sc*math.ceil(n/4)), dpi=300)
     for ir, ar in enumerate(axes):
         for ic, ax in enumerate(ar):
             this_index = ic + ir * 4
@@ -94,6 +95,9 @@ def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, arena=None, spots=
                 ax.set_xlim([-1.1*arena.ro, 1.1*arena.ro])
                 ax.set_ylim([-1.1*arena.ro, 1.1*arena.ro])
             ax.set_aspect("equal")
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+            plt.axis('off')
     return f, axes
 
 """
