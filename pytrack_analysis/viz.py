@@ -8,6 +8,7 @@ import tkinter as tk
 import warnings
 import numpy as np
 import math
+from datetime import timedelta
 
 
 colors = [  '#a6cee3',
@@ -69,12 +70,13 @@ def plot_fly(data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, tit
 """
 Plotting trajectory intervals in arenas
 """
-def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, title=None):
+def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, time=None, arena=None, spots=None, title=None):
     sc = 3
-    f, axes = plt.subplots(math.ceil(n/4), 4, figsize=(sc*4, sc*math.ceil(n/4)), dpi=300)
+    cols = 6
+    f, axes = plt.subplots(math.ceil(n/cols), cols, figsize=(sc*cols, sc*math.ceil(n/cols)), dpi=600)
     for ir, ar in enumerate(axes):
         for ic, ax in enumerate(ar):
-            this_index = ic + ir * 4
+            this_index = ic + ir * cols
             if arena is not None:
                 arena_border = plt.Circle((0, 0), arena.rr, color='k', fill=False)
                 ax.add_artist(arena_border)
@@ -89,14 +91,16 @@ def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, arena=None, spots=
             first_frame = data.index[0]
             start = first_frame + this_index*(108000/n)
             end = start + 108000/n - 1
-            ax.plot(data.loc[start:end, x], data.loc[start:end, y])
-            ax.plot(data.loc[start:end, hx], data.loc[start:end, hy], 'r-')
+            ax.plot(data.loc[start:end, x], data.loc[start:end, y], lw=0.5)
+            ax.plot(data.loc[start:end, hx], data.loc[start:end, hy], 'r-', lw=0.5)
             if arena is not None:
                 ax.set_xlim([-1.1*arena.ro, 1.1*arena.ro])
                 ax.set_ylim([-1.1*arena.ro, 1.1*arena.ro])
             ax.set_aspect("equal")
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
+            tstr = timedelta(seconds=int(data.loc[start, time]))
+            ax.set_title("{} s".format(tstr))
             ax.axis('off')
     return f, axes
 
