@@ -70,38 +70,50 @@ def plot_fly(data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, tit
 """
 Plotting trajectory intervals in arenas
 """
-def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, time=None, arena=None, spots=None, title=None):
+def plot_interval(ax, i, data, x=None, y=None, hx=None, hy=None, flip=None, time=None, arena=None, spots=None, title=None):
+    if arena is not None:
+        arena_border = plt.Circle((0, 0), arena.rr, color='k', fill=False)
+        ax.add_artist(arena_border)
+        outer_arena_border = plt.Circle((0, 0), arena.ro, color='#aaaaaa', fill=False)
+        ax.add_artist(outer_arena_border)
+        ax.plot(0, 0, 'o', color='black', markersize=2)
+    if spots is not None:
+        for each_spot in spots:
+            substr = each_spot.substrate
+            spot = plt.Circle((each_spot.rx, each_spot.ry), each_spot.rr, color=spot_colors[substr], alpha=0.5)
+            ax.add_artist(spot)
+    first_frame = data.index[0]
+    start = first_frame + i*(108000/n)
+    end = start + 108000/n - 1
+    #ax.plot(data.loc[start:end, x], data.loc[start:end, y], lw=0.5)
+
+    ### arrays where head is flipped or not
+    flips = np.array(data.loc[start:end, flip])
+    head_x_flip = np.array(data.loc[start:end, hx])[flips>0]
+    head_y_flip = np.array(data.loc[start:end, hy])[flips>0]
+    head_x_noflip = np.array(data.loc[start:end, hx])[flips==0]
+    head_y_noflip = np.array(data.loc[start:end, hy])[flips==0]
+
+    ax.scatter(head_x_flip, head_y_flip, marker='.', s=2, c='g', edgecolor='none', zorder=5)
+    ax.scatter(head_x_noflip, head_y_noflip, marker='.', s=2, c='r', edgecolor='none', zorder=5)
+    if arena is not None:
+        ax.set_xlim([-1.1*arena.ro, 1.1*arena.ro])
+        ax.set_ylim([-1.1*arena.ro, 1.1*arena.ro])
+    ax.set_aspect("equal")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    tstr = timedelta(seconds=int(data.loc[start, time]))
+    ax.set_title("{} s".format(tstr))
+    ax.axis('off')
+    return ax
+
+def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, flip=None, time=None, arena=None, spots=None, title=None, ncols=6):
     sc = 3
-    cols = 6
-    f, axes = plt.subplots(math.ceil(n/cols), cols, figsize=(sc*cols, sc*math.ceil(n/cols)), dpi=600)
+    f, axes = plt.subplots(math.ceil(n/ncols), ncols, figsize=(sc*ncols, sc*math.ceil(n/ncols)), dpi=600)
     for ir, ar in enumerate(axes):
         for ic, ax in enumerate(ar):
-            this_index = ic + ir * cols
-            if arena is not None:
-                arena_border = plt.Circle((0, 0), arena.rr, color='k', fill=False)
-                ax.add_artist(arena_border)
-                outer_arena_border = plt.Circle((0, 0), arena.ro, color='#aaaaaa', fill=False)
-                ax.add_artist(outer_arena_border)
-                ax.plot(0, 0, 'o', color='black', markersize=2)
-            if spots is not None:
-                for each_spot in spots:
-                    substr = each_spot.substrate
-                    spot = plt.Circle((each_spot.rx, each_spot.ry), each_spot.rr, color=spot_colors[substr], alpha=0.5)
-                    ax.add_artist(spot)
-            first_frame = data.index[0]
-            start = first_frame + this_index*(108000/n)
-            end = start + 108000/n - 1
-            ax.plot(data.loc[start:end, x], data.loc[start:end, y], lw=0.5)
-            ax.plot(data.loc[start:end, hx], data.loc[start:end, hy], 'r-', lw=0.5)
-            if arena is not None:
-                ax.set_xlim([-1.1*arena.ro, 1.1*arena.ro])
-                ax.set_ylim([-1.1*arena.ro, 1.1*arena.ro])
-            ax.set_aspect("equal")
-            ax.get_xaxis().set_visible(False)
-            ax.get_yaxis().set_visible(False)
-            tstr = timedelta(seconds=int(data.loc[start, time]))
-            ax.set_title("{} s".format(tstr))
-            ax.axis('off')
+            this_index = ic + ir * ncols
+            ax = plot_interval(ax, this_index, data, x=x, y=y, hx=hx, hy=hy, flip=flip, time=time, arena=arena, spots=spots, title=title)
     return f, axes
 
 """
