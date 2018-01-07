@@ -4,19 +4,19 @@ import sys
 """
 Print function for same line printing
 """
-def colorprint(*args, color="default", sln=False):
+def colorprint(*args, color="default", sln=False, bg='40m'):
     out = ""
     for arg in args:
         out += arg
 
     if color == 'success':
-        colorstr = '\x1b[0;32;40m'
+        colorstr = '\x1b[0;32;'+bg
     if color == 'warning':
-        colorstr = '\x1b[1;33;40m'
+        colorstr = '\x1b[1;33;'+bg
     if color == 'error':
-        colorstr = '\x1b[1;31;40m'
+        colorstr = '\x1b[1;31;'+bg
     if color == 'namespace':
-        colorstr = '\x1b[0;36;40m'
+        colorstr = '\x1b[0;36;'+bg
     if sln:
         flprint(colorstr + out + '\x1b[0m')
     else:

@@ -70,7 +70,7 @@ def plot_fly(data, x=None, y=None, hx=None, hy=None, arena=None, spots=None, tit
 """
 Plotting trajectory intervals in arenas
 """
-def plot_interval(ax, i, data, x=None, y=None, hx=None, hy=None, flip=None, time=None, arena=None, spots=None, title=None):
+def plot_interval(ax, data, x=None, y=None, flip=None, time=None, arena=None, spots=None, start=None, end=None, title=None, **kwargs):
     if arena is not None:
         arena_border = plt.Circle((0, 0), arena.rr, color='k', fill=False)
         ax.add_artist(arena_border)
@@ -82,20 +82,20 @@ def plot_interval(ax, i, data, x=None, y=None, hx=None, hy=None, flip=None, time
             substr = each_spot.substrate
             spot = plt.Circle((each_spot.rx, each_spot.ry), each_spot.rr, color=spot_colors[substr], alpha=0.5)
             ax.add_artist(spot)
-    first_frame = data.index[0]
-    start = first_frame + i*(108000/n)
-    end = start + 108000/n - 1
-    #ax.plot(data.loc[start:end, x], data.loc[start:end, y], lw=0.5)
 
     ### arrays where head is flipped or not
     flips = np.array(data.loc[start:end, flip])
-    head_x_flip = np.array(data.loc[start:end, hx])[flips>0]
-    head_y_flip = np.array(data.loc[start:end, hy])[flips>0]
-    head_x_noflip = np.array(data.loc[start:end, hx])[flips==0]
-    head_y_noflip = np.array(data.loc[start:end, hy])[flips==0]
+    x_flip = np.array(data.loc[start:end, x])[flips>0]
+    y_flip = np.array(data.loc[start:end, y])[flips>0]
+    x_noflip = np.array(data.loc[start:end, x])[flips==0]
+    y_noflip = np.array(data.loc[start:end, y])[flips==0]
 
-    ax.scatter(head_x_flip, head_y_flip, marker='.', s=2, c='g', edgecolor='none', zorder=5)
-    ax.scatter(head_x_noflip, head_y_noflip, marker='.', s=2, c='r', edgecolor='none', zorder=5)
+    if 's' in kwargs.keys():
+        pointsize = kwargs['s']
+    else:
+        pointsize = 2
+    ax.scatter(x_flip, y_flip, marker='.', c='g', edgecolor='none', zorder=5, s=pointsize)
+    ax.scatter(x_noflip, y_noflip, marker='.', c='r', edgecolor='none', zorder=5, s=pointsize)
     if arena is not None:
         ax.set_xlim([-1.1*arena.ro, 1.1*arena.ro])
         ax.set_ylim([-1.1*arena.ro, 1.1*arena.ro])
@@ -107,13 +107,15 @@ def plot_interval(ax, i, data, x=None, y=None, hx=None, hy=None, flip=None, time
     ax.axis('off')
     return ax
 
-def plot_intervals(n, data, x=None, y=None, hx=None, hy=None, flip=None, time=None, arena=None, spots=None, title=None, ncols=6):
+def plot_intervals(n, data, x=None, y=None, flip=None, time=None, arena=None, spots=None, title=None, ncols=6):
     sc = 3
     f, axes = plt.subplots(math.ceil(n/ncols), ncols, figsize=(sc*ncols, sc*math.ceil(n/ncols)), dpi=600)
     for ir, ar in enumerate(axes):
         for ic, ax in enumerate(ar):
             this_index = ic + ir * ncols
-            ax = plot_interval(ax, this_index, data, x=x, y=y, hx=hx, hy=hy, flip=flip, time=time, arena=arena, spots=spots, title=title)
+            start = session_data.first_frame + i*(108000/n)
+            end = start + 108000/n - 1
+            ax = plot_interval(ax, data, x=x, y=y, flip=flip, time=time, start=start, end=end, arena=arena, spots=spots, title=title)
     return f, axes
 
 """
