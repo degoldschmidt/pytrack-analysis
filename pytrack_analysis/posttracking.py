@@ -56,7 +56,7 @@ def get_head_tail(data, x=None, y=None, angle=None, major=None):
     tail_y = np.array(data[y] - 0.5*data[major]*np.sin(data[angle]))
     return {'head_x': head_x, 'head_y': head_y, 'tail_x': tail_x, 'tail_y': tail_y}
 
-def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5)):
+def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5), keep=False):
     # get displacements
     displ = np.array(data.loc[:,dr])
     displ[np.isnan(displ)] = 0
@@ -77,7 +77,8 @@ def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5)):
     else:
         colorprint(str(len(mistracks)), color='warning')
     # mistracked framed get NaNs
-    data.loc[mistracks, ['body_x', 'body_y', 'angle', 'major', 'minor', 'displacement']] = np.nan
+    if not keep:
+        data.loc[mistracks, ['body_x', 'body_y', 'angle', 'major', 'minor', 'displacement']] = np.nan
     return data
 
 def get_patch_average(x, y, radius=1, image=None):
