@@ -13,6 +13,15 @@ Returns list of directories in given path d with full path (DATAIO)
 def flistdir(d):
     return [os.path.join(d, f) for f in os.listdir(d) if '.txt' in f]
 
+def get_conditions(folder):
+    conditions =  [os.path.basename(each).split('.')[0] for each in flistdir(folder)]
+    variables = []
+    for ix, each in enumerate(meta["files"]):
+        with open(each, "r") as f:
+            lines = f.readlines()
+            if len(lines) > 1:
+                variables.append(meta["conditions"][ix])
+
 """
 Returns list of raw data for filenames (DATAIO)
 """
@@ -174,10 +183,11 @@ def translate_to(data, start, time=''):
     return data, data.index[0]
 
 class RawData(object):
-    def __init__(self, _exp_id, _session_id, _folders, columns=None, units=None, noVideo=False):
+    def __init__(self, _exp_id, _session_id, _folders, _vars, columns=None, units=None, noVideo=False):
         ### get timestamp and all files from session folder
         self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'], noVideo=noVideo)
         self.starttime = get_session_start(self.allfiles['timestart'])
+        self.condition = _vars[self.timestr]
         if noVideo:
             prn(__name__)
             colorprint("Warning: no video!", color='warning')
@@ -216,6 +226,8 @@ class RawData(object):
         self.arenas = get_geom(self.allfiles['geometry'], self.labels.keys())
         ### food spots
         self.food_spots = get_food(self.allfiles['food'], self.arenas)
+        ### conditions
+        self.conditions = get_conditions
 
         ### center around arena center
         for ix, each_df in enumerate(self.raw_data):
