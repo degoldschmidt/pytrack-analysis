@@ -14,13 +14,13 @@ def flistdir(d):
     return [os.path.join(d, f) for f in os.listdir(d) if '.txt' in f]
 
 def get_conditions(folder):
-    conditions =  [os.path.basename(each).split('.')[0] for each in flistdir(folder)]
-    variables = []
-    for ix, each in enumerate(meta["files"]):
-        with open(each, "r") as f:
-            lines = f.readlines()
-            if len(lines) > 1:
-                variables.append(meta["conditions"][ix])
+    import yaml
+    fileName = os.path.join(folder, 'conditions.yaml')
+    with open(fileName, 'r') as stream:
+        try:
+            return yaml.load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
 
 """
 Returns list of raw data for filenames (DATAIO)
@@ -38,31 +38,33 @@ def get_data(filenames):
 """
 Returns dictionary of all raw data files
 """
-def get_files(raw, session, video_folder, noVideo=False):
-    session_folder = os.path.join(raw, "{:02d}".format(session))
-    if os.path.isdir(session_folder):
-        print("\nStart post-tracking analysis for video session: {:02d}".format(session))
-        dtstamp, timestampstr = get_time(session_folder)
-        if noVideo:
-                file_dict = {
-                                "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
-                                "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
-                                "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
-                                "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                            }
-        else:
-                file_dict = {
-                                "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
-                                "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
-                                "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
-                                "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                                "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
-                            }
-        prn(__name__)
-        print("Timestamp:", dtstamp.strftime("%A, %d. %B %Y %H:%M"))
-        return file_dict, dtstamp, timestampstr
-    else:
-        print("Session {:02d} not found. {}".format(session, session_folder))
+def get_files(raw, video_folder, noVideo=False):
+    dtstamps = []
+    timestr = []
+    file_list = []
+    for session_folder in os.listdir(raw):
+        if os.path.isdir(session_folder):
+            print("\nStart post-tracking analysis for video session: {:02d}".format(session))
+            dtstamp, timestampstr = get_time(session_folder)
+            dtstamps.append(dtstamp)
+            timestr.append(timestampstr)
+            if noVideo:
+                    file_dict = {
+                                    "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
+                                    "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
+                                    "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
+                                    "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
+                                }
+            else:
+                    file_dict = {
+                                    "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
+                                    "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
+                                    "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
+                                    "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
+                                    "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
+                                }
+            file_list.append(file_dict)
+    return file_list, dtstamps, timestr
 
 """
 Returns frame dimensions as tuple (height, width, channels) (DATAIO)
@@ -183,11 +185,23 @@ def translate_to(data, start, time=''):
     return data, data.index[0]
 
 class RawData(object):
-    def __init__(self, _exp_id, _session_id, _folders, _vars, columns=None, units=None, noVideo=False):
+    def __init__(self, _exp_id, _folders, columns=None, units=None, noVideo=False):
+        prn(__name__)
+        flprint("Loading raw data folders and file structure...")
         ### get timestamp and all files from session folder
-        self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _session_id, _folders['videos'], noVideo=noVideo)
+        self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _folders['videos'], noVideo=noVideo)
+        ### conditions
+        self.conditions = get_conditions(_folders['manual'])
+        ### data columns
+        self.columns = columns
+        ### data units
+        self.units = units
+        ### noVideo option
+        self.noVideo = noVideo
+        colorprint("done.", color='success')
+
+    def get_session(self, _id):
         self.starttime = get_session_start(self.allfiles['timestart'])
-        self.condition = _vars[self.timestr]
         if noVideo:
             prn(__name__)
             colorprint("Warning: no video!", color='warning')
@@ -226,8 +240,7 @@ class RawData(object):
         self.arenas = get_geom(self.allfiles['geometry'], self.labels.keys())
         ### food spots
         self.food_spots = get_food(self.allfiles['food'], self.arenas)
-        ### conditions
-        self.conditions = get_conditions
+
 
         ### center around arena center
         for ix, each_df in enumerate(self.raw_data):
@@ -248,6 +261,19 @@ class RawData(object):
         if _index in self.labels.keys():
             out = copy.deepcopy(self)
         return out
+
+    def print_conditions(self, *args):
+
+            for _conds, _val in self.conditions.items():
+                if type(_val) is not dict:
+                    print(_conds, ':', _val)
+                else:
+                    print(_conds, ':')
+                    if len(args) == 0:
+                        for _k, _v in _val.items():
+                            print("\t",_k, ':', _v)
+                    for arg in args:
+                        print("\t", list(_val.keys())[arg-1], ':', list(_val.values())[arg-1])
 
     def set_scale(self, _which, _value, unit=None):
         if _which == 'fix_scale':
