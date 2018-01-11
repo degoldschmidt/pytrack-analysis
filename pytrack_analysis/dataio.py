@@ -42,9 +42,9 @@ def get_files(raw, video_folder, noVideo=False):
     dtstamps = []
     timestr = []
     file_list = []
-    for session_folder in os.listdir(raw):
+    for each_session in os.listdir(raw):
+        session_folder = os.path.join(raw, each_session)
         if os.path.isdir(session_folder):
-            print("\nStart post-tracking analysis for video session: {:02d}".format(session))
             dtstamp, timestampstr = get_time(session_folder)
             dtstamps.append(dtstamp)
             timestr.append(timestampstr)
@@ -64,6 +64,7 @@ def get_files(raw, video_folder, noVideo=False):
                                     "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
                                 }
             file_list.append(file_dict)
+    flprint("found {} sessions...".format(len(file_list)))
     return file_list, dtstamps, timestr
 
 """
@@ -80,68 +81,18 @@ def get_frame_dims(filename):
     return dims
 
 """
-Returns metadata from session folder
-"""
-def get_meta(allfiles, dtstamp, conditions):
-    meta = {}
-
-    ### Food spots
-    food_data = get_food(allfiles['food'])
-    food_data = validate_food(food_data, geom_data)
-    food_dict = {}
-    labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
-    for kx, each_arena in enumerate(food_data):
-        food_dict[labels[kx]] = {}
-        for ix, each_spot in enumerate(each_arena):
-            food_dict[labels[kx]][str(ix)] = {}
-            labs = ['x', 'y', 'substrate']
-            substrate = ['10% yeast', '20 mM sucrose']
-            for jx, each_pt in enumerate(each_spot):
-                if jx == 2:
-                    if int(each_pt) < 2:
-                        food_dict[labels[kx]][str(ix)][labs[jx]] = substrate[0]
-                    if int(each_pt) == 2:
-                        food_dict[labels[kx]][str(ix)][labs[jx]] = substrate[1]
-                else:
-                    food_dict[labels[kx]][str(ix)][labs[jx]] = float(each_pt)
-    meta['food_spots'] = food_dict
-
-
-    ### video stuff
-    dims = get_frame_dims(allfiles["video"])
-    meta['frame_height'] = dims[0]
-    meta['frame_width'] = dims[1]
-    meta['frame_channels'] = dims[2]
-    meta['session_start'] = get_session_start(allfiles["timestart"])
-    meta['video'] = os.path.basename(allfiles["video"])
-    meta['video_start'] = dtstamp
-
-    ### get conditions files
-    meta["files"] = flistdir(conditions)
-    meta["conditions"] =  [os.path.basename(each).split('.')[0] for each in meta["files"]]
-    meta["variables"] = []
-    for ix, each in enumerate(meta["files"]):
-        with open(each, "r") as f:
-            lines = f.readlines()
-            if len(lines) > 1:
-                meta["variables"].append(meta["conditions"][ix])
-            else:
-                meta[meta["conditions"][ix]] = lines[0]
-    return meta
-
-"""
 Returns session numbers as list based on arguments
 """
 def get_session_list(N, *args):
-    start = 1
-    end = N + 1
+    start = 0
+    end = N
     nott = []
     if len(args) > 0:
         if type(args[0]) is str:
             start = int(args[0])
     if len(args) > 1:
         if type(args[1]) is str:
-            end = int(args[1]) + 1
+            end = int(args[1])
     if len(args) > 2:
         if type(args[2]) is str:
             nott = [int(each) for each in args[2].split(',')]
@@ -191,7 +142,7 @@ class RawData(object):
         ### get timestamp and all files from session folder
         self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _folders['videos'], noVideo=noVideo)
         ### conditions
-        self.conditions = get_conditions(_folders['manual'])
+        self.allconditions = get_conditions(_folders['manual'])
         ### data columns
         self.columns = columns
         ### data units
@@ -201,14 +152,15 @@ class RawData(object):
         colorprint("done.", color='success')
 
     def get_session(self, _id):
-        self.starttime = get_session_start(self.allfiles['timestart'])
-        if noVideo:
+        prn(__name__)
+        self.timestamp = self.dtime[_id]
+        self.starttime = get_session_start(self.allfiles[_id]['timestart'])
+        flprint("start post-tracking analysis for session {} ({})".format())
+        if self.noVideo:
             prn(__name__)
             colorprint("Warning: no video!", color='warning')
-
-        ### define video
-        if not noVideo:
-            self.video_file = self.allfiles['video']
+        else:
+            self.video_file = self.allfiles[_id]['video']
 
         ### load raw data and define columns/units
         self.raw_data = get_data(self.allfiles['data'])
