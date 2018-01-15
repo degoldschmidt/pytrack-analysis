@@ -1,6 +1,7 @@
 import imageio
 import os
 import numpy as np
+import pandas as pd
 import warnings
 from pytrack_analysis.cli import colorprint, flprint, prn
 
@@ -36,27 +37,35 @@ def get_frameskips(datal, dt='frame_dt', println=False, printmore=False):
         print('skips of more than 10 frames (>{:1.3f} s): {:} ({:3.3f}% of all frames)'.format((1/30)+(1/3), easy_skips, 100*easy_skips/total))
     return {"Strict frameskips": strict_skips,"Long frameskips": easy_skips, "Max frameskip duration":  max_skip, "Max frameskip index": max_skip_arg}
 
-
 def frameskips(data, dt=None):
     if dt is None:
         data.skips = get_frameskips(data.raw_data, println=True)
     else:
         data.skips = get_frameskips(data.raw_data, dt=dt, println=True)
 
-def get_displacements(data, x=None, y=None):
+def get_displacements(data, x=None, y=None, angle=None):
     dx = np.append(0,np.diff(data[x]))
     dy = np.append(0,np.diff(data[y]))
     displ = np.sqrt(dx**2 + dy**2)
-    return displ
+    dar = np.append(0,np.diff(displ))
+    ori = np.arctan2(dy,dx)
+    diff = np.cos(np.array(data[angle]) - ori)
+    for i in range(diff.shape[0]):
+        if i > 0:
+            if displ[i] < 2.:
+                diff[i] = 0.0
+        else:
+            diff[i] = 0.0
+    return displ, dx, dy, ori, diff, dar
 
 def get_head_tail(data, x=None, y=None, angle=None, major=None):
     head_x = np.array(data[x] + 0.5*data[major]*np.cos(data[angle]))
     head_y = np.array(data[y] + 0.5*data[major]*np.sin(data[angle]))
     tail_x = np.array(data[x] - 0.5*data[major]*np.cos(data[angle]))
     tail_y = np.array(data[y] - 0.5*data[major]*np.sin(data[angle]))
-    return {'head_x': head_x, 'head_y': head_y, 'tail_x': tail_x, 'tail_y': tail_y}
+    return head_x, head_y, tail_x, tail_y
 
-def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5), keep=False):
+def mistracks(data, ix, dr=None, major=None, thresholds=(4*8.543, 5*8.543), keep=False):
     # get displacements
     displ = np.array(data.loc[:,dr])
     displ[np.isnan(displ)] = 0
@@ -78,6 +87,7 @@ def mistracks(data, ix, dr=None, major=None, thresholds=(4, 5), keep=False):
         colorprint(str(len(mistracks)), color='warning')
     # mistracked framed get NaNs
     if not keep:
+        print("Do not keep...")
         data.loc[mistracks, ['body_x', 'body_y', 'angle', 'major', 'minor', 'displacement']] = np.nan
     return data
 
@@ -90,10 +100,10 @@ def get_patch_average(x, y, radius=1, image=None):
                 pxls.append(image[int(y)+dy, int(x)+dx, 0])
     return np.mean(np.array(pxls))
 
-def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, video=None, start=None):
+def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, offset=None, video=None, start=None):
     warnings.filterwarnings("ignore")
-    head_x, head_y = np.array(data[hx]), np.array(data[hy])
-    tail_x, tail_y = np.array(data[tx]), np.array(data[ty])
+    head_x, head_y = np.array(data[hx])+offset[0], np.array(data[hy])+offset[1]
+    tail_x, tail_y = np.array(data[tx])+offset[0], np.array(data[ty])+offset[1]
     vid = imageio.get_reader(video)
     skip=1
     headpx = np.zeros(head_x.shape)

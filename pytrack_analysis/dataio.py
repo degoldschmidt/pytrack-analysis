@@ -65,7 +65,7 @@ def get_files(raw, video_folder, noVideo=False):
                                 }
             file_list.append(file_dict)
     flprint("found {} sessions...".format(len(file_list)))
-    return file_list, dtstamps, timestr
+    return file_list, dtstamps, timestr, len(file_list)
 
 """
 Returns frame dimensions as tuple (height, width, channels) (DATAIO)
@@ -140,22 +140,31 @@ class RawData(object):
         prn(__name__)
         flprint("Loading raw data folders and file structure...")
         ### get timestamp and all files from session folder
-        self.allfiles, self.dtime, self.timestr = get_files(_folders['raw'], _folders['videos'], noVideo=noVideo)
+        self.allfiles, self.dtime, self.timestr, self.nvids = get_files(_folders['raw'], _folders['videos'], noVideo=noVideo)
         ### conditions
         self.allconditions = get_conditions(_folders['manual'])
         ### data columns
         self.columns = columns
         ### data units
         self.units = units
+        ### check whether valid dims
+        assert len(self.columns) == len(self.units), 'Error: dimension of given columns is unequal to given units'
         ### noVideo option
         self.noVideo = noVideo
         colorprint("done.", color='success')
 
+    def get_data(self, fly=None):
+        if fly is None:
+            return self.raw_data
+        else:
+            return self.raw_data[fly]
+
     def get_session(self, _id):
         prn(__name__)
         self.timestamp = self.dtime[_id]
+        self.sessiontimestr = self.timestr[_id]
         self.starttime = get_session_start(self.allfiles[_id]['timestart'])
-        flprint("start post-tracking analysis for session {} ({})".format())
+        print("starting post-tracking analysis for session {}/{} ({})...".format(_id, self.nvids, self.timestamp))
         if self.noVideo:
             prn(__name__)
             colorprint("Warning: no video!", color='warning')
@@ -163,37 +172,30 @@ class RawData(object):
             self.video_file = self.allfiles[_id]['video']
 
         ### load raw data and define columns/units
-        self.raw_data = get_data(self.allfiles['data'])
-        self.data_units = None
-        assert len(columns) == len(units), 'Error: dimension of given columns is unequal to given units'
-        self.data_units = units
+        self.raw_data = get_data(self.allfiles[_id]['data'])
+        ### load the four data files
         for each_df in self.raw_data:
             # renaming columns with standard header
-            each_df.columns = columns
-            if "Datetime" in units:
+            each_df.columns = self.columns
+            if "Datetime" in self.units:
                 # datetime strings to datetime objects
                 each_df['datetime'] =  pd.to_datetime(each_df['datetime'])
         ### check whether dataframes are of same dimensions
-        lens = []
-        for each_df in self.raw_data:
-            lens.append(len(each_df))
-        minlen = np.amin(lens)
-        maxlen = np.amax(lens)
-        for i, each_df in enumerate(self.raw_data):
-            each_df = each_df.iloc[:minlen]
-
-        ### move to start position
+        lens = [len(each_df) for each_df in self.raw_data]
+        minl, maxl = np.amin(lens), np.amax(lens)
         for ix, each_df in enumerate(self.raw_data):
+            each_df = each_df.iloc[:minl]
+            ### move to start position
             self.raw_data[ix], self.first_frame = translate_to(each_df, self.starttime, time='datetime')
-
+        self.last_frame = minl - 1
         ### getting metadata for each arena
         self.labels = {'topleft': 0, 'topright': 1, 'bottomleft': 2, 'bottomright': 3}
         ### arenas
-        self.arenas = get_geom(self.allfiles['geometry'], self.labels.keys())
+        self.arenas = get_geom(self.allfiles[_id]['geometry'], self.labels.keys())
         ### food spots
-        self.food_spots = get_food(self.allfiles['food'], self.arenas)
-
-
+        self.food_spots = get_food(self.allfiles[_id]['food'], self.arenas)
+        ### conditions for session
+        self.condition = self.allconditions['metabolic'][self.sessiontimestr]
         ### center around arena center
         for ix, each_df in enumerate(self.raw_data):
             each_df['body_x'] = each_df['body_x']  - self.arenas[ix].x
@@ -215,17 +217,16 @@ class RawData(object):
         return out
 
     def print_conditions(self, *args):
-
-            for _conds, _val in self.conditions.items():
-                if type(_val) is not dict:
-                    print(_conds, ':', _val)
-                else:
-                    print(_conds, ':')
-                    if len(args) == 0:
-                        for _k, _v in _val.items():
-                            print("\t",_k, ':', _v)
-                    for arg in args:
-                        print("\t", list(_val.keys())[arg-1], ':', list(_val.values())[arg-1])
+        for _conds, _val in self.allconditions.items():
+            if type(_val) is not dict:
+                print(_conds, ':', _val)
+            else:
+                print(_conds, ':')
+                if len(args) == 0:
+                    for _k, _v in _val.items():
+                        print("\t",_k, ':', _v)
+                for arg in args:
+                    print("\t", list(_val.keys())[arg], ':', list(_val.values())[arg])
 
     def set_scale(self, _which, _value, unit=None):
         if _which == 'fix_scale':
@@ -242,15 +243,6 @@ class RawData(object):
                 outval *= 1000
             self.arenas.set_rscale(outval)
 
-        for ix, each_df in enumerate(self.raw_data):
-            scale = self.arenas[ix].pxmm
-            for jx, each_col in enumerate(each_df.columns):
-                if self.data_units[jx] == 'px':
-                    self.raw_data[ix][each_col] *= 1/scale
-        for i, each in enumerate(self.data_units):
-            if each == 'px':
-                self.data_units[i] = 'mm'
-
     def show(self):
         for i,each in enumerate(self.raw_data[0].columns):
-            print('{}: {} [{}]'.format(i, each, self.data_units[i]))
+            print('{}: {} [{}]'.format(i, each, self.units[i]))
