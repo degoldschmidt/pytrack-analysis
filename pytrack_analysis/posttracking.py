@@ -97,6 +97,7 @@ def get_patch_average(x, y, radius=1, image=None):
         for dx in range(-radius, radius+1):
             yr = radius-abs(dx)
             for dy in range(-yr, yr+1):
+                #print((x,y), int(y)+dy, int(x)+dx, image[int(y)+dy, int(x)+dx, 0])
                 pxls.append(image[int(y)+dy, int(x)+dx, 0])
     return np.mean(np.array(pxls))
 
@@ -110,8 +111,8 @@ def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, offset=None, video=
     tailpx = np.zeros(tail_x.shape)
     for t in range(start, start+head_x.shape[0], skip):
         ### load image
-        this_frame = vid.get_data(t)
         i = t-start
+        this_frame = vid.get_data(t)
         if not (np.isnan(head_x[i]) and np.isnan(head_y[i])):
             headpx[i:i+skip] = get_patch_average(head_x[i], head_y[i], image=this_frame)
         if not (np.isnan(tail_x[i]) and np.isnan(tail_y[i])):
