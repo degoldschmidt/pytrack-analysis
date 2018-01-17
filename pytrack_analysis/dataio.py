@@ -196,10 +196,14 @@ class RawData(object):
         self.food_spots = get_food(self.allfiles[_id]['food'], self.arenas)
         ### conditions for session
         self.condition = self.allconditions['metabolic'][self.sessiontimestr]
+
+    def center(self):
         ### center around arena center
         for ix, each_df in enumerate(self.raw_data):
-            each_df['body_x'] = each_df['body_x']  - self.arenas[ix].x
-            each_df['body_y'] = each_df['body_y']  - self.arenas[ix].y
+            for each_col in each_df.columns:
+                if '_x' in each_col or '_y' in each_col:
+                    each_df[each_col] = each_df[each_col]  - self.arenas[ix].x
+                    each_df[each_col] = each_df[each_col]  - self.arenas[ix].y
 
     def flip_y(self):
         for ix, each_df in enumerate(self.raw_data):

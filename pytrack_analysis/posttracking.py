@@ -101,25 +101,35 @@ def get_patch_average(x, y, radius=1, image=None):
                 pxls.append(image[int(y)+dy, int(x)+dx, 0])
     return np.mean(np.array(pxls))
 
-def get_pixel_flip(data, hx=None, hy=None, tx=None, ty=None, offset=None, video=None, start=None):
+def get_pixel_flip(datal, hx=None, hy=None, tx=None, ty=None, offset=None, video=None, start=None):
     warnings.filterwarnings("ignore")
-    head_x, head_y = np.array(data[hx])+offset[0], np.array(data[hy])+offset[1]
-    tail_x, tail_y = np.array(data[tx])+offset[0], np.array(data[ty])+offset[1]
     vid = imageio.get_reader(video)
     skip=1
-    headpx = np.zeros(head_x.shape)
-    tailpx = np.zeros(tail_x.shape)
-    for t in range(start, start+head_x.shape[0], skip):
+    heads = []
+    tails = []
+    headpxs = []
+    tailpxs = []
+    flips = []
+    for data in datal:
+        heads.append(np.array(data[[hx, hy]]))
+        tails.append(np.array(data[[tx, ty]]))
+        headpxs.append(np.zeros(heads[-1].shape[0]))
+        tailpxs.append(np.zeros(tails[-1].shape[0]))
+    for t in range(start, start+heads[-1].shape[0], skip):
         ### load image
         i = t-start
         this_frame = vid.get_data(t)
-        if not (np.isnan(head_x[i]) and np.isnan(head_y[i])):
-            headpx[i:i+skip] = get_patch_average(head_x[i], head_y[i], image=this_frame)
-        if not (np.isnan(tail_x[i]) and np.isnan(tail_y[i])):
-            tailpx[i:i+skip] = get_patch_average(tail_x[i], tail_y[i], image=this_frame)
+        for idx, data in enumerate(datal):
+            if not np.any(np.isnan(heads[idx][i,:])):
+                headpxs[idx][i:i+skip] = get_patch_average(heads[idx][i,0], heads[idx][i,1], image=this_frame)
+            if not np.any(np.isnan(tails[idx][i,:])):
+                tailpxs[idx][i:i+skip] = get_patch_average(tails[idx][i,0], tails[idx][i,1], image=this_frame)
         if (t-start)%10000==0:
-            print(t, headpx[i:i+skip], tailpx[i:i+skip])
-    pixeldiff = tailpx - headpx
+            print(t, headpxs[0][i:i+skip], tailpxs[0][i:i+skip], headpxs[1][i:i+skip], tailpxs[1][i:i+skip], headpxs[2][i:i+skip], tailpxs[2][i:i+skip], headpxs[3][i:i+skip], tailpxs[3][i:i+skip])
+    for data in datal:
+        pixeldiff = (tailpxs[idx] - headpxs[idx])
+        pixeldiff = np.array(pixeldiff < 0) ## if head brighter than tail -> flip
+        flips.append(pixeldiff)
     warnings.filterwarnings("default")
     vid.close()
-    return np.array(pixeldiff<0), headpx, tailpx
+    return flips, headpxs, tailpxs
