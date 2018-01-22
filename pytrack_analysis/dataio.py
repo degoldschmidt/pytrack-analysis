@@ -173,6 +173,8 @@ class RawData(object):
 
         ### load raw data and define columns/units
         self.raw_data = get_data(self.allfiles[_id]['data'])
+        ### raw data is in pixel space (i.e., uncentered, unflipped, and unscaled)
+        self.centered, self.flipped_y, self.scaled = False, False, False
         ### load the four data files
         for each_df in self.raw_data:
             # renaming columns with standard header
@@ -199,19 +201,24 @@ class RawData(object):
 
     def center(self):
         ### center around arena center
-        for ix, each_df in enumerate(self.raw_data):
-            for each_col in each_df.columns:
-                if '_x' in each_col or '_y' in each_col:
-                    each_df[each_col] = each_df[each_col]  - self.arenas[ix].x
-                    each_df[each_col] = each_df[each_col]  - self.arenas[ix].y
+        if not self.centered:
+            for ix, each_df in enumerate(self.raw_data):
+                for each_col in each_df.columns:
+                    if '_x' in each_col:
+                        each_df[each_col] -= self.arenas[ix].x
+                    if  '_y' in each_col:
+                        each_df[each_col] -= self.arenas[ix].y
+        self.centered = True
 
     def flip_y(self):
-        for ix, each_df in enumerate(self.raw_data):
-            for each_spot in self.arenas[ix].spots:
-                each_spot.ry *= -1
-            for jx, each_col in enumerate(each_df.columns):
-                if '_y' in each_col:
-                    self.raw_data[ix][each_col] *= -1
+        if not self.flipped_y:
+            for ix, each_df in enumerate(self.raw_data):
+                for each_spot in self.arenas[ix].spots:
+                    each_spot.ry *= -1
+                for jx, each_col in enumerate(each_df.columns):
+                    if '_y' in each_col:
+                        self.raw_data[ix][each_col] *= -1
+        self.flipped = True
 
 
     def get(self, _index):
@@ -237,7 +244,8 @@ class RawData(object):
             outval = _value
             if unit == 'px':
                 outval = 1/_value
-            self.arenas.set_scale(outval)
+            if not self.scaled:
+                self.arenas.set_scale(outval)
         else:
             if _which == 'diameter':
                 outval = _value/2
@@ -245,7 +253,16 @@ class RawData(object):
                 outval *= 10
             elif unit == 'm':
                 outval *= 1000
-            self.arenas.set_rscale(outval)
+            if not self.scaled:
+                self.arenas.set_rscale(outval)
+        """
+        if not self.scaled:
+            for each_df in self.raw_data:
+                for each in [c for c in each_df.columns if '_x' in c or '_y' in c]:
+                    each_df[each] *= 1/_value
+        """
+        self.scaled = True
+
 
     def show(self):
         for i,each in enumerate(self.raw_data[0].columns):
