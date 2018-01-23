@@ -106,3 +106,5 @@ plotting/here.pdf
 here.pdf
 
 pytrack_analysis/metapacker.py
+*.jpg
+*.png

@@ -133,3 +133,30 @@ def get_pixel_flip(datal, hx=None, hy=None, tx=None, ty=None, offset=None, video
     warnings.filterwarnings("default")
     vid.close()
     return flips, headpxs, tailpxs
+
+
+def get_corrected_flips(df, _VERBOSE=False):
+    hpx, tpx = np.array(df['headpx']), np.array(df['tailpx'])
+    pxdf = tpx - hpx
+    df['flip'] = np.array(pxdf < 0)
+    df['jump'] = df['acc'] > 5.
+    df['flipped'] = df['displacement'] < 0.
+    jumptimes = np.append(df.index[0], df.query('jump == True').index, df.index[-1])
+    if _VERBOSE:
+        print(jumptimes)
+    for i, each in enumerate(jumptimes[1:]):
+        dt = min(jumptimes[i+1]-jumptimes[i], 250)
+        mean_flip = np.mean(df.loc[jumptimes[i]:jumptimes[i]+dt, 'flip'])
+        mean_align = np.mean(df.loc[jumptimes[i]:jumptimes[i]+dt, 'align'])
+        flip_decision = (mean_flip > 0.5 and mean_align < 0.) or mean_flip > 0.9 or mean_align < -0.1
+        if _VERBOSE:
+            print(jumptimes[i], dt, mean_flip, mean_align, flip_decision)
+        if flip_decision:
+            nheadx, nheady = np.array(df.loc[jumptimes[i]:jumptimes[i+1], 'tail_x']), np.array(df.loc[jumptimes[i]:jumptimes[i+1], 'tail_y'])
+            ntailx, ntaily = np.array(df.loc[jumptimes[i]:jumptimes[i+1], 'head_x']), np.array(df.loc[jumptimes[i]:jumptimes[i+1], 'head_y'])
+            df.loc[jumptimes[i]:jumptimes[i+1], 'head_x'] = nheadx
+            df.loc[jumptimes[i]:jumptimes[i+1], 'tail_x'] = ntailx
+            df.loc[jumptimes[i]:jumptimes[i+1], 'head_y'] = nheady
+            df.loc[jumptimes[i]:jumptimes[i+1], 'tail_y'] = ntaily
+            df.loc[jumptimes[i]:jumptimes[i+1], 'angle'] -= np.pi
+            df.loc[jumptimes[i]:jumptimes[i+1],'flipped'] = True
