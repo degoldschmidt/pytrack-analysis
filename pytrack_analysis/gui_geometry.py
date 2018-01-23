@@ -1,10 +1,11 @@
-import cv2
-vidcap = cv2.VideoCapture('E:\\Dennis\\Google Drive\\PhD Project\\Experiments\\001-DifferentialDeprivation\\data\\videos\\cam01_2017-11-24T08_26_19.avi')
-success,image = vidcap.read()
-count = 0
-success = True
-success,image = vidcap.read()
-cv2.imwrite("frame.png", image)     # save frame as JPEG file
+import imageio
+import os
+vidfile = '/Volumes/DATA_BACKUP/data/tracking/all_videos/cam01_2017-11-24T08_26_19.avi'#'E:\\Dennis\\Google Drive\\PhD Project\\Experiments\\001-DifferentialDeprivation\\data\\videos\\cam01_2017-11-24T08_26_19.avi'
+vid = imageio.get_reader(vidfile)
+
+this_frame = vid.get_data(0)
+imageio.imwrite('frame.png', this_frame)
+
 
 import pygame as pg
 import numpy as np

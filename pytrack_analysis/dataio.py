@@ -164,7 +164,7 @@ class RawData(object):
         self.timestamp = self.dtime[_id]
         self.sessiontimestr = self.timestr[_id]
         self.starttime = get_session_start(self.allfiles[_id]['timestart'])
-        print("starting post-tracking analysis for session {}/{} ({})...".format(_id, self.nvids, self.timestamp))
+        print("starting post-tracking analysis for session {}/{} ({})...".format(_id+1, self.nvids, self.timestamp))
         if self.noVideo:
             prn(__name__)
             colorprint("Warning: no video!", color='warning')
