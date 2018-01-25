@@ -157,7 +157,16 @@ def set_dir(_title, forced=False):
 
 def get_db(profile):
     """ Returns active system's database file location """
-    return profile[profile['active']]['systems'][NAME]['database']
+    if 'database' in profile.dict['PROJECTS'][profile.active].keys():
+        dbfile = os.path.join(profile.dict['SYSTEMS'][profile.activesys]['base'], profile.dict['PROJECTS'][profile.active]['database'])
+        if os.path.exists(dbfile):
+            print("Found database: {}".format(dbfile))
+            return dbfile
+    print("No database file found.")
+    dbfile = filedialog.askopenfilename(title="Load database")
+    profile.dict['PROJECTS'][profile.active]['database'] = dbfile
+    return dbfile
+
 
 def get_out(profile):
     """ Returns active system's output path """
