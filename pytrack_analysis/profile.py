@@ -53,6 +53,7 @@ def get_profile(_id, _user, script="", VERBOSE=True):
 
 class Profile(object):
     def __init__(self, _file):
+        self.file = _file
         ### Read YAML profile file
         try:
             with open(_file, 'r') as stream:
@@ -61,6 +62,16 @@ class Profile(object):
                 self.dict = {}
         except FileNotFoundError:
             self.dict = {}
+
+    def __del__(self):
+        with io.open(self.file, 'w+', encoding='utf8') as f:
+            yaml.dump(self.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
+
+    def __str__(self):
+        outstr = ""
+        for k,v in self.dict.items():
+            outstr += str(k) + ':\t' + str(v) + '\n'
+        return outstr
 
     def get_folders(self):
         system = self.dict["SYSTEMS"][self.activesys]

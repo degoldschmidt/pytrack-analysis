@@ -198,14 +198,15 @@ class GraphDict(Mapping):
 Database Implementation
 """
 
-class Database(object):
+class Experiment(object):
     """
-    Database class: contains meta-data for experiment database
+    Experiment class: contains list of  for experiments
     """
     def __init__(self, _filename, in_pynb=False):
         dictstruct, timestamps = self.load_db(_filename)
         test(os.path.dirname(_filename), dictstruct, timestamps)
         self.struct = GraphDict(dictstruct)
+        self.dc = dictstruct
         self.dir = os.path.dirname(_filename)
         self.name = os.path.basename(_filename)
 
@@ -214,10 +215,6 @@ class Database(object):
         for session in dictstruct[self.name]:
             mfile = os.path.join(self.dir, session[:-3]+'yaml')
             self.sessions.append(Session(self.dir, session, mfile, in_pynb=in_pynb))
-
-    def show_data(self):
-        for exp in self.experiments:
-            exp.show_data()
 
     def find(self, eqs):
         """
@@ -251,6 +248,9 @@ class Database(object):
             return self.last[arg][0]
         else:
             return None
+
+    def load_data(self, _id):
+        return self.session(_id).load()
 
     def load_db(self, _file):
         filestruct, timestamps = load_yaml(_file)
@@ -296,16 +296,15 @@ class Session(object):
         self.exp = _file[:4]
         self.name = _file.split('.')[0]
         self.in_pynb = in_pynb
-        self.data = None    # this is supposed to be a pandas dataframe
         self.datdescr = {}
 
         with open(_mfile) as f:
             self.metadata = yaml.safe_load(f)
 
-        new_list = []
-        for k, v in self.metadata["food_spots"].items():
-            new_list.append(v)
-        self.metadata["food_spots"] = new_list
+        #new_list = []
+        #for k, v in self.metadata["food_spots"].items():
+            #new_list.append(v)
+        #self.metadata["food_spots"] = new_list
 
     def __str__(self):
         return self.name +" <class '"+ self.__class__.__name__+"'>"
