@@ -10,25 +10,20 @@ import traceback
 import inspect, itertools
 from functools import wraps
 from ._globals import *
+from pytrack_analysis import Node
 from pkg_resources import get_distribution
 __version__ = get_distribution('pytrack_analysis').version
 
 """
 Kinematics class: loads centroid data and metadata >> processes and returns kinematic data
 """
-class Kinematics(object):
+class Kinematics(Node):
 
-    def __init__(self, _db):
+    def __init__(self, _df, _meta):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
-        ## overrides path-to-file and hash of last file-modified commit (version)
-        self.filepath = os.path.realpath(__file__)
-        self.vcommit = __version__
-        self.print_header = True
-
-        ## reference to database (not a copy!!!)
-        self.db = _db
+        Node.__init__(self, _df, _meta)
 
     def angular_speed(self, _X, _dt):
         angle = np.array(_X)
@@ -288,9 +283,3 @@ class Kinematics(object):
 
     def sideward_speed(self, _X):
         pass
-
-    def __repr__(self):
-        return self.__class__.__name__
-
-    def __str__(self):
-        return self.vcommit

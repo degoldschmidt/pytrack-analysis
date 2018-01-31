@@ -4,7 +4,7 @@ from functools import wraps
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from ._globals import *
-from pytrack_analysis.cli import query_yn, flprint
+from pytrack_analysis.cli import query_yn, flprint, colorprint, prn
 
 """
 profile.py
@@ -18,7 +18,15 @@ Contains functions for creating a project profile for analysis.
 # GLOBAL CONSTANTS (based on OS)
 ###
 PROFILE, SYSNAME, OS = get_globals()
-print(PROFILE, SYSNAME, OS)
+prn(__name__)
+colorprint('profile file:\t', color='profile', sln=True)
+print(PROFILE)
+prn(__name__)
+colorprint('system:\t\t', color='profile', sln=True)
+print(SYSNAME)
+prn(__name__)
+colorprint('OS:\t\t', color='profile', sln=True)
+print(OS)
 
 def get_profile(_id, _user, script="", VERBOSE=True):
     """
@@ -73,6 +81,19 @@ class Profile(object):
             outstr += str(k) + ':\t' + str(v) + '\n'
         return outstr
 
+    def db(self):
+        """ Returns active system's database file location """
+        if 'database' in self.dict['PROJECTS'][self.active].keys():
+            dbfile = os.path.join(self.dict['SYSTEMS'][self.activesys]['base'], self.dict['PROJECTS'][self.active]['database'])
+            if os.path.exists(dbfile):
+                prn(__name__)
+                print("Found database: {}".format(dbfile))
+                return dbfile
+        print("No database file found.")
+        dbfile = filedialog.askopenfilename(title="Load database")
+        self.dict['PROJECTS'][self.active]['database'] = dbfile
+        return dbfile
+
     def get_folders(self):
         system = self.dict["SYSTEMS"][self.activesys]
         project = self.dict["PROJECTS"][self.active]
@@ -95,7 +116,6 @@ class Profile(object):
         if 'PROJECTS' not in self.dict.keys():
             self.dict["PROJECTS"] = {}
         if _name in self.dict['PROJECTS'].keys():
-            print("Project \'{:}\' found.".format(_name))
             projects = self.dict["PROJECTS"]
             projects[_name]['last modified'] = date.now().strftime("%Y-%m-%d %H:%M:%S")
             if _script not in projects[_name]['scripts']:
@@ -129,7 +149,6 @@ class Profile(object):
         if 'SYSTEMS' not in self.dict.keys():
             self.dict["SYSTEMS"] = {}
         if _name in self.dict['SYSTEMS'].keys():
-            print("System \'{:}\' found.".format(_name))
             systems = self.dict["SYSTEMS"]
             systems[_name]['python'] = sys.version
         else:
@@ -165,19 +184,6 @@ def set_dir(_title, forced=False):
     base = filedialog.askdirectory(title=_title)
     print(base)
     return base
-
-def get_db(profile):
-    """ Returns active system's database file location """
-    if 'database' in profile.dict['PROJECTS'][profile.active].keys():
-        dbfile = os.path.join(profile.dict['SYSTEMS'][profile.activesys]['base'], profile.dict['PROJECTS'][profile.active]['database'])
-        if os.path.exists(dbfile):
-            print("Found database: {}".format(dbfile))
-            return dbfile
-    print("No database file found.")
-    dbfile = filedialog.askopenfilename(title="Load database")
-    profile.dict['PROJECTS'][profile.active]['database'] = dbfile
-    return dbfile
-
 
 def get_out(profile):
     """ Returns active system's output path """

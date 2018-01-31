@@ -61,7 +61,7 @@ class Benchmark(object):
 class Multibench(object):
     """ Class used for performing multiple benchmark test of a given function and measuring time performance """
 
-    def __init__(self, msg, times=1, fmt="%0.9g", SILENT=True, SLIM=False):
+    def __init__(self, msg, times=1, fmt="%0.9g", SILENT=True, SLIM=True):
         """
         Creates an object that when called, performs benchmark test for variable number of repititions
 
@@ -122,7 +122,7 @@ class Multibench(object):
                 res = self.f()
             self.t[i] = result.time
             if not self.slimmed:
-                print("= {} s".format(result.time), file=self.stdout)
+                print("\n= {} s".format(result.time), file=self.stdout)
         #sys.stdout.close()
         sys.stdout = self.stdout
         return res
@@ -131,4 +131,4 @@ class Multibench(object):
         """
         Print-out when object is destroyed
         """
-        print("Test {:} for {:} repetitions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)), file=sys.stdout)
+        print("\nTested {:} for {:} repetitions. Total time: {:} s. Avg: {:} s. Max: {:} s.".format(self.f.__name__, len(self.t), np.sum(self.t), np.mean(self.t), np.max(self.t)), file=sys.stdout)

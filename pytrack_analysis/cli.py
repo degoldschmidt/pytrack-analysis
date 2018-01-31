@@ -13,6 +13,8 @@ def colorprint(*args, color="default", sln=False, bg='40m'):
         colorstr = '\x1b[0;32;'+bg
     if color == 'warning':
         colorstr = '\x1b[1;33;'+bg
+    if color == 'profile':
+        colorstr = '\x1b[0;95;'+bg
     if color == 'error':
         colorstr = '\x1b[1;31;'+bg
     if color == 'namespace':

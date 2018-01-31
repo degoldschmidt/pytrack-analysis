@@ -5,6 +5,7 @@ import yaml, json
 from collections.abc import Mapping
 from asciitree import draw_tree
 from ._globals import *
+from pytrack_analysis.cli import colorprint, flprint, prn
 
 """
 DataFileFormats IO (TODO: move to fileio.py)
@@ -103,7 +104,7 @@ def check_time(_tstamps, _dir):
     return (flag == 0)
 
 # test(os.path.dirname(_filename), dictstruct, timestamps)
-def test(_dir, _dict, _tstamps, _VERBOSE=True):
+def test(_dir, _dict, _tstamps, _VERBOSE=False):
     """
     Returns flags of several data integrity tests for given file structure from database file
     """
@@ -130,8 +131,9 @@ def test(_dir, _dict, _tstamps, _VERBOSE=True):
         print("[O.K.]" if datafl else "[FAILED]")
         print("CHECKING TIMESTAMPS...\t\t\t", end='')
     timefl = check_time(_tstamps, _dir)
-    if _VERBOSE: print("[O.K.]" if timefl else "[FAILED]")
-    print("\n[DONE]\n***\n")
+    if _VERBOSE:
+        print("[O.K.]" if timefl else "[FAILED]")
+        print("\n[DONE]\n***\n")
     return [basefl, metafl, datafl, timefl]
 
 
@@ -176,17 +178,15 @@ class GraphDict(Mapping):
         net = Node("Nothing here", [])
         for k,v in self._storage.items(): ## go through experiments values (dicts)
             experiments = []
-            for ke, exp in v.items(): ## go through sessions values
-                sessions = []
-                for i, sess in enumerate(exp):
-                    if i < self.max-2:
-                        sessions.append(Node(sess, []))
-                    if i == self.max-2:
-                        sessions.append(Node("...", []))
-                    if i == len(exp)-1:
-                        sessions.append(Node(sess, []))
-                experiments.append(Node(ke, sessions))
-                experiments.append(Node(" = {:} sessions".format(len(exp)), []))
+            sessions = []
+            for i, sess in enumerate(v):
+                if i < self.max-2:
+                    sessions.append(Node(sess, []))
+                if i == self.max-2:
+                    sessions.append(Node("...", []))
+                if i == len(v)-1:
+                    sessions.append(Node(sess, []))
+            experiments.append(Node(k.split('.')[0]+" ({:} sessions)".format(len(v)), sessions))
             net = Node(k, experiments)
         return draw_tree(net)
 
@@ -202,54 +202,27 @@ class Experiment(object):
     """
     Experiment class: contains list of  for experiments
     """
-    def __init__(self, _filename, in_pynb=False):
+    def __init__(self, _filename):
         dictstruct, timestamps = self.load_db(_filename)
         test(os.path.dirname(_filename), dictstruct, timestamps)
         self.struct = GraphDict(dictstruct)
-        self.dc = dictstruct
         self.dir = os.path.dirname(_filename)
-        self.name = os.path.basename(_filename)
+        self.name = os.path.basename(_filename)[:4]
+        self.filename = os.path.basename(_filename)
+        self.active = None
 
         ### set up sessions
         self.sessions = []
-        for session in dictstruct[self.name]:
+        prn(__name__)
+        flprint('Loading files from {:}...'.format(_filename))
+        for session in dictstruct[self.filename]:
             mfile = os.path.join(self.dir, session[:-3]+'yaml')
-            self.sessions.append(Session(self.dir, session, mfile, in_pynb=in_pynb))
-
-    def find(self, eqs):
-        """
-        Function evaluates eqs to find given key-value match and returns session name
-        """
-        for alleq in eqs:
-            key = eqs.split("=")[0]
-            val = eqs.split("=")[1]
-            lstr = []
-            for ses in self.select():
-                if ses.dict[key] == val:
-                    lstr.append(ses.name)
-        return lstr
-
-    def count(self, genotype, mating, metabolic):
-        """
-        DEPRECATED
-        """
-        out = []
-        for gene in genotype:
-            for mate in mating:
-                for metab in metabolic:
-                    igene = self.experiment("CANS").name2int("Genotype", gene)
-                    imate = self.experiment("CANS").name2int("Mating", mate)
-                    imetab = self.experiment("CANS").name2int("Metabolic", metab)
-                    out.append(self.counts[igene, imate, imetab])
-        return (i for i in out)
-
-    def last_select(self, arg):
-        if arg in self.last:
-            return self.last[arg][0]
-        else:
-            return None
+            self.sessions.append(Session(self.dir, session, mfile))
+        flprint('found {} sessions in database...'.format(len(self.sessions)))
+        colorprint("done.", color='success')
 
     def load_data(self, _id):
+        self.active = _id
         return self.session(_id).load()
 
     def load_db(self, _file):
@@ -257,49 +230,25 @@ class Experiment(object):
         return filestruct, timestamps
 
     def session(self, arg):
-        name = "{}_{:03d}".format(self.name[:4], arg)
-        print(name)
+        name = "{}_{:03d}".format(self.name, arg)
         for ses in self.sessions:
             if name == ses.name:
                 return ses
         return None
-
-    def select(self, **kwargs):
-        # TODO: use **kwargs
-        outlist = []
-        self.last = self.all_conds.copy()
-        for key, value in kwargs.items():
-            self.last[key] = value
-
-
-        for exp in self.experiments:
-            for ses in exp.sessions:
-                this_gen = exp.int2name("Genotype", ses.Genotype)
-                this_mate = exp.int2name("Mating", ses.Mating)
-                this_metab = exp.int2name("Metabolic", ses.Metabolic)
-                if (this_gen in genotype) or len(genotype) == 0:
-                    if (this_mate in mating) or len(mating) == 0:
-                        if (this_metab in metabolic) or len(metabolic) == 0:
-                            outlist.append(ses)
-        return outlist
 
     def __str__(self):
         return str(self.struct)
 
 class Session(object):
     """
-    Session class creates an object that hold meta-data of single session and has the functionality to load data into pd.DataFrame or np.ndarray
+    Session class creates an object that hold meta-data of single session and has the functionality to load data into pd.DataFrame
     """
-    def __init__(self, _dir, _file, _mfile, in_pynb=False):
+    def __init__(self, _dir, _file, _mfile):
         self.dir = _dir
         self.file = _file
+        self.mfile = _mfile
         self.exp = _file[:4]
         self.name = _file.split('.')[0]
-        self.in_pynb = in_pynb
-        self.datdescr = {}
-
-        with open(_mfile) as f:
-            self.metadata = yaml.safe_load(f)
 
         #new_list = []
         #for k, v in self.metadata["food_spots"].items():
@@ -360,15 +309,20 @@ class Session(object):
         return out
 
 
-    def load(self, load_as="pd"):
-        meta_data = self.metadata
-        csv_file = os.path.join(self.dir, self.file)
-        if load_as == "pd":
-            data = pd.read_csv(csv_file, sep="\t", index_col=0)
-        elif load_as == "np":
-            data = np.loadtxt(csv_file)
-        else:
-            print("[ERROR]: session not found.")                  ### TODO
+    def load(self):
+        try:
+            prn(__name__)
+            flprint('Loading session data & metadata for {}...'.format(self.name))
+            with open(self.mfile) as f:
+                meta_data = yaml.safe_load(f)
+        except FileNotFoundError:
+            colorprint("[ERROR]: session metadata file not found.", color='error')
+        try:
+            csv_file = os.path.join(self.dir, self.file)
+            data = pd.read_csv(csv_file, index_col='frame')
+            colorprint("done.", color='success')
+        except FileNotFoundError:
+            colorprint("[ERROR]: session data file not found.", color='error')
         return data, meta_data
 
     def meta(self):
