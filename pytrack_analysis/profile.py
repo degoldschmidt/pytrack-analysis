@@ -86,9 +86,8 @@ class Profile(object):
         if 'database' in self.dict['PROJECTS'][self.active].keys():
             dbfile = os.path.join(self.dict['SYSTEMS'][self.activesys]['base'], self.dict['PROJECTS'][self.active]['database'])
             if os.path.exists(dbfile):
-                prn(__name__)
-                print("Found database: {}".format(dbfile))
                 return dbfile
+        prn(__name__)
         print("No database file found.")
         dbfile = filedialog.askopenfilename(title="Load database")
         self.dict['PROJECTS'][self.active]['database'] = dbfile
@@ -110,6 +109,14 @@ class Profile(object):
         project = self.dict["PROJECTS"][self.active]
         folder = os.path.join(system['base'], project['videos'])
         return 72##len([i for i in os.listdir(folder) if ".avi" in i])
+
+    def out(self):
+        dbfile = self.db()
+        dbfolder = os.path.dirname(dbfile)
+        outfolder = os.path.join(dbfolder, 'out')
+        if not os.path.exists(outfolder):
+            os.mkdir(outfolder)
+        return outfolder
 
     def set_project(self, _name, _script):
         system = self.dict["SYSTEMS"][self.activesys]

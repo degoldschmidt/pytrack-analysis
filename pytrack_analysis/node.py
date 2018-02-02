@@ -14,7 +14,7 @@ from pkg_resources import get_distribution
 __version__ = get_distribution('pytrack_analysis').version
 
 """
-Kinematics class: loads centroid data and metadata >> processes and returns kinematic data
+Node class: generic class for processing data
 """
 class Node(object):
 
@@ -30,6 +30,8 @@ class Node(object):
         ## reference to session (not a copy!!!)
         self.df = _df
         self.meta = _meta
+        self.session_name = os.path.basename(self.meta['datafile']).split('.')[0]
+        self.name = (self.__class__.__name__).lower()
 
     def __repr__(self):
         return self.__class__.__name__

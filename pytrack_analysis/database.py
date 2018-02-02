@@ -309,10 +309,11 @@ class Session(object):
         return out
 
 
-    def load(self):
+    def load(self, VERBOSE=True):
         try:
-            prn(__name__)
-            flprint('Loading session data & metadata for {}...'.format(self.name))
+            if VERBOSE:
+                prn(__name__)
+                flprint('Loading session data & metadata for {}...'.format(self.name))
             with open(self.mfile) as f:
                 meta_data = yaml.safe_load(f)
         except FileNotFoundError:
@@ -320,7 +321,8 @@ class Session(object):
         try:
             csv_file = os.path.join(self.dir, self.file)
             data = pd.read_csv(csv_file, index_col='frame')
-            colorprint("done.", color='success')
+            if VERBOSE:
+                colorprint("done.", color='success')
         except FileNotFoundError:
             colorprint("[ERROR]: session data file not found.", color='error')
         return data, meta_data
