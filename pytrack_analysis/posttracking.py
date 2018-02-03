@@ -87,9 +87,8 @@ def mistracks(data, ix, dr=None, major=None, thresholds=(4*8.543, 5*8.543), keep
         colorprint(str(len(mistracks)), color='warning')
     # mistracked framed get NaNs
     if not keep:
-        print("Do not keep...")
-        data.loc[mistracks, ['body_x', 'body_y', 'angle', 'major', 'minor', 'displacement']] = np.nan
-    return data
+        data.loc[mistracks, ['body_x', 'body_y', 'head_x', 'head_y', 'tail_x', 'tail_y', 'angle', 'major', 'minor', 'displacement', 'dx', 'dy', 'mov_angle', 'align', 'acc']] = np.nan
+    return data, mistracks
 
 def get_patch_average(x, y, radius=1, image=None):
     pxls = []
@@ -158,5 +157,5 @@ def get_corrected_flips(df, _VERBOSE=False):
             df.loc[jumptimes[i]:jumptimes[i+1], 'tail_x'] = ntailx
             df.loc[jumptimes[i]:jumptimes[i+1], 'head_y'] = nheady
             df.loc[jumptimes[i]:jumptimes[i+1], 'tail_y'] = ntaily
-            df.loc[jumptimes[i]:jumptimes[i+1], 'angle'] -= np.pi
+            df.loc[jumptimes[i]:jumptimes[i+1], 'angle'] = np.nan
             df.loc[jumptimes[i]:jumptimes[i+1],'flipped'] = True

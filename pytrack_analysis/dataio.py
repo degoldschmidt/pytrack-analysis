@@ -255,12 +255,10 @@ class RawData(object):
                 outval *= 1000
             if not self.scaled:
                 self.arenas.set_rscale(outval)
-        """
         if not self.scaled:
             for each_df in self.raw_data:
-                for each in [c for c in each_df.columns if '_x' in c or '_y' in c]:
+                for each in [c for c in each_df.columns if '_x' in c or '_y' in c or 'or' in c]:
                     each_df[each] *= 1/_value
-        """
         self.scaled = True
 
 
