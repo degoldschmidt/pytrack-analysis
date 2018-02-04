@@ -4,11 +4,18 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 import imageio
 from matplotlib.patches import Circle, Ellipse
+import matplotlib.font_manager as fm
+import matplotlib.table as mpl_table
+import matplotlib.text as mpl_text
 import tkinter as tk
 import warnings
 import numpy as np
 import math
 from datetime import timedelta
+import os, sys
+import seaborn
+import seaborn as sns; sns.set(color_codes=True)
+sns.set_style('ticks')
 
 
 colors = [  '#a6cee3',
@@ -185,3 +192,83 @@ def plot_ts(data, x=None, y=None, units=None):
             ylabel = "{}\n[{}]".format(ys[i], units[i])
             ax.set_ylabel(ylabel, rotation=0, fontsize=11, labelpad=30)
     return f, axs
+
+"""
+Swarmbox plot
+"""
+def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_order=None, multi=False,
+                dodge=False, orient=None, color=None, palette=None, table=False,
+                size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, **kwargs):
+    # default parameters
+    defs = {
+                'ps':   2,          # pointsize for swarmplot (3)
+                'pc':   '#666666',  # pointcolor for swarmplot
+                'w':    .5,         # boxwidth for boxplot (0.35)
+                'lw':   0.0,        # linewidth for boxplot
+                'sat':  1.,         # saturation for boxplot
+                'mlw':  0.3,        # width for median lines
+    }
+
+    # axis dimensions
+    #ax.set_ylim([-2.,max_dur + 2.]) # this is needed for swarmplot to work!!!
+
+    # actual plotting using seaborn functions
+    # boxplot
+    ax = sns.boxplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
+                        orient=orient, color=color, palette=palette, saturation=defs['sat'],
+                        width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
+    #ax = sns.boxplot(x=x, y=y, hue=hue, data=data, palette=my_pal, showfliers=False, boxprops=dict(lw=1))
+    # swarmplot
+    ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True,
+                     orient=orient, color=defs['pc'], size=defs['ps'], ax=ax, **kwargs)
+    # median lines
+    medians = data.groupby(x)[y].median()
+    #print(medians)
+    dx = defs['mlw']
+    new = m_order
+    if new is not None:
+        for pos, median in enumerate(medians):
+            ax.hlines(median, new[pos]-dx, new[pos]+dx, lw=1.5, zorder=10)
+    else:
+        for pos, median in enumerate(medians):
+            ax.hlines(median, pos-dx, pos+dx, lw=1.5, zorder=10)
+
+    ## figure aesthetics
+    #ax.set_yticks(np.arange(0, max_dur+1, div))
+    sns.despine(ax=ax, bottom=True, trim=True)
+    #ax.get_xaxis().set_visible(False)
+    ax.tick_params('x', length=0, width=0, which='major')
+
+    # Adjust layout to make room for the table:
+    #plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=1.)
+    return ax
+
+def set_font(name, ax=None, VERBOSE=False):
+    if ax is None:
+        ax = plt.gca()
+    for sites in sys.path:
+        if os.path.isdir(sites):
+            if "fonts" in [folder for folder in os.listdir(sites) if os.path.isdir(os.path.join(sites,folder))]:
+                fontfile = os.path.join(sites, "fonts", name+".ttf")
+
+    if os.path.exists(fontfile):
+        if VERBOSE: print("Loading font:", fontfile)
+        textprop = fm.FontProperties(fname=fontfile)
+        ### find all text objects
+        texts = ax.findobj(match=mpl_text.Text)
+        for eachtext in texts:
+            eachtext.set_fontproperties(textprop)
+        ### find all table objects (these contain further text objects)
+        tables = ax.findobj(match=mpl_table.Table)
+        for eachtable in tables:
+            for k, eachcell in eachtable._cells.items():
+                this_text = eachcell._text.get_text()
+                if this_text == u"\u25CF" or this_text == u"\u25CB":
+                    eachcell._text.set_fontname("Arial Unicode MS")
+                else:
+                    eachcell._text.set_fontproperties(textprop)
+    else:
+        print(fontfile, os.getcwd())
+        print("[ERROR]: selected font does not exist.")
+        raise FileNotFoundError
+    return ax
