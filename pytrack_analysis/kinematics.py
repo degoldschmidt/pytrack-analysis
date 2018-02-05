@@ -76,7 +76,7 @@ class Kinematics(Node):
     def get_sideward_speed(self, _X):
         pass
 
-    def run(self, save_as=None, _VERBOSE=True):
+    def run(self, save_as=None, ret=False, _VERBOSE=True):
         """
         returns kinematic data from running kinematics analysis for a session
         """
@@ -107,24 +107,25 @@ class Kinematics(Node):
         ## STEP 1: NaN removal + interpolation
         body_pos, head_pos = prp.interpolate(body_pos, head_pos)
         ## STEP 2: Gaussian filtering
-        window_len = 15 # = 0.5 s
+        window_len = 10 # now: 10/0.333 s #### before used (15/0.5 s)
         sigma = window_len/10.
         body_pos, head_pos = prp.gaussian_filter(body_pos, head_pos, _len=window_len, _sigma=sigma)
         ## STEP 3: Distance from patch
-        patch_distances = pd.DataFrame({}, index=body_pos.index)
-        patch_distances['dcenter'] = self.get_distance(head_pos)
+        distances = pd.DataFrame({}, index=body_pos.index)
         for ix, each_spot in enumerate(self.meta['food_spots']):
-            patch_distances['dpatch_'+str(ix)] = self.get_distance_to_patch(head_pos, each_spot)
+            distances['dpatch_'+str(ix)] = self.get_distance_to_patch(head_pos, each_spot)
+        distances['min_dpatch'] = np.amin(distances, axis=1)
+        distances['dcenter'] = self.get_distance(head_pos)
         ## STEP 4: Linear Speed
         speed = pd.DataFrame({}, index=body_pos.index)
         speed['displacements'] = self.get_linear_speed(body_pos, 1)
         speed['head_speed'] = self.get_linear_speed(head_pos, frame_dt)
         speed['body_speed'] = self.get_linear_speed(body_pos, frame_dt)
         ## STEP 5: Smoothing speed
-        window_len = 60 # = 1.2 s
+        window_len = 36 # now: 36/1.2 s #### before used (60/2 s)
         speed['sm_head_speed'] = prp.gaussian_filter_np(speed[['head_speed']], _len=window_len, _sigma=window_len/10)
         speed['sm_body_speed'] = prp.gaussian_filter_np(speed[['body_speed']], _len=window_len, _sigma=window_len/10)
-        window_len = 120 # = 1.2 s
+        window_len = 72 # now: 72/2.4 s #### before used (120/4 s)
         speed['smm_head_speed'] = prp.gaussian_filter_np(speed[['sm_head_speed']], _len=window_len, _sigma=window_len/10)
         speed['smm_body_speed'] = prp.gaussian_filter_np(speed[['sm_body_speed']], _len=window_len, _sigma=window_len/10)
         ## STEP 6: Angular Heading & Speed
@@ -135,12 +136,12 @@ class Kinematics(Node):
         ### DONE
 
         ### Prepare output to DataFrame or file
-        listdfs = [frame_dt, body_pos, head_pos, patch_distances, speed, angular]
+        listdfs = [frame_dt, body_pos, head_pos, distances, speed, angular]
         outdf = pd.concat(listdfs, axis=1)
         ### rounding data
         outdf = outdf.round(3)
-        colorprint('done.', color='success')
-        if save_as is None:
+        if _VERBOSE: colorprint('done.', color='success')
+        if save_as is None or ret:
             return outdf
         else:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')
