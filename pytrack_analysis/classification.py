@@ -1,3 +1,11 @@
+"""
+Classification class: loads kinematics data and metadata >> processes and returns classification data
+"""
+class Classification(Node):
+
+    def __init__(self):
+        pass
+
     def classify_behavior(self, _kinedata, _meta):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
