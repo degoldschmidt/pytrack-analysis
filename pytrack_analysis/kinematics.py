@@ -28,6 +28,7 @@ class Kinematics(Node):
         Node.__init__(self, _df, _meta)
         ### data check
         self.keys = [body[0], body[1], head[0], head[1], dt, angle, ma, mi]
+        self.statcols = ['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks']
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
 
     def get_angle(self, _data_origin, _data_tip):
@@ -71,7 +72,6 @@ class Kinematics(Node):
         ### linear speed is the squareroot of squared displacements in x and y (Pythagoras' theorem)
         speed =  np.sqrt(np.square(xdiff) + np.square(ydiff))
         return speed
-
 
     def get_sideward_speed(self, _X):
         pass
@@ -137,12 +137,36 @@ class Kinematics(Node):
 
         ### Prepare output to DataFrame or file
         listdfs = [frame_dt, body_pos, head_pos, distances, speed, angular]
-        outdf = pd.concat(listdfs, axis=1)
+        self.outdf = pd.concat(listdfs, axis=1)
         ### rounding data
-        outdf = outdf.round(3)
+        self.outdf = self.outdf.round(3)
         if _VERBOSE: colorprint('done.', color='success')
-        if save_as is None or ret:
-            return outdf
-        else:
+        if save_as is not None:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')
-            outdf.to_csv(outfile, index_label='frame')
+            self.outdf.to_csv(outfile, index_label='frame')
+        if ret or save_as is None:
+            return self.outdf
+
+
+    def stats(self):
+        data = []
+        data.append(self.session_name)
+        data.append(self.meta['datetime'].date())
+        data.append(self.meta['datetime'].hour)
+        data.append(self.meta['condition'])
+        data.append(self.meta['arena']['name'])
+        data.append(self.outdf['smm_head_speed'].mean())
+        data.append(self.outdf['smm_body_speed'].mean())
+        data.append(np.cumsum(np.array(self.outdf['displacements']))[-1])
+        data.append(self.outdf['min_dpatch'].mean())
+        data.append(self.outdf['dcenter'].mean())
+        data.append(np.abs(self.outdf['angular_speed']).mean())
+        data.append(self.df['major'].mean())
+        data.append(self.df['minor'].mean())
+        data.append(self.meta['flags']['mistracked_frames'])
+        statsdict = {}
+        for i, each_col in enumerate(self.statcols):
+            statsdict[each_col] = [data[i]]
+        statdf = pd.DataFrame(statsdict)
+        statdf = statdf.reindex(columns=['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks'])
+        return statdf

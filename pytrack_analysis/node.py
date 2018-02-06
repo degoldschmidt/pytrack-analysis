@@ -23,7 +23,6 @@ class Node(object):
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         ## overrides path-to-file and hash of last file-modified commit (version)
-        self.name = self.__class__
         self.vcommit = __version__
         self.print_header = True
 
