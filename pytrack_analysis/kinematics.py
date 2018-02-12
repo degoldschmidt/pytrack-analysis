@@ -76,6 +76,11 @@ class Kinematics(Node):
     def get_sideward_speed(self, _X):
         pass
 
+    def hist(x, bins=None):
+        hist, _ = np.histogram(self.outdf[x], bins=bins)  # arguments are passed to np.histogram
+        hist = hist/np.sum(hist)  # normalize
+        return hist
+
     def run(self, save_as=None, ret=False, _VERBOSE=True):
         """
         returns kinematic data from running kinematics analysis for a session
@@ -133,6 +138,8 @@ class Kinematics(Node):
         angular['new_angle'] = self.get_angle(body_pos, head_pos)
         angular['old_angle'] = np.degrees(angle)
         angular['angular_speed'] = self.get_angular_speed(angular['new_angle'], frame_dt)
+        window_len = 36 # now: 36/1.2 s #### before used (60/2 s)
+        angular['sm_angular_speed'] = prp.gaussian_filter_np(angular[['angular_speed']], _len=window_len, _sigma=window_len/10)
         ### DONE
 
         ### Prepare output to DataFrame or file

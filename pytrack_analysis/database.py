@@ -327,6 +327,17 @@ class Session(object):
             colorprint("[ERROR]: session data file not found.", color='error')
         return data, meta_data
 
+    def load_meta(self, VERBOSE=False):
+        try:
+            if VERBOSE:
+                prn(__name__)
+                flprint('Loading session data & metadata for {}...'.format(self.name))
+            with open(self.mfile) as f:
+                meta_data = yaml.safe_load(f)
+        except FileNotFoundError:
+            colorprint("[ERROR]: session metadata file not found.", color='error')
+        return meta_data
+
     def meta(self):
         return self.dict
 
