@@ -143,10 +143,10 @@ class Kinematics(Node):
         ### DONE
 
         ### Prepare output to DataFrame or file
+        ### rounding data
+        frame_dt, body_pos, head_pos, distances, speed, angular = frame_dt.round(6), body_pos.round(4), head_pos.round(4), distances.round(4), speed.round(4), angular.round(3)
         listdfs = [frame_dt, body_pos, head_pos, distances, speed, angular]
         self.outdf = pd.concat(listdfs, axis=1)
-        ### rounding data
-        self.outdf = self.outdf.round(3)
         if _VERBOSE: colorprint('done.', color='success')
         if save_as is not None:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')

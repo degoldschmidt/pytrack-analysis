@@ -47,8 +47,8 @@ class Classifier(Node):
         ethogram[mask_sucrose] = 5   ## sucrose micromovement
 
         # visits & encounters
-        visits = np.zeros(ethogram.shape)
-        encounters = np.zeros(ethogram.shape)
+        visits = np.zeros(ethogram.shape, dtype=np.int)
+        encounters = np.zeros(ethogram.shape, dtype=np.int)
         encounter_index = np.zeros(ethogram.shape, dtype=np.int) - 1
 
 

@@ -221,6 +221,10 @@ class Experiment(object):
         flprint('found {} sessions in database...'.format(len(self.sessions)))
         colorprint("done.", color='success')
 
+    def conditions(self):
+        return np.unique([session.load_meta()['fly']['metabolic'] for session in self.sessions])
+
+
     def load_data(self, _id):
         self.active = _id
         return self.session(_id).load()
