@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from pytrack_analysis import Node
+from pytrack_analysis.array import rle
 from pytrack_analysis.cli import colorprint, flprint, prn
 
 """
@@ -83,7 +84,7 @@ class Classifier(Node):
 
         visits = self.two_pixel_rule(visits, self.head_pos, join=[1,2])
         encounters = self.two_pixel_rule(encounters, self.head_pos, join=[1,2])
-        return ethogram, visits, encounters
+        return ethogram, visits, encounters, encounter_index
 
     def run(self, save_as=None, ret=False, VERBOSE=False):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
@@ -109,25 +110,9 @@ class Classifier(Node):
         ###
         self.aps = np.array(self.df[self.all_spots])
 
-        states = pd.DataFrame({}, index=self.head_pos.index)
-        states['etho'], states['visit'], states['encounter'] = self.get_etho()
-        return states['etho'], states['visit'], states['encounter']
-
-    def rle(self, inarray):
-            """ run length encoding. Partial credit to R rle function.
-                Multi datatype arrays catered for including non Numpy
-                returns: tuple (runlengths, startpositions, values) """
-            ia = np.array(inarray)                  # force numpy
-            n = len(ia)
-            if n == 0:
-                return (None, None, None)
-            else:
-                y = np.array(ia[1:] != ia[:-1])     # pairwise unequal (string safe)
-                i = np.append(np.where(y), n - 1)   # must include last element posi
-                z = np.diff(np.append(-1, i))       # run lengths
-                p = np.cumsum(np.append(0, z))[:-1] # positions
-                return(z, p, ia[i])
-
+        outdf = pd.DataFrame({}, index=self.head_pos.index)
+        outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index'] = self.get_etho()
+        return outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index']
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)

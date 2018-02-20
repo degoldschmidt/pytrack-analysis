@@ -1,32 +1,22 @@
-import os, sys
 import numpy as np
 import pandas as pd
-import logging
-import yaml
-import os.path as osp
-import subprocess as sub
-import sys
-import traceback
-import inspect, itertools
-from functools import wraps
-from ._globals import *
-from pkg_resources import get_distribution
-__version__ = get_distribution('pytrack_analysis').version
+
+from pytrack_analysis import Node
+from pytrack_analysis.array import rle
+from pytrack_analysis.cli import colorprint, flprint, prn
 
 """
-Statistics class: loads centroid data and metadata >> processes and returns kinematic data
+Segmantal analyis class: loads centroid data and metadata >> processes and returns segments data
 """
-class Statistics(object):
-
-    def __init__(self, _db):
+class Segmental(Node):
+    def __init__(self, _df, _meta, ethogram='etho', visits='visit', encounters='encounter', encounter_spot='encounter_index'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
-        ## overrides path-to-file and hash of last file-modified commit (version)
-        self.filepath = os.path.realpath(__file__)
-        self.vcommit = __version__
-        ##
-        self.db = _db
+        Node.__init__(self, _df, _meta)
+        ### data check
+        self.keys = [ethogram, visits, encounters, encounter_spot]
+        assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
 
     def frequency(self, _df, _value, _each, _off=0):
         outdict = {
@@ -53,20 +43,12 @@ class Statistics(object):
                 outdict['rate [1/min]'].append(num_encounters/(time_spent_outside/60.))
         return pd.DataFrame(outdict)
 
-    def rle(self, inarray):
-            """ run length encoding. Partial credit to R rle function.
-                Multi datatype arrays catered for including non Numpy
-                returns: tuple (runlengths, startpositions, values) """
-            ia = np.array(inarray)                  # force numpy
-            n = len(ia)
-            if n == 0:
-                return (None, None, None)
-            else:
-                y = np.array(ia[1:] != ia[:-1])     # pairwise unequal (string safe)
-                i = np.append(np.where(y), n - 1)   # must include last element posi
-                z = np.diff(np.append(-1, i))       # run lengths
-                p = np.cumsum(np.append(0, z))[:-1] # positions
-                return(z, p, ia[i])
+    def run(self, save_as=None, ret=False, VERBOSE=False):
+        """
+        index || state || start_pos || length
+        """
+
+
 
     def segments(self, _X):
         """
