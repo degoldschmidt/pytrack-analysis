@@ -66,12 +66,13 @@ class Profile(object):
         try:
             with open(_file, 'r') as stream:
                 self.dict = yaml.load(stream)
-            if self.dict is None:
+            if self.dict is None or type(self.dict) is str:
                 self.dict = {}
         except FileNotFoundError:
             self.dict = {}
 
     def __del__(self):
+        print(self.file, self.dict)
         with io.open(self.file, 'w+', encoding='utf8') as f:
             yaml.dump(self.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
 
@@ -132,7 +133,7 @@ class Profile(object):
                 projects[_name][each] = os.path.join(base, each)
             video = os.path.join(system['base'], projects[_name]['videos'])
             if not os.path.isdir(video):
-                projects[_name]['videos'] = "/Volumes/DATA_BACKUP/data/tracking/all_videos/"
+                projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos'# set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         else:
             print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
             projects = self.dict["PROJECTS"]
@@ -149,7 +150,7 @@ class Profile(object):
                 'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             if not os.path.isdir(projects[_name]['videos']):
-                projects[_name]['videos'] = "/Volumes/DATA_BACKUP/data/tracking/all_videos/"
+                projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos' #set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         self.active = _name
 
     def set_system(self, _name):
@@ -161,7 +162,7 @@ class Profile(object):
         else:
             print("System \'{:}\' does not seem to exist in the profile.".format(_name))
             systems = self.dict["SYSTEMS"]
-            systems[_name] = {'base': set_dir('system directory', forced=True), 'python': sys.version}
+            systems[_name] = {'base': 'E:/Dennis/Google Drive/PhD Project/Experiments', 'python': sys.version} #set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
         self.experiments = read_exps(self.dict["SYSTEMS"][_name]['base'])
         if len(self.experiments) == 0:
             del self.dict["SYSTEMS"][_name]

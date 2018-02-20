@@ -1,14 +1,6 @@
 import os, sys
 import numpy as np
 import pandas as pd
-import logging
-import yaml
-import os.path as osp
-import subprocess as sub
-import sys
-import traceback
-import inspect, itertools
-from functools import wraps
 from ._globals import *
 from pytrack_analysis import Node
 from pytrack_analysis.cli import colorprint, flprint, prn
@@ -21,13 +13,13 @@ Kinematics class: loads centroid data and metadata >> processes and returns kine
 """
 class Kinematics(Node):
 
-    def __init__(self, _df, _meta, body=('body_x', 'body_y'), head=('head_x', 'head_y'), dt='frame_dt', angle='angle', ma='major', mi='minor'):
+    def __init__(self, _df, _meta, body=('body_x', 'body_y'), head=('head_x', 'head_y'), time='elapsed_time', dt='frame_dt', angle='angle', ma='major', mi='minor'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         Node.__init__(self, _df, _meta)
         ### data check
-        self.keys = [body[0], body[1], head[0], head[1], dt, angle, ma, mi]
+        self.keys = [body[0], body[1], head[0], head[1], time, dt, angle, ma, mi]
         self.statcols = ['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks']
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
 
@@ -81,7 +73,7 @@ class Kinematics(Node):
         hist = hist/np.sum(hist)  # normalize
         return hist
 
-    def run(self, save_as=None, ret=False, _VERBOSE=True):
+    def run(self, save_as=None, ret=False, VERBOSE=True):
         """
         returns kinematic data from running kinematics analysis for a session
         """
@@ -93,17 +85,21 @@ class Kinematics(Node):
         head_pos = self.df[[hx, hy]]
         # get frame duration from framerate
         #dt = 0.0333
-        frame_dt = self.df[self.keys[4]]
+        time = pd.DataFrame({}, index=body_pos.index)
+        first = self.meta['video']['first_frame']
+        ### adjusted time (starts at 0)
+        time['elapsed_time'] = self.df[self.keys[4]] - self.df.loc[first,self.keys[4]]
+        time['frame_dt'] = self.df[self.keys[5]]
         # orientation
-        angle = self.df[self.keys[5]]
+        angle = self.df[self.keys[6]]
         # major and minor lengths
-        makey, mikey = self.keys[6], self.keys[7]
+        makey, mikey = self.keys[7], self.keys[8]
         major = self.df[makey]
         minor = self.df[mikey]
         ###
 
         ### this prints out header
-        if _VERBOSE:
+        if VERBOSE:
             prn(__name__)
             flprint("{0:8s} (condition: {1:3s})...".format(self.session_name, str(self.meta['fly']['metabolic'])))
         ###
@@ -124,8 +120,8 @@ class Kinematics(Node):
         ## STEP 4: Linear Speed
         speed = pd.DataFrame({}, index=body_pos.index)
         speed['displacements'] = self.get_linear_speed(body_pos, 1)
-        speed['head_speed'] = self.get_linear_speed(head_pos, frame_dt)
-        speed['body_speed'] = self.get_linear_speed(body_pos, frame_dt)
+        speed['head_speed'] = self.get_linear_speed(head_pos, time['frame_dt'])
+        speed['body_speed'] = self.get_linear_speed(body_pos, time['frame_dt'])
         ## STEP 5: Smoothing speed
         window_len = 36 # now: 36/1.2 s #### before used (60/2 s)
         speed['sm_head_speed'] = prp.gaussian_filter_np(speed[['head_speed']], _len=window_len, _sigma=window_len/10)
@@ -137,17 +133,17 @@ class Kinematics(Node):
         angular = pd.DataFrame({}, index=body_pos.index)
         angular['new_angle'] = self.get_angle(body_pos, head_pos)
         angular['old_angle'] = np.degrees(angle)
-        angular['angular_speed'] = self.get_angular_speed(angular['new_angle'], frame_dt)
+        angular['angular_speed'] = self.get_angular_speed(angular['new_angle'], time['frame_dt'])
         window_len = 36 # now: 36/1.2 s #### before used (60/2 s)
         angular['sm_angular_speed'] = prp.gaussian_filter_np(angular[['angular_speed']], _len=window_len, _sigma=window_len/10)
         ### DONE
 
         ### Prepare output to DataFrame or file
         ### rounding data
-        frame_dt, body_pos, head_pos, distances, speed, angular = frame_dt.round(6), body_pos.round(4), head_pos.round(4), distances.round(4), speed.round(4), angular.round(3)
-        listdfs = [frame_dt, body_pos, head_pos, distances, speed, angular]
+        time, body_pos, head_pos, distances, speed, angular = time.round(6), body_pos.round(4), head_pos.round(4), distances.round(4), speed.round(4), angular.round(3)
+        listdfs = [time, body_pos, head_pos, distances, speed, angular]
         self.outdf = pd.concat(listdfs, axis=1)
-        if _VERBOSE: colorprint('done.', color='success')
+        if VERBOSE: colorprint('done.', color='success')
         if save_as is not None:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')
             self.outdf.to_csv(outfile, index_label='frame')

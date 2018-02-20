@@ -8,4 +8,5 @@ from .node import Node
 from .classifier import Classifier
 from .kinematics import Kinematics
 from .logger import Logger
+from .segments import Segments
 from .statistics import Statistics

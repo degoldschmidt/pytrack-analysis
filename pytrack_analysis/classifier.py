@@ -1,3 +1,4 @@
+import os, sys
 import numpy as np
 import pandas as pd
 
@@ -10,13 +11,13 @@ Classifier class: loads kinematics data and metadata >> processes and returns cl
 """
 class Classifier(Node):
 
-    def __init__(self, _df, _meta, head=('head_x', 'head_y'), h_speed='sm_head_speed', b_speed='sm_body_speed', sm_speed='smm_head_speed', turn='angular_speed', dpatch='dpatch'):
+    def __init__(self, _df, _meta, head=('head_x', 'head_y'), h_speed='sm_head_speed', b_speed='sm_body_speed', sm_speed='smm_head_speed', turn='angular_speed', dpatch='dpatch', time='elapsed_time'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         Node.__init__(self, _df, _meta)
         ### data check
-        self.keys = [head[0], head[1], h_speed, b_speed, sm_speed, turn]
+        self.keys = [head[0], head[1], h_speed, b_speed, sm_speed, turn, time]
         self.all_spots = [dpatch+'_'+str(ix) for ix in range(len(_meta['food_spots']))]
         self.statcols = ['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks']
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
@@ -86,7 +87,7 @@ class Classifier(Node):
         encounters = self.two_pixel_rule(encounters, self.head_pos, join=[1,2])
         return ethogram, visits, encounters, encounter_index
 
-    def run(self, save_as=None, ret=False, VERBOSE=False):
+    def run(self, save_as=None, ret=False, VERBOSE=True):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
         ## 2) body speed, angular speed: sharp turn
         ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
@@ -99,6 +100,11 @@ class Classifier(Node):
                 4: "yeast micromovement",
                 5: "sucrose micromovement"}
         """
+        ### this prints out header
+        if VERBOSE:
+            prn(__name__)
+            flprint("{0:8s} (condition: {1:3s})...".format(self.session_name, str(self.meta['fly']['metabolic'])))
+        ###
         ### data from file
         # get head positions
         hx, hy = self.keys[0], self.keys[1]
@@ -111,13 +117,19 @@ class Classifier(Node):
         self.aps = np.array(self.df[self.all_spots])
 
         outdf = pd.DataFrame({}, index=self.head_pos.index)
+        outdf[self.keys[-1]] = self.df[self.keys[-1]]
         outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index'] = self.get_etho()
-        return outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index']
+        if VERBOSE: colorprint('done.', color='success')
+        if save_as is not None:
+            outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')
+            outdf.to_csv(outfile, index_label='frame')
+        if ret or save_as is None:
+            return outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index']
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)
         for j in join:
-            segm_len, segm_pos, segm_val = self.rle(_dts) #lengths, pos, behavior_class = self.rle(_X[col])
+            segm_len, segm_pos, segm_val = rle(_dts) #lengths, pos, behavior_class = self.rle(_X[col])
             for (length, start, val) in zip(segm_len, segm_pos, segm_val):
                 if start == 0 or start+length == len(_dts):
                     continue
