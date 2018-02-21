@@ -11,13 +11,13 @@ Classifier class: loads kinematics data and metadata >> processes and returns cl
 """
 class Classifier(Node):
 
-    def __init__(self, _df, _meta, head=('head_x', 'head_y'), h_speed='sm_head_speed', b_speed='sm_body_speed', sm_speed='smm_head_speed', turn='angular_speed', dpatch='dpatch', time='elapsed_time'):
+    def __init__(self, _df, _meta, head=('head_x', 'head_y'), h_speed='sm_head_speed', b_speed='sm_body_speed', sm_speed='smm_head_speed', turn='angular_speed', dpatch='dpatch', time='elapsed_time', dt='frame_dt'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         Node.__init__(self, _df, _meta)
         ### data check
-        self.keys = [head[0], head[1], h_speed, b_speed, sm_speed, turn, time]
+        self.keys = [head[0], head[1], h_speed, b_speed, sm_speed, turn, time, dt]
         self.all_spots = [dpatch+'_'+str(ix) for ix in range(len(_meta['food_spots']))]
         self.statcols = ['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks']
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
@@ -118,18 +118,19 @@ class Classifier(Node):
 
         outdf = pd.DataFrame({}, index=self.head_pos.index)
         outdf[self.keys[-1]] = self.df[self.keys[-1]]
+        outdf[self.keys[-2]] = self.df[self.keys[-2]]
         outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index'] = self.get_etho()
         if VERBOSE: colorprint('done.', color='success')
         if save_as is not None:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')
             outdf.to_csv(outfile, index_label='frame')
         if ret or save_as is None:
-            return outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index']
+            return outdf
 
     def two_pixel_rule(self, _dts, _pos, join=[]):
         _pos = np.array(_pos)
         for j in join:
-            segm_len, segm_pos, segm_val = rle(_dts) #lengths, pos, behavior_class = self.rle(_X[col])
+            segm_len, segm_pos, segm_val = rle(_dts) #lengths, pos, behavior_class, NONE = self.rle(_X[col])
             for (length, start, val) in zip(segm_len, segm_pos, segm_val):
                 if start == 0 or start+length == len(_dts):
                     continue

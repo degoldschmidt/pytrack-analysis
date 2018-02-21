@@ -10,13 +10,14 @@ from pytrack_analysis.cli import colorprint, flprint, prn
 Segments analyis class: loads centroid data and metadata >> processes and returns segments data
 """
 class Segments(Node):
-    def __init__(self, _df, _meta, ethogram='etho', visits='visit', encounters='encounter', encounter_spot='encounter_index'):
+    def __init__(self, _df, _meta, ethogram='etho', visits='visit', encounters='encounter', encounter_spot='encounter_index', dt='frame_dt'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         Node.__init__(self, _df, _meta)
         ### data check
         self.keys = [ethogram, visits, encounters, encounter_spot]
+        self.dt = np.array(self.df[dt])
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
 
     def run(self, save_as=None, ret=False, VERBOSE=True):
@@ -27,19 +28,19 @@ class Segments(Node):
         if VERBOSE:
             prn(__name__)
             flprint("{0:8s} (condition: {1:3s})...".format(self.session_name, str(self.meta['fly']['metabolic'])))
-        list_ret = []
+        dict_ret = {}
         for k in self.keys:
             outdf = pd.DataFrame({})
-            l, p, s = rle(self.df[k])
-            outdf['states'] = s
+            l, p, s, rl = rle(self.df[k], dt=self.dt)
+            outdf['state'] = s
             outdf['position'] = p
-            outdf['lengths'] = l
-            outdf.to_csv()
+            outdf['arraylen'] = l
+            outdf['duration'] = rl
             if save_as is not None:
-                outfile = os.path.join(save_as, self.session_name+'_'+k+'_'+self.name+'_'+k+'.csv')
+                outfile = os.path.join(save_as, '{}_{}_{}.csv'.format(self.session_name, self.name, k))
                 outdf.to_csv(outfile, index_label='frame')
             if ret or save_as is None:
-                list_ret.append(outdf)
+                dict_ret[k] = outdf
         if VERBOSE: colorprint('done.', color='success')
         if ret or save_as is None:
-            return list_ret
+            return dict_ret
