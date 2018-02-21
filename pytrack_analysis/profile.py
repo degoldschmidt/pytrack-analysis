@@ -133,7 +133,10 @@ class Profile(object):
                 projects[_name][each] = os.path.join(base, each)
             video = os.path.join(system['base'], projects[_name]['videos'])
             if not os.path.isdir(video):
-                projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos'# set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
+                if os.name == 'posix':
+                    projects[_name]['videos'] = set_dir('Video directory', forced=True)
+                else:
+                    projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos'# set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         else:
             print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
             projects = self.dict["PROJECTS"]
@@ -150,7 +153,10 @@ class Profile(object):
                 'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
             if not os.path.isdir(projects[_name]['videos']):
-                projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos' #set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
+                if os.name == 'posix':
+                    projects[_name]['videos'] = set_dir('Video directory', forced=True)
+                else:
+                    projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos' #set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         self.active = _name
 
     def set_system(self, _name):
@@ -162,7 +168,11 @@ class Profile(object):
         else:
             print("System \'{:}\' does not seem to exist in the profile.".format(_name))
             systems = self.dict["SYSTEMS"]
-            systems[_name] = {'base': 'E:/Dennis/Google Drive/PhD Project/Experiments', 'python': sys.version} #set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
+            if os.name == 'posix':
+                syst_folder = set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
+            else:
+                syst_folder = 'E:/Dennis/Google Drive/PhD Project/Experiments'
+            systems[_name] = {'base': syst_folder, 'python': sys.version} #set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
         self.experiments = read_exps(self.dict["SYSTEMS"][_name]['base'])
         if len(self.experiments) == 0:
             del self.dict["SYSTEMS"][_name]
