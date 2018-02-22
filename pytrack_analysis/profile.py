@@ -72,7 +72,7 @@ class Profile(object):
             self.dict = {}
 
     def __del__(self):
-        print(self.file, self.dict)
+        #print(self.file, self.dict)
         with io.open(self.file, 'w+', encoding='utf8') as f:
             yaml.dump(self.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
 

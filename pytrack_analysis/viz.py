@@ -16,6 +16,7 @@ import os, sys
 import seaborn
 import seaborn as sns; sns.set(color_codes=True)
 sns.set_style('ticks')
+from scipy.stats import ranksums
 
 
 colors = [  '#a6cee3',
@@ -193,11 +194,75 @@ def plot_ts(data, x=None, y=None, units=None):
             ax.set_ylabel(ylabel, rotation=0, fontsize=11, labelpad=30)
     return f, axs
 
+def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align='center', _y=None, only_tick=False):
+    if ax is None:
+        ax = plt.gca()
+    if align == 'center':
+        x = (i+j)/2   # x coordinate is in the middle between both two x-values
+    elif align == 'right':
+        x = j
+    elif align == 'left':
+        x = i
+    ylims = ax.get_ylim()
+    maxyX = np.max(X)
+    maxyY = np.max(Y)
+    maxY = np.max([maxyX, maxyY])
+    h = 0.02*(ylims[1]-ylims[0])         # some extra height for the annotation
+    if avoid == 0:
+        y = pad*maxY  # y coordinate is a bit above data
+    else:
+        y = avoid+dy
+    if _y is not None:
+        y = _y
+
+
+    if stars:
+        nstars = 0
+        if pval <= 0.05:
+            nstars += 1
+        if pval <= 0.01:
+            nstars += 1
+        if pval <= 0.001:
+            nstars += 1
+        if pval <= 0.0001:
+            nstars += 1
+        if nstars > 0:
+            ax.text(x, (y-h), nstars*"*", ha='center', va='bottom') # write stars
+        else:
+            if align == 'center':
+                ax.text(x, (y+h), "ns", ha='center', va='bottom', fontsize=8) # write ns
+            else:
+                ax.text(x, (y+h+0.1), "ns", ha='center', va='bottom', fontsize=8) # write ns
+    else:
+        ax.text((i+j)/2, (y+h), "p = {}".format(pval), ha='center', va='bottom') # write out the p-value text
+    if align == 'center':
+        ax.plot([i, i, j, j], [y, y+h, y+h, y], lw=1, c="k")  # plots a line
+    elif align == 'right':
+        if only_tick:
+            ax.plot([j, j], [y+h, y], lw=1, c="k")  # plots a line
+        else:
+            ax.plot([i, j, j], [y+h, y+h, y], lw=1, c="k")  # plots a line
+    elif align == 'left':
+        if only_tick:
+            ax.plot([i, i], [y, y+h], lw=1, c="k")  # plots a line
+        else:
+            ax.plot([i, i, j], [y+h, y, y], lw=1, c="k")  # plots a line
+    return ax, y
+
+
+def get_indices(ax, left, right):
+    for index, lbltxt in enumerate([label.get_text() for label in ax.get_xticklabels()]):
+        if lbltxt == left:
+            pos0 = index
+        if lbltxt == right:
+            pos1 = index
+    return pos0, pos1
+
 """
 Swarmbox plot
 """
 def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_order=None, multi=False,
-                dodge=False, orient=None, color=None, palette=None, table=False,
+                dodge=False, orient=None, color=None, palette=None, table=False, compare=[],
                 size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, **kwargs):
     # default parameters
     defs = {
@@ -221,23 +286,65 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
     # swarmplot
     ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True,
                      orient=orient, color=defs['pc'], size=defs['ps'], ax=ax, **kwargs)
+
+    if order is None:
+        order = [label.get_text() for label in ax.get_xticklabels()]
     # median lines
-    medians = data.groupby(x)[y].median()
+    print(data.groupby(x)[y].median())
+    med_keys = data.groupby(x)[y].median().index
+    medians = np.array(data.groupby(x)[y].median())
+    new_order = np.zeros(medians.shape)
+    for i,key in enumerate(med_keys):
+        for j,kex in enumerate(order):
+            if key == kex:
+                new_order[i] = j
     #print(medians)
     dx = defs['mlw']
-    new = m_order
-    if new is not None:
+    if new_order is not None:
         for pos, median in enumerate(medians):
-            ax.hlines(median, new[pos]-dx, new[pos]+dx, lw=1.5, zorder=10)
+            ax.hlines(median, new_order[pos]-dx, new_order[pos]+dx, lw=1.5, zorder=10)
     else:
         for pos, median in enumerate(medians):
             ax.hlines(median, pos-dx, pos+dx, lw=1.5, zorder=10)
 
     ## figure aesthetics
     #ax.set_yticks(np.arange(0, max_dur+1, div))
-    sns.despine(ax=ax, bottom=True, trim=True)
+    #sns.despine(ax=ax, bottom=True, trim=True)
     #ax.get_xaxis().set_visible(False)
     ax.tick_params('x', length=0, width=0, which='major')
+    avoidy = -1
+    for pair in compare:
+        ylims = ax.get_ylim()
+        dy = 0.2*(ylims[1]-ylims[0])
+        if type(pair[0]) is tuple:
+            for i, each_left in enumerate(pair[0]):
+                left = each_left
+                right = pair[1]
+                X = np.array(data.query('{} == "{}"'.format(x, left))[y])
+                Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+                i0, i1 = get_indices(ax, left, right)
+                stat, pval = ranksums(X, Y)
+                ax, avoidy = label_diff(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y])), only_tick=(i<len(pair[0])-1))
+        elif type(pair[1]) is tuple:
+            for i, each_right in enumerate(pair[1]):
+                left = pair[0]
+                right = each_right
+                X = np.array(data.query('{} == "{}"'.format(x, left))[y])
+                Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+                i0, i1 = get_indices(ax, left, right)
+                stat, pval = ranksums(X, Y)
+                ax, avoidy = label_diff(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y])), only_tick=(i<len(pair[1])-1))
+        else:
+            left = pair[0]
+            right = pair[1]
+            X = np.array(data.query('{} == "{}"'.format(x, left))[y])
+            Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+            i0, i1 = get_indices(ax, left, right)
+            stat, pval = ranksums(X, Y)
+            if avoidy == -1:
+                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy)
+            else:
+                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy)
 
     # Adjust layout to make room for the table:
     #plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=1.)

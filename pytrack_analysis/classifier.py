@@ -93,12 +93,20 @@ class Classifier(Node):
         ## 3) gaussian filtered smooth head (120 frames): < 0.2 mm/s
         ## 4) rest of frames >> micromovement
         """
-        {       0: "resting",
+        {      -1: "unclassified",
+                0: "resting",
                 1: "micromovement",
                 2: "walking",
                 3: "sharp turn",
                 4: "yeast micromovement",
-                5: "sucrose micromovement"}
+                5: "sucrose micromovement",
+                6: "jump/mistrack"}
+
+        {
+                0: "no encounter"
+                1: "yeast encounter"
+                2: "sucrose encounter"
+        }
         """
         ### this prints out header
         if VERBOSE:

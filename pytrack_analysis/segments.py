@@ -38,7 +38,7 @@ class Segments(Node):
             outdf['duration'] = rl
             if save_as is not None:
                 outfile = os.path.join(save_as, '{}_{}_{}.csv'.format(self.session_name, self.name, k))
-                outdf.to_csv(outfile, index_label='frame')
+                outdf.to_csv(outfile, index_label='segment')
             if ret or save_as is None:
                 dict_ret[k] = outdf
         if VERBOSE: colorprint('done.', color='success')
