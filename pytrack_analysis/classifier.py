@@ -50,6 +50,7 @@ class Classifier(Node):
 
         # visits & encounters
         visits = np.zeros(ethogram.shape, dtype=np.int)
+        visit_index = np.zeros(ethogram.shape, dtype=np.int) - 1
         encounters = np.zeros(ethogram.shape, dtype=np.int)
         encounter_index = np.zeros(ethogram.shape, dtype=np.int) - 1
 
@@ -57,6 +58,8 @@ class Classifier(Node):
         #visit_mask = (ethogram == 4)      # distance < 2.5 mm and Micromovement
         visits[ethogram == 4] = 1
         visits[ethogram == 5] = 2
+        visit_index[visits == 1] = imin[visits == 1]
+        visit_index[visits == 2] = imin[visits == 2]
 
         encounters[amin <= 3] = substrates[imin[amin <= 3]]
         encounter_index[amin <= 3] = imin[amin <= 3]
@@ -85,7 +88,7 @@ class Classifier(Node):
 
         visits = self.two_pixel_rule(visits, self.head_pos, join=[1,2])
         encounters = self.two_pixel_rule(encounters, self.head_pos, join=[1,2])
-        return ethogram, visits, encounters, encounter_index
+        return ethogram, visits, visit_index, encounters, encounter_index
 
     def run(self, save_as=None, ret=False, VERBOSE=True):
         ## 1) smoothed head: 2 mm/s speed threshold walking/nonwalking
@@ -127,7 +130,7 @@ class Classifier(Node):
         outdf = pd.DataFrame({}, index=self.head_pos.index)
         outdf[self.keys[-1]] = self.df[self.keys[-1]]
         outdf[self.keys[-2]] = self.df[self.keys[-2]]
-        outdf['etho'], outdf['visit'], outdf['encounter'], outdf['encounter_index'] = self.get_etho()
+        outdf['etho'], outdf['visit'], outdf['visit_index'], outdf['encounter'], outdf['encounter_index'] = self.get_etho()
         if VERBOSE: colorprint('done.', color='success')
         if save_as is not None:
             outfile = os.path.join(save_as, self.session_name+'_'+self.name+'.csv')

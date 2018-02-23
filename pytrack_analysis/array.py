@@ -4,7 +4,7 @@ def rle(inarray, dt=None):
     """ run length encoding. Partial credit to R rle function.
         Multi datatype arrays catered for including non Numpy
         returns: tuple (runlengths, startpositions, values) """
-    ia = np.array(inarray)                  # force numpy
+    ia = np.array(inarray, dtype=np.int32)                  # force numpy
     n = len(ia)
     if n == 0:
         return (None, None, None)

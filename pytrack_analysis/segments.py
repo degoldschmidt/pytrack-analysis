@@ -10,13 +10,13 @@ from pytrack_analysis.cli import colorprint, flprint, prn
 Segments analyis class: loads centroid data and metadata >> processes and returns segments data
 """
 class Segments(Node):
-    def __init__(self, _df, _meta, ethogram='etho', visits='visit', encounters='encounter', encounter_spot='encounter_index', dt='frame_dt'):
+    def __init__(self, _df, _meta, ethogram='etho', visits='visit', visit_spot='visit_index', encounters='encounter', encounter_spot='encounter_index', dt='frame_dt'):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
         Node.__init__(self, _df, _meta)
         ### data check
-        self.keys = [ethogram, visits, encounters, encounter_spot]
+        self.keys = [ethogram, visits, visit_spot, encounters, encounter_spot]
         self.dt = np.array(self.df[dt])
         assert (all([(key in _df.keys()) for key in self.keys])), '[ERROR] Some keys not found in dataframe.'
 
