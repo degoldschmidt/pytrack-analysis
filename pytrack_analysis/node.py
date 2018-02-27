@@ -29,7 +29,7 @@ class Node(object):
         ## reference to session (not a copy!!!)
         self.df = _df
         self.meta = _meta
-        self.session_name = os.path.basename(self.meta['datafile']).split('.')[0]
+        self.session_name = self.meta['datafile'].replace('\\', '/').split('/')[-1].split('.')[0]
         self.name = (self.__class__.__name__).lower()
 
     def __repr__(self):

@@ -59,7 +59,9 @@ class Classifier(Node):
         visits[ethogram == 4] = 1
         visits[ethogram == 5] = 2
         visit_index[visits == 1] = imin[visits == 1]
+        if np.any(visit_index[visits == 1] >= 6): print('wtf')
         visit_index[visits == 2] = imin[visits == 2]
+        if np.any(visit_index[visits == 2] < 6): print('wtf')
 
         encounters[amin <= 3] = substrates[imin[amin <= 3]]
         encounter_index[amin <= 3] = imin[amin <= 3]
@@ -78,6 +80,7 @@ class Classifier(Node):
                         end = i
                     if visits[i-1] == 0 and visits[i] > 0:
                         visits[start:end] = visits[i]
+                        visit_index[start:end] = visit_index[i]
                         start = -1
                     if self.aps[i, current] > 5.:
                         start = -1
@@ -88,6 +91,11 @@ class Classifier(Node):
 
         visits = self.two_pixel_rule(visits, self.head_pos, join=[1,2])
         encounters = self.two_pixel_rule(encounters, self.head_pos, join=[1,2])
+
+        if np.any(visit_index[visits == 1] >= 6): print('wtf')
+        if np.any(visit_index[visits == 2] < 6): print('wtf')
+        if np.any(visit_index[visits > 0] == -1): print('wtf')
+
         return ethogram, visits, visit_index, encounters, encounter_index
 
     def run(self, save_as=None, ret=False, VERBOSE=True):
@@ -126,6 +134,7 @@ class Classifier(Node):
         self.turns = self.df[self.keys[5]]
         ###
         self.aps = np.array(self.df[self.all_spots])
+
 
         outdf = pd.DataFrame({}, index=self.head_pos.index)
         outdf[self.keys[-1]] = self.df[self.keys[-1]]

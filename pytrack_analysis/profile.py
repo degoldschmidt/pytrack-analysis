@@ -134,7 +134,7 @@ class Profile(object):
             video = os.path.join(system['base'], projects[_name]['videos'])
             if not os.path.isdir(video):
                 if os.name == 'posix':
-                    projects[_name]['videos'] = set_dir('Video directory', forced=True)
+                    projects[_name]['videos'] = '' #set_dir('Video directory', forced=True)
                 else:
                     projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos'# set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         else:
@@ -154,7 +154,7 @@ class Profile(object):
             }
             if not os.path.isdir(projects[_name]['videos']):
                 if os.name == 'posix':
-                    projects[_name]['videos'] = set_dir('Video directory', forced=True)
+                    projects[_name]['videos'] = '' #set_dir('Video directory', forced=True)
                 else:
                     projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos' #set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
         self.active = _name

@@ -218,13 +218,13 @@ def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align=
 
     if stars:
         nstars = 0
-        if pval <= 0.05:
+        if pval < 0.05:
             nstars += 1
-        if pval <= 0.01:
+        if pval < 0.01:
             nstars += 1
-        if pval <= 0.001:
+        if pval < 0.001:
             nstars += 1
-        if pval <= 0.0001:
+        if pval < 0.0001:
             nstars += 1
         if nstars > 0:
             ax.text(x, (y-h), nstars*"*", ha='center', va='bottom') # write stars
