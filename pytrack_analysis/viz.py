@@ -37,12 +37,13 @@ spot_colors = {'yeast': '#ffc04c', 'sucrose': '#4c8bff'}
 """
 Plot figs along program flow (VISUAL)
 """
-def plot_along(f, ax):
+def plot_along(f, ax, fullscreen=True):
     warnings.filterwarnings("ignore")
     mng = plt.get_current_fig_manager()
     ### works on Ubuntu??? >> did NOT working on windows
 # mng.resize(*mng.window.maxsize())
-    mng.window.state('zoomed') #works fine on Windows!
+    if fullscreen:
+        mng.window.state('zoomed') #works fine on Windows!
     f.show()
     try:
         f.canvas.start_event_loop(0)
