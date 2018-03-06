@@ -380,3 +380,56 @@ def set_font(name, ax=None, VERBOSE=False):
         print("[ERROR]: selected font does not exist.")
         raise FileNotFoundError
     return ax
+
+def arena(arena, spots, spot_pal={'yeast': '#ffc04c', 'sucrose': '#4c8bff'}, ref='center', despine=True, mark_center=True, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    ### data about arenas
+    sca = arena['scale']
+    if ref == 'center':
+        xa, ya, orad, irad = 0., 0., arena['outer']/sca, arena['radius']/sca
+    elif ref == 'video':
+        xa, ya, orad, irad = arena['x'], arena['y'], arena['outer'], arena['radius']
+    ### plot arena geometry as gray circles
+    ax.add_artist(plt.Circle((xa, ya), orad, color='#bbbbbb', lw=1, fill=False))
+    ax.add_artist(plt.Circle((xa, ya), irad, color='#717171', lw=1, fill=False))
+    if mark_center:
+        ax.add_artist(plt.Circle((xa, ya), 0.01*orad, color='#ff0000'))
+    ### plot food spots as colored circles
+    for spot in spots:
+        if ref == 'center':
+            x, y, r, s = spot['x'], spot['y'], spot['r'], spot['substr']
+        elif ref == 'video':
+            x, y, r, s = xa+spot['x']*sca, ya+spot['y']*sca, spot['r']*sca, spot['substr']
+        ax.add_artist(plt.Circle((x, y), r, color=spot_pal[s], alpha=0.5))
+    ### despining
+    if despine:
+        ax.set_xlim([-orad*1.1, orad*1.1])
+        ax.set_ylim([-orad*1.1, orad*1.1])
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        for k, spine in ax.spines.items():
+            spine.set_visible(False)
+    return ax
+
+def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hue='etho', no_hue=[], palette=None, ax=None):
+    if ax is None:
+        ax = plt.gca()
+    if palette is None:
+        palette = {    -1: '#ff00fc',
+                        0: '#838383',
+                        1: '#c97aaa',
+                        2: '#000000',
+                        3: '#30b050',
+                        4: '#ff7f00',
+                        5: '#1f78b4',
+                        6: '#ff1100'}
+    red_data = data.copy()
+    for each in no_hue:
+        red_data = red_data.ix[~(red_data[hue] == each)]
+    X, Y = data[xc], data[yc]
+    rX, rY = red_data[xc], red_data[yc]
+    H = red_data[hue].apply(lambda x: palette[x])
+    ax.plot(X, Y, c='#424242', zorder=1, lw=0.4, alpha=0.5)
+    ax.scatter(rX, rY, color=H, zorder=2, s=.75, alpha=0.75, marker='.')
+    return ax
