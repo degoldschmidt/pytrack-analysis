@@ -228,12 +228,12 @@ def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align=
         if pval < 0.0001:
             nstars += 1
         if nstars > 0:
-            ax.text(x, (y-h), nstars*"*", ha='center', va='bottom') # write stars
+            ax.text(x, (y+h+.05), nstars*"*", ha='center', va='center') # write stars
         else:
             if align == 'center':
-                ax.text(x, (y+h), "ns", ha='center', va='bottom', fontsize=8) # write ns
+                ax.text(x, (y+h+0.07), "ns", ha='center', va='baseline', fontsize=8) # write ns
             else:
-                ax.text(x, (y+h+0.1), "ns", ha='center', va='bottom', fontsize=8) # write ns
+                ax.text(x, (y+h+0.07), "ns", ha='center', va='baseline', fontsize=8) # write ns
     else:
         ax.text((i+j)/2, (y+h), "p = {}".format(pval), ha='center', va='bottom') # write out the p-value text
     if align == 'center':
@@ -299,7 +299,6 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
         for j,kex in enumerate(order):
             if key == kex:
                 new_order[i] = j
-    #print(medians)
     dx = defs['mlw']
     if new_order is not None:
         for pos, median in enumerate(medians):
@@ -309,46 +308,41 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
             ax.hlines(median, pos-dx, pos+dx, lw=1.5, zorder=10)
 
     ## figure aesthetics
-    #ax.set_yticks(np.arange(0, max_dur+1, div))
-    #sns.despine(ax=ax, bottom=True, trim=True)
-    #ax.get_xaxis().set_visible(False)
     ax.tick_params('x', length=0, width=0, which='major')
     avoidy = -1
     for pair in compare:
         ylims = ax.get_ylim()
         dy = 0.2*(ylims[1]-ylims[0])
-        if type(pair[0]) is tuple:
+        if type(pair[0]) is list or type(pair[0]) is tuple:
             for i, each_left in enumerate(pair[0]):
                 left = each_left
                 right = pair[1]
-                X = np.array(data.query('{} == "{}"'.format(x, left))[y])
-                Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+                X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
+                Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
                 i0, i1 = get_indices(ax, left, right)
                 stat, pval = ranksums(X, Y)
-                ax, avoidy = label_diff(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y])), only_tick=(i<len(pair[0])-1))
-        elif type(pair[1]) is tuple:
+                ax, avoidy = label_diff(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[0])-1))
+        elif type(pair[1]) is list or type(pair[1]) is tuple:
             for i, each_right in enumerate(pair[1]):
                 left = pair[0]
                 right = each_right
-                X = np.array(data.query('{} == "{}"'.format(x, left))[y])
-                Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+                X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
+                Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
                 i0, i1 = get_indices(ax, left, right)
                 stat, pval = ranksums(X, Y)
-                ax, avoidy = label_diff(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y])), only_tick=(i<len(pair[1])-1))
+                ax, avoidy = label_diff(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
         else:
+            print('center')
             left = pair[0]
             right = pair[1]
-            X = np.array(data.query('{} == "{}"'.format(x, left))[y])
-            Y = np.array(data.query('{} == "{}"'.format(x, right))[y])
+            X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
+            Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
             i0, i1 = get_indices(ax, left, right)
             stat, pval = ranksums(X, Y)
             if avoidy == -1:
-                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy)
+                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
             else:
-                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy)
-
-    # Adjust layout to make room for the table:
-    #plt.subplots_adjust(top=0.9, bottom=0.05*nrows, hspace=0.15*nrows, wspace=1.)
+                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
     return ax
 
 def set_font(name, ax=None, VERBOSE=False):
@@ -432,4 +426,38 @@ def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hu
     H = red_data[hue].apply(lambda x: palette[x])
     ax.plot(X, Y, c='#424242', zorder=1, lw=0.4, alpha=0.5)
     ax.scatter(rX, rY, color=H, zorder=2, s=.75, alpha=0.75, marker='.')
+    return ax
+
+def ccdf(data, xy=None, c=None, order=None, palette=None, ax=None):
+    """
+    Plot the complementary cumulative distribution function
+    (1-CDF(x)) based on the data on the axes object.
+    Note that this way of computing and plotting the ccdf is not
+    the best approach for a discrete variable, where many
+    observations can have exactly same value!
+    """
+    if ax is None:
+        ax = plt.gca()
+    # Note that, here we use the convention for presenting an
+    # empirical 1-CDF (ccdf) as discussed
+    # a quick way of computing a ccdf (valid for continuous data):
+    ### get all y dimensions
+    if order is None:
+        myorder = np.unique(data[c])
+    else:
+        myorder = order
+    for each in myorder:
+        sub_data = data.query('{} == "{}"'.format(c, each))
+        sorted_vals = np.sort(np.unique(sub_data[xy]))
+        ccdf = np.zeros(len(sorted_vals))
+        n = float(len(sub_data))
+        for i, val in enumerate(sorted_vals):
+            ccdf[i] = np.sum(sub_data[xy] >= val)/n
+        ax.plot(sorted_vals, ccdf, ".", color=palette[each], markersize=4)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    # faster (approximative) way:
+    # sorted_vals = np.sort(data)
+    # ccdf = np.linspace(1, 1./len(data), len(data))
+    # ax.plot(sorted_vals, ccdf)
     return ax
