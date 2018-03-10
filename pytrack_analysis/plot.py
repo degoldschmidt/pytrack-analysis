@@ -195,7 +195,7 @@ def plot_ts(data, x=None, y=None, units=None):
             ax.set_ylabel(ylabel, rotation=0, fontsize=11, labelpad=30)
     return f, axs
 
-def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align='center', _y=None, only_tick=False):
+def annotate(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align='center', _y=None, only_tick=False, _h=None, _ht=None):
     if ax is None:
         ax = plt.gca()
     if align == 'center':
@@ -209,6 +209,8 @@ def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align=
     maxyY = np.max(Y)
     maxY = np.max([maxyX, maxyY])
     h = 0.02*(ylims[1]-ylims[0])         # some extra height for the annotation
+    if _h is not None:
+        h = _h
     if avoid == 0:
         y = pad*maxY  # y coordinate is a bit above data
     else:
@@ -216,7 +218,10 @@ def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align=
     if _y is not None:
         y = _y
 
-
+    if _ht is None:
+        ht = 0.1
+    else:
+        ht = _ht
     if stars:
         nstars = 0
         if pval < 0.05:
@@ -228,14 +233,14 @@ def label_diff(i,j,pval,X,Y, stars=True, pad=1.1, ax=None, avoid=0, dy=0, align=
         if pval < 0.0001:
             nstars += 1
         if nstars > 0:
-            ax.text(x, (y+h+.05), nstars*"*", ha='center', va='center') # write stars
+            ax.text(x, (y+h), nstars*"*", ha='center', va='center') # write stars
         else:
             if align == 'center':
-                ax.text(x, (y+h+0.07), "ns", ha='center', va='baseline', fontsize=8) # write ns
+                ax.text(x, (y+h+ht), "ns", ha='center', va='baseline', fontsize=8) # write ns
             else:
-                ax.text(x, (y+h+0.07), "ns", ha='center', va='baseline', fontsize=8) # write ns
+                ax.text(x, (y+h+ht), "ns", ha='center', va='baseline', fontsize=8) # write ns
     else:
-        ax.text((i+j)/2, (y+h), "p = {}".format(pval), ha='center', va='bottom') # write out the p-value text
+        ax.text((i+j)/2, (y+h+ht), "p = {}".format(pval), ha='center', va='bottom') # write out the p-value text
     if align == 'center':
         ax.plot([i, i, j, j], [y, y+h, y+h, y], lw=1, c="k")  # plots a line
     elif align == 'right':
@@ -321,7 +326,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
                 Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
                 i0, i1 = get_indices(ax, left, right)
                 stat, pval = ranksums(X, Y)
-                ax, avoidy = label_diff(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[0])-1))
+                ax, avoidy = annotate(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[0])-1))
         elif type(pair[1]) is list or type(pair[1]) is tuple:
             for i, each_right in enumerate(pair[1]):
                 left = pair[0]
@@ -330,7 +335,7 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
                 Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
                 i0, i1 = get_indices(ax, left, right)
                 stat, pval = ranksums(X, Y)
-                ax, avoidy = label_diff(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
+                ax, avoidy = annotate(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
         else:
             print('center')
             left = pair[0]
@@ -340,9 +345,9 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
             i0, i1 = get_indices(ax, left, right)
             stat, pval = ranksums(X, Y)
             if avoidy == -1:
-                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
+                ax, avoidy = annotate(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
             else:
-                ax, avoidy = label_diff(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
+                ax, avoidy = annotate(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
     return ax
 
 def set_font(name, ax=None, VERBOSE=False):
@@ -406,12 +411,12 @@ def arena(arena, spots, spot_pal={'yeast': '#ffc04c', 'sucrose': '#4c8bff'}, ref
             spine.set_visible(False)
     return ax
 
-def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hue='etho', no_hue=[], palette=None, ax=None):
+def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hue='etho', no_hue=[], to_body=[], palette=None, ax=None):
     if ax is None:
         ax = plt.gca()
     if palette is None:
         palette = {    -1: '#ff00fc',
-                        0: '#838383',
+                        0: '#ff00c7',
                         1: '#c97aaa',
                         2: '#000000',
                         3: '#30b050',
@@ -425,7 +430,19 @@ def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hu
     rX, rY = red_data[xc], red_data[yc]
     H = red_data[hue].apply(lambda x: palette[x])
     ax.plot(X, Y, c='#424242', zorder=1, lw=0.4, alpha=0.5)
+    for each in to_body:
+        qdata = data.query('{} == {}'.format(hue, each))
+        for i, row in qdata.iterrows():
+            #if i%2==0:
+            ax.plot([row['body_x'], row['head_x']], [row['body_y'], row['head_y']], lw=0.5, c=palette[each])
     ax.scatter(rX, rY, color=H, zorder=2, s=.75, alpha=0.75, marker='.')
+    return ax
+
+def tseries(data, x=None, y=[], c=[], label=[], ax=None, lw=[], ls=[], bottom=True):
+    if ax is None:
+        ax = plt.gca()
+    for iy,each_y in enumerate(y):
+        ax.plot(data[x], data[each_y], color=c[iy], lw=lw[iy], ls=ls[iy])
     return ax
 
 def ccdf(data, xy=None, c=None, order=None, palette=None, ax=None):
