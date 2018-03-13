@@ -411,7 +411,7 @@ def arena(arena, spots, spot_pal={'yeast': '#ffc04c', 'sucrose': '#4c8bff'}, ref
             spine.set_visible(False)
     return ax
 
-def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hue='etho', no_hue=[], to_body=[], palette=None, ax=None):
+def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hue='etho', color=None, no_hue=[], to_body=[], lw=0.4, body_lw=0.5, size=.75, palette=None, ax=None):
     if ax is None:
         ax = plt.gca()
     if palette is None:
@@ -420,8 +420,8 @@ def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hu
                         1: '#c97aaa',
                         2: '#000000',
                         3: '#30b050',
-                        4: '#ff7f00',
-                        5: '#1f78b4',
+                        4: '#ffc04c',
+                        5: '#4c8bff',
                         6: '#ff1100'}
     red_data = data.copy()
     for each in no_hue:
@@ -429,13 +429,20 @@ def trajectory(xc='head_x', yc='head_y', xs='body_x', ys='body_y', data=None, hu
     X, Y = data[xc], data[yc]
     rX, rY = red_data[xc], red_data[yc]
     H = red_data[hue].apply(lambda x: palette[x])
-    ax.plot(X, Y, c='#424242', zorder=1, lw=0.4, alpha=0.5)
+    ax.plot(X, Y, c='#424242', zorder=1, lw=lw, alpha=0.5)
     for each in to_body:
         qdata = data.query('{} == {}'.format(hue, each))
         for i, row in qdata.iterrows():
             #if i%2==0:
-            ax.plot([row['body_x'], row['head_x']], [row['body_y'], row['head_y']], lw=0.5, c=palette[each])
-    ax.scatter(rX, rY, color=H, zorder=2, s=.75, alpha=0.75, marker='.')
+            if i+1 in qdata.index:
+                if color is None:
+                    ax.plot([row['body_x'], row['head_x']], [row['body_y'], row['head_y']], lw=body_lw, c=palette[each])
+                else:
+                    ax.plot([row['body_x'], row['head_x']], [row['body_y'], row['head_y']], lw=body_lw, c=color)
+    if color is None:
+        ax.scatter(rX, rY, color=H, zorder=2, s=size, alpha=0.75, marker='.')
+    else:
+        ax.scatter(rX, rY, color=color, zorder=2, s=size, alpha=0.75, marker='.')
     return ax
 
 def tseries(data, x=None, y=[], c=[], label=[], ax=None, lw=[], ls=[], bottom=True):
