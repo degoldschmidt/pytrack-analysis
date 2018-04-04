@@ -1,15 +1,67 @@
-import os, sys
+import io, os, platform, sys, yaml
 from datetime import datetime as date
 from functools import wraps
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from ._globals import *
 from pytrack_analysis.cli import query_yn, flprint, colorprint, prn
+
+def get_globals():
+    """
+    get_globals function
+
+    Returns profile directory, computername and os name (tested for Windows/MacOS).
+    """
+    ### get global constants for OS
+    if os.name == 'nt': # Windows
+        homedir = os.environ['ALLUSERSPROFILE']
+        NAME = os.environ["COMPUTERNAME"]
+        OS = os.environ["OS"]
+    else:
+        homedir = os.environ['HOME']
+        NAME = platform.uname()[1].split(".")[0]+'_'+platform.uname()[4]+'_'+os.environ["LOGNAME"]
+        OS = os.name
+    ### define user data directory
+    user_data_dir = os.path.join(homedir, ".pytrack")
+    check_folder(user_data_dir)
+    ### define profile file path
+    PROFILE = os.path.join(user_data_dir, "profile.yaml")
+    PROFILE = check_file(PROFILE)
+    ### return profile file path, computer name, and OS name
+    return PROFILE, NAME, OS
+
+def check_file(_file):
+    """ If file _file does not exist, function will create it. Or if the file is empty, it will create necessary keywords. """
+    if not os.path.exists(_file):
+        write_yaml(_file, {'USERS': None, 'EXPERIMENTS': None, 'SYSTEM': None})
+    else:
+        test = read_yaml(_file)
+        if test is None:
+            write_yaml(_file, {'USERS': None, 'EXPERIMENTS': None, 'SYSTEM': None})
+        elif any([each not in test.keys() for each in ['USERS', 'EXPERIMENTS', 'SYSTEM']]):
+            write_yaml(_file, {'USERS': None, 'EXPERIMENTS': None, 'SYSTEM': None})
+    return _file
+
+def check_folder(_folder):
+    """ If folder _folder does not exist, function will create it. """
+    if not os.path.exists(_folder):
+        os.makedirs(_folder)
+
+def read_yaml(_file):
+    """ Returns a dict of a YAML-readable file '_file'. Returns None, if file is empty. """
+    with open(_file, 'r') as stream:
+        out = yaml.load(stream)
+    return out
+
+def write_yaml(_file, _dict):
+    """ Writes a given dictionary '_dict' into file '_file' in YAML format. Uses UTF8 encoding and no default flow style. """
+    with io.open(_file, 'w+', encoding='utf8') as outfile:
+        yaml.dump(_dict, outfile, default_flow_style=False, allow_unicode=True)
+
 
 """
 profile.py
 AUTHOR: degoldschmidt
-DATE: 17/07/2017
+DATE: 03/04/2018
 
 Contains functions for creating a project profile for analysis.
 """
@@ -28,14 +80,16 @@ prn(__name__)
 colorprint('OS:\t\t', color='profile', sln=True)
 print(OS)
 
-def get_profile(_id, _user, script="", VERBOSE=True):
+def get_profile(_id, _user, VERBOSE=True):
     """
     Returns profile as dictionary. If the given project name or user name is not in the profile, it will create new entries.
 
     Arguments:
-    * _name: project id or '%all' (all projects)
+    * _id: project id
     * _user: username
+    Keywords:
     * script: scriptname
+    * VERBOSE: verbose printing option
     """
     if not VERBOSE:
         flprint("Setting up profile...")
@@ -43,20 +97,18 @@ def get_profile(_id, _user, script="", VERBOSE=True):
 
     # Profile object from file
     profile = Profile(PROFILE)
-
-    # system registration
-    profile.set_system(SYSNAME)
-
-    # project registration
-    profile.set_project(_id, script)
-
-    # user registration
-    #profile.set_project(_user)
-
-    # submit profile
-    with io.open(PROFILE, 'w+', encoding='utf8') as f:
-        yaml.dump(profile.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
-
+    if _id == '' and _user == '':
+        print(profile)
+    else:
+        # system registration
+        profile.set_system(SYSNAME)
+        # project registration
+        profile.set_experiment(_id)
+        # user registration
+        profile.set_user(_user)
+        # submit profile
+        with io.open(PROFILE, 'w+', encoding='utf8') as f:
+            yaml.dump(profile.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
     return profile
 
 class Profile(object):
@@ -72,8 +124,7 @@ class Profile(object):
             self.dict = {}
 
     def __del__(self):
-        #print(self.file, self.dict)
-        with io.open(self.file, 'w+', encoding='utf8') as f:
+        with io.open(PROFILE, 'w+', encoding='utf8') as f:
             yaml.dump(self.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
 
     def __str__(self):
@@ -82,33 +133,63 @@ class Profile(object):
             outstr += str(k) + ':\t' + str(v) + '\n'
         return outstr
 
-    def db(self):
+    def add_to_experiment(self, _to, _key, _val):
+        if type(_key) is list:
+            for k, v in zip(_key, _val):
+                self.dict['EXPERIMENTS'][_to][k] = v
+        else:
+            self.dict['EXPERIMENTS'][_to][_key] = _val
+
+    def add_to_system(self, _to, _key, _val):
+        self.dict['SYSTEM'][_to][_key] = _val
+
+    def get_database(self):
         """ Returns active system's database file location """
-        if 'database' in self.dict['PROJECTS'][self.active].keys():
-            dbfile = os.path.join(self.dict['SYSTEMS'][self.activesys]['base'], self.dict['PROJECTS'][self.active]['database'])
+        if 'database' in self.dict['EXPERIMENTS'][self.active].keys():
+            dbfile = os.path.join(self.dict['SYSTEMS'][self.activesys]['base'], self.dict['EXPERIMENTS'][self.active]['database'])
             if os.path.exists(dbfile):
                 return dbfile
         prn(__name__)
         print("No database file found.")
         dbfile = filedialog.askopenfilename(title="Load database")
-        self.dict['PROJECTS'][self.active]['database'] = dbfile
+        self.dict['EXPERIMENTS'][self.active]['database'] = dbfile
         return dbfile
 
-    def get_folders(self):
-        system = self.dict["SYSTEMS"][self.activesys]
-        project = self.dict["PROJECTS"][self.active]
-        return {
-                    "raw": os.path.join(system['base'], project['raw']),
-                    "videos": os.path.join(system['base'], project['videos']),
-                    "manual": os.path.join(system['base'], project['manual']),
-                    "out": os.path.join(system['base'], project['out']),
-                    "processed": os.path.join(system['base'], project['processed']),
-            }
+    def set_dir(self, _title, forced=False):
+        """ Returns base directory chosen from TKinter filedialog GUI """
+        base = None
+        if not forced:
+            asksave = messagebox.askquestion(_title, "Are you sure you want to set a new path?", icon='warning')
+            if asksave == "no":
+                return None
+        flprint("Set {}...".format(_title))
+        while base is None:
+            base = filedialog.askdirectory(title=_title)
+        print(base)
+        return base
+
+    def get_folder(self):
+        project = self.dict["EXPERIMENTS"][self.active]
+        return project['basedir']
+
+    def get_experiment(self, _name):
+        if _name in self.dict['EXPERIMENTS'].keys():
+            return self.dict['EXPERIMENTS'][_name]
+        else:
+            print('Could not find experiment {}'.format(_name))
+            return None
+
+    def get_user(self, _name):
+        if _name in self.dict['USERS'].keys():
+            return self.dict['USERS'][_name]
+        else:
+            print('Could not find user {}'.format(_name))
+            return None
 
     def Nvids(self):
         system = self.dict["SYSTEMS"][self.activesys]
         project = self.dict["PROJECTS"][self.active]
-        folder = os.path.join(system['base'], project['videos'])
+        folder = os.path.join(project['basedir'], project['videos'])
         return 72##len([i for i in os.listdir(folder) if ".avi" in i])
 
     def out(self):
@@ -119,65 +200,92 @@ class Profile(object):
             os.mkdir(outfolder)
         return outfolder
 
-    def set_project(self, _name, _script):
-        system = self.dict["SYSTEMS"][self.activesys]
-        if 'PROJECTS' not in self.dict.keys():
-            self.dict["PROJECTS"] = {}
-        if _name in self.dict['PROJECTS'].keys():
-            projects = self.dict["PROJECTS"]
+    def remove_experiment(self, _name):
+        if self.get_experiment(_name) is not None:
+            if self.active == _name:
+                self.active = None
+            del self.dict['EXPERIMENTS'][_name]
+
+    def remove_user(self, _name):
+        if self.get_user(_name) is not None:
+            if self.active == _name:
+                self.activeuser = None
+            del self.dict['USERS'][_name]
+
+    def set_modules(self, _name):
+        """
+        Updates version numbers for required packages
+        """
+        thissystem = self.dict["SYSTEM"][_name]
+        thissystem['python'] = sys.version
+        import numpy
+        thissystem['numpy'] = numpy.__version__
+        import scipy
+        thissystem['scipy'] = scipy.__version__
+        import pandas
+        thissystem['pandas'] = pandas.__version__
+        import matplotlib
+        thissystem['matplotlib'] = matplotlib.__version__
+
+    def set_experiment(self, _name):
+        if self.dict['EXPERIMENTS'] is None:
+            self.dict['EXPERIMENTS'] = {}
+        projects = self.dict['EXPERIMENTS']
+        if _name in self.dict['EXPERIMENTS'].keys():
             projects[_name]['last modified'] = date.now().strftime("%Y-%m-%d %H:%M:%S")
-            if _script not in projects[_name]['scripts']:
-                projects[_name]['scripts'].append(_script)
-            base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
-            for each in ['raw', 'videos', 'manual', 'out', 'processed']:
-                projects[_name][each] = os.path.join(base, each)
-            video = os.path.join(system['base'], projects[_name]['videos'])
-            if not os.path.isdir(video):
-                if os.name == 'posix':
-                    projects[_name]['videos'] = '' #set_dir('Video directory', forced=True)
-                else:
-                    projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos'# set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
+            self.active = _name
         else:
-            print("Project \'{:}\' does not seem to exist in the profile.".format(_name))
-            projects = self.dict["PROJECTS"]
-            base = os.path.join(self.experiments[_name], "data") #set_dir('experiment folder', forced=True)
-            projects[_name] = {
-                'base': os.path.dirname(base),
-                'raw': os.path.join(base, 'raw'),
-                'videos': os.path.join(base, 'videos'),
-                'manual': os.path.join(base, 'manual'),
-                'processed': os.path.join(base, 'processed'),
-                'out': os.path.join(base, 'out'),
-                'scripts': [_script],
-                'created':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
-            }
-            if not os.path.isdir(projects[_name]['videos']):
-                if os.name == 'posix':
-                    projects[_name]['videos'] = '' #set_dir('Video directory', forced=True)
-                else:
-                    projects[_name]['videos'] = 'E:/Dennis/Google Drive/PhD Project/Experiments/001-DifferentialDeprivation/data/videos' #set_dir('Video directory', forced=True) #"/Volumes/DATA_BACKUP/data/tracking/all_videos/"
-        self.active = _name
+            print("Experiment \'{:}\' does not seem to exist in the profile.".format(_name))
+            if query_yn("Do you want to add {} to the existing experiments?".format(_name)):
+                projects[_name] = {
+                    'created':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'last modified':  date.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'basedir': self.set_dir('Set base directory', forced=True)
+                }
+                self.active = _name
+            else:
+                self.active = None
+
+    def set_folder(self, _folder):
+        project = self.dict["EXPERIMENTS"][self.active]
+        if os.path.isdir(_folder):
+            project['basedir'] = _folder
+        return _folder
 
     def set_system(self, _name):
-        if 'SYSTEMS' not in self.dict.keys():
-            self.dict["SYSTEMS"] = {}
-        if _name in self.dict['SYSTEMS'].keys():
-            systems = self.dict["SYSTEMS"]
-            systems[_name]['python'] = sys.version
+        if self.dict['SYSTEM'] is None:
+            self.dict['SYSTEM'] = {}
+        system = self.dict["SYSTEM"]
+        if _name in system.keys():
+            self.set_modules(_name)
+            self.activesys = _name
         else:
             print("System \'{:}\' does not seem to exist in the profile.".format(_name))
-            systems = self.dict["SYSTEMS"]
-            if os.name == 'posix':
-                syst_folder = set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
+            if query_yn("Do you want to add {} to the existing systems?".format(_name)):
+                if len([key for key in system.keys()]):
+                    skeys = [key for key in system.keys()]
+                    overwrite = query_yn("Do you want to overwrite existing system \'{:}\' with \'{:}\'".format(skeys[0], _name))
+                    if overwrite:
+                        del system[skeys[0]]
+                system[_name] =  {}
+                self.set_modules(_name)
+                self.activesys = _name
             else:
-                syst_folder = 'E:/Dennis/Google Drive/PhD Project/Experiments'
-            systems[_name] = {'base': syst_folder, 'python': sys.version} #set_dir('Experiment directory (where you keep the list of experiments file)', forced=True)
-        self.experiments = read_exps(self.dict["SYSTEMS"][_name]['base'])
-        if len(self.experiments) == 0:
-            del self.dict["SYSTEMS"][_name]
-            self.set_system(_name)
-        self.activesys = _name
+                self.activesys = None
+
+    def set_user(self, _name):
+        if self.dict['USERS'] is None:
+            self.dict['USERS'] = {}
+        users = self.dict["USERS"]
+        if _name in users.keys():
+            self.activeuser = _name
+        else:
+            print("User \'{:}\' does not seem to exist in the profile.".format(_name))
+            if query_yn("Do you want to add {} to the existing users?".format(_name)):
+                users[_name] =  {}
+                self.activeuser = _name
+            else:
+                self.activeuser = None
 
 def read_exps(_dir):
     try:
@@ -214,8 +322,6 @@ def get_log(profile):
 def get_plot(profile):
     """ Returns active system's plot path """
     return profile[profile['active']]['systems'][NAME]['plot']
-
-
 
 def set_database(forced=False):
     """ Returns database file location and video directory chosen from TKinter filedialog GUI """
@@ -261,37 +367,29 @@ def show_profile(profile):
     MAGENTA = "\033[1;35m"
     RESET = "\033[0;0m"
     print() # one empty line
-    if profile is None:
-        profile_dump = yaml.dump(profile, default_flow_style=False, allow_unicode=True)
-        thisstr = profile_dump.split("\n")
-        sys.stdout.write(RED)
-        for lines in thisstr:
-            if lines == "$PROJECTS:" or lines == "$USERS:":
+    current_proj = profile.active
+    current_sys = profile.activesys
+    profile_dump = yaml.dump(profile.dict, default_flow_style=False, allow_unicode=True)
+    thisstr = profile_dump.split("\n")
+    sys.stdout.write(RED)
+    for lines in thisstr:
+        try:
+            if lines == "EXPERIMENTS:" or lines == "SYSTEM:" or lines == "USERS:":
                 sys.stdout.write(RED)
-            elif lines.startswith("-"):
-                sys.stdout.write(CYAN)
+            elif current_proj is not None:
+                if (current_proj in lines) and "active" not in lines:
+                    print()
+                    sys.stdout.write(MAGENTA)
+            elif current_sys is not None:
+                if (current_sys in lines) and "active" not in lines:
+                    print()
+                    sys.stdout.write(MAGENTA)
             else:
                 sys.stdout.write(RESET)
             print(lines)
-        sys.stdout.write(RESET)
-    else:
-        current_proj = profile['active']
-        current_sys = profile['activesys']
-        profile_dump = yaml.dump(profile, default_flow_style=False, allow_unicode=True)
-        thisstr = profile_dump.split("\n")
-        sys.stdout.write(RED)
-        for lines in thisstr:
-            if lines == "$PROJECTS:" or lines == "$USERS:":
-                sys.stdout.write(RED)
-            elif lines.startswith("-"):
-                sys.stdout.write(CYAN)
-            elif (current_proj in lines or current_sys in lines) and "active" not in lines:
-                print()
-                sys.stdout.write(MAGENTA)
-            else:
-                sys.stdout.write(RESET)
-            print(lines)
-        sys.stdout.write(RESET)
+            sys.stdout.write(RESET)
+        except:
+            sys.stdout.write(RESET)
 
 def get_scriptname(name):
     return os.path.basename(name).split('.')[0]

@@ -7,6 +7,77 @@ from pytrack_analysis.food_spots import get_food
 from pytrack_analysis.geometry import get_angle, get_distance, rot
 import warnings
 
+SETUPNAMES = {  'cam01': 'Adler',
+                'cam02': 'Baer',
+                'cam03': 'Chameleon',
+                'cam04': 'Dachs',
+                'cam05': 'Elefant',
+            }
+
+class Data(object):
+    def __init__(self, _files):
+        self.files = _files
+        self.dfs = []
+        self.centered, self.flipped_y, self.scaled = False, False, False
+
+    def center_to_arena(self, arenas):
+        ### center around arena center
+        if not self.centered:
+            for i, df in enumerate(self.dfs):
+                for each_col in each_df.columns:
+                    if '_x' in each_col:
+                        each_df[each_col] -= arenas[ix].x
+                    if  '_y' in each_col:
+                        each_df[each_col] -= arenas[ix].y
+        self.centered = True
+
+    def get(self, i):
+        return self.dfs[i]
+
+    def load(self):
+        for _file in self.files:
+            self.dfs.append(pd.read_csv(_file, sep="\s+"))
+
+    def reindex(self, cols):
+        for data in self.dfs:
+            data.columns = cols
+
+class Video(object):
+    def __init__(self, filename, dirname):
+        self.name = filename
+        self.dir = dirname
+        self.files = parse_file(filename, dirname)
+        self.time, self.timestr = parse_time(filename)
+        self.setup = parse_setup(filename)
+        self.setup += ' ({})'.format(SETUPNAMES[self.setup])
+        self.timestart = parse_timestart(os.path.join(dirname, self.files['timestart'][0]))
+        self.data = Data(self.files['data'])
+        self.arenas = None
+
+    def __str__(self):
+        full_str = 'Video: {}\nRecorded: {}\nSession start: {}\nSetup: {}\nFiles:\n'.format(self.name, self.time, self.timestart, self.setup)
+        for k,v in self.files.items():
+            full_str += '\t{}:\n'.format(k)
+            for each_v in v:
+                full_str += '\t\t- {}\n'.format(each_v)
+        return full_str
+
+    def load_arena(self):
+        pass
+
+    def get_data(self):
+        return [v for v in self.data.df]
+
+    def load_data(self):
+        self.data.load()
+
+    def run_posttracking(self):
+        pass
+
+    def unload_data(self):
+        del self.data
+
+
 """
 Returns list of directories in given path d with full path (DATAIO)
 """
@@ -23,107 +94,47 @@ def get_conditions(folder):
             print(exc)
 
 """
-Returns list of raw data for filenames (DATAIO)
+Returns dictionary of all files for a given video file
 """
-def get_data(filenames):
-    prn(__name__)
-    flprint("Loading raw data...")
-    data = []
-    for each in filenames:
-        ## load data
-        data.append(pd.read_csv(each, sep="\s+"))
-    colorprint("done.", color='success')
-    return data
+def parse_file(filename, basedir):
+    dtstamp, timestampstr = parse_time(filename)
+    file_dict = {
+                    "data" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "fly" in eachfile and timestampstr in eachfile],
+                    "food" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "food" in eachfile and timestampstr in eachfile],
+                    "geometry" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "geometry" in eachfile and timestampstr in eachfile],
+                    "timestart" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "timestart" in eachfile and timestampstr in eachfile],
+                }
+    return file_dict
 
 """
-Returns dictionary of all raw data files
+Returns list of video objects of all raw data files
 """
-def get_files(raw, video_folder, noVideo=False):
-    dtstamps = []
-    timestr = []
-    file_list = []
-    for each_session in os.listdir(raw):
-        session_folder = os.path.join(raw, each_session)
-        if os.path.isdir(session_folder):
-            dtstamp, timestampstr = get_time(session_folder)
-            dtstamps.append(dtstamp)
-            timestr.append(timestampstr)
-            if noVideo:
-                    file_dict = {
-                                    "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
-                                    "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
-                                    "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
-                                    "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                                }
-            else:
-                    file_dict = {
-                                    "data" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "fly" in eachfile and timestampstr in eachfile],
-                                    "food" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "food" in eachfile and timestampstr in eachfile],
-                                    "geometry" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "geometry" in eachfile and timestampstr in eachfile][0],
-                                    "timestart" : [os.path.join(session_folder, eachfile) for eachfile in os.listdir(session_folder) if "timestart" in eachfile and timestampstr in eachfile][0],
-                                    "video" : [os.path.join(video_folder, eachfile) for eachfile in os.listdir(video_folder) if timestampstr in eachfile][0],
-                                }
-            file_list.append(file_dict)
-    flprint("found {} sessions...".format(len(file_list)))
-    return file_list, dtstamps, timestr, len(file_list)
+def parse_files(basedir):
+    return [Video(each_avi, basedir) for each_avi in [_file for _file in os.listdir(basedir) if _file.endswith('avi')]]
 
-"""
-Returns frame dimensions as tuple (height, width, channels) (DATAIO)
-"""
-def get_frame_dims(filename):
-    warnings.filterwarnings("ignore")
-    import skvideo.io
-    videogen = skvideo.io.vreader(filename)
-    for frame in videogen:
-        dims = frame.shape
-        break
-    warnings.filterwarnings("default")
-    return dims
-
-"""
-Returns session numbers as list based on arguments
-"""
-def get_session_list(N, *args):
-    start = 0
-    end = N
-    nott = []
-    if len(args) > 0:
-        if type(args[0]) is str:
-            start = int(args[0])
-    if len(args) > 1:
-        if type(args[1]) is str:
-            end = int(args[1])
-    if len(args) > 2:
-        if type(args[2]) is str:
-            nott = [int(each) for each in args[2].split(',')]
-    outlist = [i for i in range(start,end)]
-    for each in nott:
-        try:
-            outlist.remove(each)
-        except ValueError:
-            pass
-    if len(args) > 3:
-        if type(args[3]) is str:
-            outlist = [int(each) for each in args[3].split(',')]
-    return outlist
 
 """
 Returns datetime for session start (DATAIO)
 """
-def get_session_start(filename):
+def parse_timestart(filename):
     from datetime import datetime
-    filestart = np.loadtxt(filename, dtype=bytes).astype(str)
-    return datetime.strptime(filestart[1][:19], '%Y-%m-%dT%H:%M:%S')
+    with open(filename, 'rt', errors='replace') as f:
+        data = f.read()
+    return datetime.strptime(data.split(' ')[1][:-14], '%Y-%m-%dT%H:%M:%S')
 
 """
-Returns timestamp from session folder
+Returns setup from video file
 """
-def get_time(session):
+def parse_setup(video):
+    setup = video.split('.')[0].split('_')[0]
+    return setup
+
+"""
+Returns timestamp from video file
+"""
+def parse_time(video):
     from datetime import datetime
-    for each in os.listdir(session):
-        if "timestart" in each:
-            any_file = each
-    timestampstr = any_file.split('.')[0][-19:]
+    timestampstr = video.split('.')[0][-19:]
     dtstamp = datetime.strptime(timestampstr, "%Y-%m-%dT%H_%M_%S")
     return dtstamp, timestampstr[:-3]
 
@@ -135,22 +146,25 @@ def translate_to(data, start, time=''):
     data = data.loc[mask]
     return data, data.index[0]
 
-class RawData(object):
-    def __init__(self, _exp_id, _folders, columns=None, units=None, noVideo=False):
+class VideoRawData(object):
+    def __init__(self, experiment, basedir, columns=None, units=None, noVideo=False, VERBOSE=False):
         prn(__name__)
         flprint("Loading raw data folders and file structure...")
+        self.experiment = experiment
         ### get timestamp and all files from session folder
-        self.allfiles, self.dtime, self.timestr, self.nvids = get_files(_folders['raw'], _folders['videos'], noVideo=noVideo)
+        self.videos = parse_files(basedir)
+        self.files = [_video.files for _video in self.videos]
+        self.dtime = [_video.time for _video in self.videos]
+        self.timestr = [_video.timestr for _video in self.videos]
+        self.nvids = len(self.videos)
+        flprint("found {} sessions...".format(self.nvids))
+        if VERBOSE:
+            print('\n')
+            for i, video in enumerate(self.videos):
+                print('[{}]'.format(i))
+                print(video)
         ### conditions
-        self.allconditions = get_conditions(_folders['manual'])
-        ### data columns
-        self.columns = columns
-        ### data units
-        self.units = units
-        ### check whether valid dims
-        assert len(self.columns) == len(self.units), 'Error: dimension of given columns is unequal to given units'
-        ### noVideo option
-        self.noVideo = noVideo
+        #self.allconditions = get_conditions(_folders['manual'])
         colorprint("done.", color='success')
 
     def get_data(self, fly=None):
@@ -165,18 +179,14 @@ class RawData(object):
         self.sessiontimestr = self.timestr[_id]
         self.starttime = get_session_start(self.allfiles[_id]['timestart'])
         print("starting post-tracking analysis for session {}/{} ({})...".format(_id+1, self.nvids, self.timestamp))
-        if self.noVideo:
-            prn(__name__)
-            colorprint("Warning: no video!", color='warning')
-        else:
-            self.video_file = self.allfiles[_id]['video']
+        self.video_file = self.allfiles[_id]['video']
 
         ### load raw data and define columns/units
-        self.raw_data = get_data(self.allfiles[_id]['data'])
+        self.raw_data = get_data(self.videos[_id]['data'])
         ### raw data is in pixel space (i.e., uncentered, unflipped, and unscaled)
         self.centered, self.flipped_y, self.scaled = False, False, False
         ### load the four data files
-        for each_df in self.raw_data:
+        for each_df in self.raw_fly_data:
             # renaming columns with standard header
             each_df.columns = self.columns
             if "Datetime" in self.units:
@@ -219,13 +229,6 @@ class RawData(object):
                     if '_y' in each_col:
                         self.raw_data[ix][each_col] *= -1
         self.flipped = True
-
-
-    def get(self, _index):
-        out = None
-        if _index in self.labels.keys():
-            out = copy.deepcopy(self)
-        return out
 
     def print_conditions(self, *args):
         for _conds, _val in self.allconditions.items():
