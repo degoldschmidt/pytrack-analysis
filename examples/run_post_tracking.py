@@ -3,11 +3,10 @@ import numpy as np
 import pandas as pd
 
 from pytrack_analysis import Multibench
-from pytrack_analysis.dataio import VideoRawData, get_session_list
+from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
 from pytrack_analysis.posttracking import frameskips, get_displacements, mistracks, get_head_tail, get_corrected_flips
 from pytrack_analysis.viz import plot_along, plot_fly, plot_interval, plot_overlay, plot_ts
-import matplotlib.pyplot as plt
 
 def main():
     experiment = 'DIFF'
@@ -22,14 +21,16 @@ def main():
     raw_data = VideoRawData(experiment, basedir)
     ### go through all session
     for i_session, video in enumerate(raw_data.videos):
+        ###
+
         ### arena + food spots
         video.load_arena()
         ### trajectory data
         video.load_data()
         video.data.reindex(colnames)
-        video.data.center_to_arena(video.arenas)
+        #video.data.center_to_arena(video.arenas)
         ### fly/experiment metadata
-        for fly_idx, fly_data in enumerate(raw_data.get_data()):
+        #for fly_idx, fly_data in enumerate(raw_data.get_data()):
 
         ###
         video.unload_data()

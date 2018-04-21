@@ -1,4 +1,5 @@
 import os
+import os.path as op
 import numpy as np
 import pandas as pd
 from pytrack_analysis.cli import colorprint, flprint, prn
@@ -6,6 +7,7 @@ from pytrack_analysis.arena import get_geom
 from pytrack_analysis.food_spots import get_food
 from pytrack_analysis.geometry import get_angle, get_distance, rot
 import warnings
+import io, yaml
 
 SETUPNAMES = {  'cam01': 'Adler',
                 'cam02': 'Baer',
@@ -13,6 +15,17 @@ SETUPNAMES = {  'cam01': 'Adler',
                 'cam04': 'Dachs',
                 'cam05': 'Elefant',
             }
+
+def read_yaml(_file):
+    """ Returns a dict of a YAML-readable file '_file'. Returns None, if file is empty. """
+    with open(_file, 'r') as stream:
+        out = yaml.load(stream)
+    return out
+
+def write_yaml(_file, _dict):
+    """ Writes a given dictionary '_dict' into file '_file' in YAML format. Uses UTF8 encoding and no default flow style. """
+    with io.open(_file, 'w+', encoding='utf8') as outfile:
+        yaml.dump(_dict, outfile, default_flow_style=False, allow_unicode=True)
 
 class Data(object):
     def __init__(self, _files):
@@ -24,11 +37,11 @@ class Data(object):
         ### center around arena center
         if not self.centered:
             for i, df in enumerate(self.dfs):
-                for each_col in each_df.columns:
-                    if '_x' in each_col:
-                        each_df[each_col] -= arenas[ix].x
-                    if  '_y' in each_col:
-                        each_df[each_col] -= arenas[ix].y
+                for col in df.columns:
+                    if '_x' in col:
+                        df[col] -= arenas[i].x
+                    if  '_y' in col:
+                        df[col] -= arenas[i].y
         self.centered = True
 
     def get(self, i):
@@ -43,14 +56,17 @@ class Data(object):
             data.columns = cols
 
 class Video(object):
-    def __init__(self, filename, dirname):
+    def __init__(self, filename, dirname, vars):
         self.name = filename
         self.dir = dirname
         self.files = parse_file(filename, dirname)
+        self.vars = vars
+        if len(self.files['conditions']) == 0:
+            self.set_conditions()
         self.time, self.timestr = parse_time(filename)
         self.setup = parse_setup(filename)
         self.setup += ' ({})'.format(SETUPNAMES[self.setup])
-        self.timestart = parse_timestart(os.path.join(dirname, self.files['timestart'][0]))
+        self.timestart = parse_timestart(op.join(dirname, self.files['timestart'][0]))
         self.data = Data(self.files['data'])
         self.arenas = None
 
@@ -68,11 +84,31 @@ class Video(object):
     def get_data(self):
         return [v for v in self.data.df]
 
+
     def load_data(self):
         self.data.load()
 
     def run_posttracking(self):
         pass
+
+    def set_conditions(self):
+        writing = True
+        condition_dict = {}
+        k = None
+        print('\nEnter conditions for {}'.format(self.name))
+        for k in self.vars.keys():
+            v = input('Value for key {} (multiple values are separated by whitespace): '.format(k))
+            v = v.split(' ')
+            for each in v:
+                if each not in self.vars[k]:
+                    print('Warning: {} not found in possible values for {}.'. format(each, k))
+                    self.set_conditions()
+            condition_dict[k] = v
+            k = None
+        self.conditions = condition_dict
+        write_yaml(op.join(self.dir, self.name.split('.')[0]+'.yaml'), self.conditions)
+
+
 
     def unload_data(self):
         del self.data
@@ -82,16 +118,7 @@ class Video(object):
 Returns list of directories in given path d with full path (DATAIO)
 """
 def flistdir(d):
-    return [os.path.join(d, f) for f in os.listdir(d) if '.txt' in f]
-
-def get_conditions(folder):
-    import yaml
-    fileName = os.path.join(folder, 'conditions.yaml')
-    with open(fileName, 'r') as stream:
-        try:
-            return yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+    return [op.join(d, f) for f in os.listdir(d) if '.txt' in f]
 
 """
 Returns dictionary of all files for a given video file
@@ -99,18 +126,19 @@ Returns dictionary of all files for a given video file
 def parse_file(filename, basedir):
     dtstamp, timestampstr = parse_time(filename)
     file_dict = {
-                    "data" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "fly" in eachfile and timestampstr in eachfile],
-                    "food" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "food" in eachfile and timestampstr in eachfile],
-                    "geometry" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "geometry" in eachfile and timestampstr in eachfile],
-                    "timestart" : [os.path.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "timestart" in eachfile and timestampstr in eachfile],
+                    "data" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "fly" in eachfile and timestampstr in eachfile],
+                    "food" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "food" in eachfile and timestampstr in eachfile],
+                    "geometry" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "geometry" in eachfile and timestampstr in eachfile],
+                    "conditions" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if eachfile.endswith('yaml') and timestampstr in eachfile],
+                    "timestart" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "timestart" in eachfile and timestampstr in eachfile],
                 }
     return file_dict
 
 """
 Returns list of video objects of all raw data files
 """
-def parse_files(basedir):
-    return [Video(each_avi, basedir) for each_avi in [_file for _file in os.listdir(basedir) if _file.endswith('avi')]]
+def parse_files(basedir, vars):
+    return [Video(each_avi, basedir, vars) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
 
 
 """
@@ -139,6 +167,12 @@ def parse_time(video):
     return dtstamp, timestampstr[:-3]
 
 """
+Returns list of video objects of all raw data files
+"""
+def parse_videos(basedir):
+    return [op.join(basedir, each_avi) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
+
+"""
 Returns translated data for given session start (PROCESSING)
 """
 def translate_to(data, start, time=''):
@@ -151,8 +185,20 @@ class VideoRawData(object):
         prn(__name__)
         flprint("Loading raw data folders and file structure...")
         self.experiment = experiment
+        self.dir = basedir
+        self.manual_dir = op.join(basedir, 'manual')
+        if not op.isdir(self.manual_dir):
+            os.mkdir(self.manual_dir)
+        if not op.isfile(op.join(self.manual_dir, 'constants.yaml')):
+            self.set_constants()
+        else:
+            self.constants = read_yaml(op.join(self.manual_dir, 'constants.yaml'))
+        if not op.isfile(op.join(self.manual_dir, 'variables.yaml')):
+            self.set_variables()
+        else:
+            self.variables = read_yaml(op.join(self.manual_dir, 'variables.yaml'))
         ### get timestamp and all files from session folder
-        self.videos = parse_files(basedir)
+        self.videos = parse_files(basedir, self.variables)
         self.files = [_video.files for _video in self.videos]
         self.dtime = [_video.time for _video in self.videos]
         self.timestr = [_video.timestr for _video in self.videos]
@@ -163,8 +209,6 @@ class VideoRawData(object):
             for i, video in enumerate(self.videos):
                 print('[{}]'.format(i))
                 print(video)
-        ### conditions
-        #self.allconditions = get_conditions(_folders['manual'])
         colorprint("done.", color='success')
 
     def get_data(self, fly=None):
@@ -173,6 +217,8 @@ class VideoRawData(object):
         else:
             return self.raw_data[fly]
 
+
+    ### not used
     def get_session(self, _id):
         prn(__name__)
         self.timestamp = self.dtime[_id]
@@ -241,6 +287,43 @@ class VideoRawData(object):
                         print("\t",_k, ':', _v)
                 for arg in args:
                     print("\t", list(_val.keys())[arg], ':', list(_val.values())[arg])
+
+    ### v0.1
+    def set_constants(self):
+        writing = True
+        constants_dict = {}
+        k = None
+        print('\nEnter constants for {}'.format(parse_videos(self.dir)))
+        while writing:
+            if k == None:
+                k = input('\nPlease type constants key ("enter to quit"): ')
+            if k == '':
+                writing = False
+            else:
+                v = input('Value for key {}: '.format(k))
+                constants_dict[k] = v
+                k = None
+        self.constants = constants_dict
+        write_yaml(op.join(self.manual_dir, 'constants.yaml'), self.constants)
+
+    ### v0.1
+    def set_variables(self):
+        writing = True
+        variables_dict = {}
+        k = None
+        print('\nEnter variables for {}'.format(parse_videos(self.dir)))
+        while writing:
+            if k == None:
+                k = input('\nPlease type variables key ("enter to quit"): ')
+            if k == '':
+                writing = False
+            else:
+                v = input('Possible values for key {} (multiple values are separated by whitespace): '.format(k))
+                v = v.split(' ')
+                variables_dict[k] = v
+                k = None
+        self.variables = variables_dict
+        write_yaml(op.join(self.manual_dir, 'variables.yaml'), self.variables)
 
     def set_scale(self, _which, _value, unit=None):
         if _which == 'fix_scale':

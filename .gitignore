@@ -107,4 +107,8 @@ here.pdf
 
 pytrack_analysis/metapacker.py
 *.jpg
-*.png
+examples/gradient.png
+examples/matched.png
+examples/res.png
+examples/res_matched.png
+pytrack_analysis/frame.png
