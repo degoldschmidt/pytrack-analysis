@@ -78,7 +78,7 @@ def detect_geometry(_fullpath):
     templates = [cv2.imread(_file,0) for _file in yeasts]
     templates_arena = [cv2.imread(_file,0) for _file in arenas]
     w, h = templates[0].shape[::-1]
-    w2, h2 = templates_arena[0].shape[::-1]
+    w_arena, h_arena = templates_arena[0].shape[::-1]
     res = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates]
     res_arena = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates_arena]
 
@@ -87,7 +87,7 @@ def detect_geometry(_fullpath):
     """
     Get arenas
     """
-    arena_threshold = 0.85
+    arena_threshold = 0.9
     loc = None
     for r in res_arena:
         if loc is None:
@@ -98,12 +98,13 @@ def detect_geometry(_fullpath):
             loc[1] = np.append(loc[1], temp[1])
     patches = []
     for pt in zip(*loc[::-1]):
+        cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
         if len(patches) == 0:
             patches.append([pt])
         else:
             for i, each_patch in enumerate(patches):
                 for eachpt in each_patch:
-                    if abs(eachpt[0]-pt[0]) < w2 and abs(eachpt[1]-pt[1]) < h2:
+                    if abs(eachpt[0]-pt[0]) < w_arena/4 and abs(eachpt[1]-pt[1]) < w_arena/4:
                         patches[i].append(pt)
                         break
             if all([pt not in each_patch for each_patch in patches]):
@@ -113,8 +114,8 @@ def detect_geometry(_fullpath):
         tis = np.array(each_patch)
         arenas.append(np.mean(tis, axis=0))
     for pt in arenas:
-        ept = (int(round(pt[0]+w2/2)), int(round(pt[1]+w2/2)))
-        cv2.circle(img_rgb, ept, int(w2/2), (0,255,0), 2)
+        ept = (int(round(pt[0]+w_arena/2)), int(round(pt[1]+w_arena/2)))
+        cv2.circle(img_rgb, ept, int(w_arena/2), (0,255,0), 2)
         cv2.circle(img_rgb, ept, 1, (0,255,0), 2)
 
     """
@@ -133,6 +134,7 @@ def detect_geometry(_fullpath):
     loc = tuple(loc)
     patches = []
     for pt in zip(*loc[::-1]):
+        #cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
         if len(patches) == 0:
             patches.append([pt])
         else:
@@ -147,7 +149,7 @@ def detect_geometry(_fullpath):
     for each_patch in patches:
         tis = np.array(each_patch)
         tismean = np.mean(tis, axis=0)
-        inarena = [(abs(arena[0]+w2/2-tismean[0]-w/2) < w2/2 and abs(arena[1]+w2/2-tismean[1]-w/2) < h2/2) for arena in arenas]
+        inarena = [(abs(arena[0]+w_arena/2-tismean[0]-w/2) < w_arena/2 and abs(arena[1]+w_arena/2-tismean[1]-w/2) < w_arena/2) for arena in arenas]
         if any(inarena):
             spots.append(tismean)
     for pt in spots:
