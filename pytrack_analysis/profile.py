@@ -80,7 +80,7 @@ prn(__name__)
 colorprint('OS:\t\t', color='profile', sln=True)
 print(OS)
 
-def get_profile(_id, _user, VERBOSE=True):
+def get_profile(_id, VERBOSE=True):
     """
     Returns profile as dictionary. If the given project name or user name is not in the profile, it will create new entries.
 
@@ -104,8 +104,6 @@ def get_profile(_id, _user, VERBOSE=True):
         profile.set_system(SYSNAME)
         # project registration
         profile.set_experiment(_id)
-        # user registration
-        profile.set_user(_user)
         # submit profile
         with io.open(PROFILE, 'w+', encoding='utf8') as f:
             yaml.dump(profile.dict, f, default_flow_style=False, allow_unicode=True, canonical=False)
@@ -272,20 +270,6 @@ class Profile(object):
                 self.activesys = _name
             else:
                 self.activesys = None
-
-    def set_user(self, _name):
-        if self.dict['USERS'] is None:
-            self.dict['USERS'] = {}
-        users = self.dict["USERS"]
-        if _name in users.keys():
-            self.activeuser = _name
-        else:
-            print("User \'{:}\' does not seem to exist in the profile.".format(_name))
-            if query_yn("Do you want to add {} to the existing users?".format(_name)):
-                users[_name] =  {}
-                self.activeuser = _name
-            else:
-                self.activeuser = None
 
 def read_exps(_dir):
     try:

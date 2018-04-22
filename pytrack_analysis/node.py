@@ -9,7 +9,6 @@ import sys
 import traceback
 import inspect, itertools
 from functools import wraps
-from ._globals import *
 from pkg_resources import get_distribution
 __version__ = get_distribution('pytrack_analysis').version
 

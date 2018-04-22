@@ -1,7 +1,6 @@
 import os, sys
 import numpy as np
 import pandas as pd
-from ._globals import *
 from pytrack_analysis import Node
 from pytrack_analysis.cli import colorprint, flprint, prn
 import pytrack_analysis.preprocessing as prp

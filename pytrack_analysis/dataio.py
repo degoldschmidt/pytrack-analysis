@@ -5,7 +5,7 @@ import pandas as pd
 from pytrack_analysis.cli import colorprint, flprint, prn
 from pytrack_analysis.arena import get_geom
 from pytrack_analysis.food_spots import get_food
-from pytrack_analysis.geometry import get_angle, get_distance, rot
+from pytrack_analysis.geometry import get_angle, get_distance, rot, detect_geometry
 import warnings
 import io, yaml
 
@@ -61,6 +61,8 @@ class Video(object):
         self.dir = dirname
         self.files = parse_file(filename, dirname)
         self.vars = vars
+        if len(self.files['geometry']) == 0:
+            detect_geometry(op.join(dirname,filename))
         if len(self.files['conditions']) == 0:
             self.set_conditions()
         self.time, self.timestr = parse_time(filename)
