@@ -87,7 +87,7 @@ def detect_geometry(_fullpath):
     """
     Get arenas
     """
-    arena_threshold = 0.9
+    arena_threshold = 0.85
     loc = None
     for r in res_arena:
         if loc is None:
@@ -102,12 +102,15 @@ def detect_geometry(_fullpath):
         if len(patches) == 0:
             patches.append([pt])
         else:
+            flagged = False
             for i, each_patch in enumerate(patches):
                 for eachpt in each_patch:
                     if abs(eachpt[0]-pt[0]) < w_arena/4 and abs(eachpt[1]-pt[1]) < w_arena/4:
                         patches[i].append(pt)
                         break
-            if all([pt not in each_patch for each_patch in patches]):
+                    elif abs(eachpt[0]-pt[0]) < w_arena and abs(eachpt[1]-pt[1]) < w_arena:
+                        flagged = True
+            if all([pt not in each_patch for each_patch in patches]) and not flagged:
                 patches.append([pt])
     arenas = []
     for each_patch in patches:
