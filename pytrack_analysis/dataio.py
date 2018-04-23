@@ -2,12 +2,16 @@ import os
 import os.path as op
 import numpy as np
 import pandas as pd
-from pytrack_analysis.cli import colorprint, flprint, prn
+from datetime import datetime
+from pytrack_analysis.cli import colorprint, flprint, prn, query_yn, bc
 from pytrack_analysis.arena import get_geom
 from pytrack_analysis.food_spots import get_food
 from pytrack_analysis.geometry import get_angle, get_distance, rot, detect_geometry
 import warnings
 import io, yaml
+import sys
+
+SUFFIX_EXP = 'pytrack_exp'
 
 SETUPNAMES = {  'cam01': 'Adler',
                 'cam02': 'Baer',
@@ -15,6 +19,7 @@ SETUPNAMES = {  'cam01': 'Adler',
                 'cam04': 'Dachs',
                 'cam05': 'Elefant',
             }
+
 
 def read_yaml(_file):
     """ Returns a dict of a YAML-readable file '_file'. Returns None, if file is empty. """
@@ -56,21 +61,20 @@ class Data(object):
             data.columns = cols
 
 class Video(object):
-    def __init__(self, filename, dirname, vars):
+    def __init__(self, filename, dirname):
         self.name = filename
         self.dir = dirname
-        self.files = parse_file(filename, dirname)
-        self.vars = vars
-        if len(self.files['geometry']) == 0:
-            detect_geometry(op.join(dirname,filename))
-        if len(self.files['conditions']) == 0:
-            self.set_conditions()
+        self.files = {}
         self.time, self.timestr = parse_time(filename)
+        self.filekeys = {'data': 'fly', 'timestart': 'timestart'}
+        self.required = {'data': 4, 'timestart': 1}
+        """
         self.setup = parse_setup(filename)
         self.setup += ' ({})'.format(SETUPNAMES[self.setup])
         self.timestart = parse_timestart(op.join(dirname, self.files['timestart'][0]))
         self.data = Data(self.files['data'])
         self.arenas = None
+        """
 
     def __str__(self):
         full_str = 'Video: {}\nRecorded: {}\nSession start: {}\nSetup: {}\nFiles:\n'.format(self.name, self.time, self.timestart, self.setup)
@@ -83,6 +87,13 @@ class Video(object):
     def load_arena(self):
         pass
 
+    def load_files(self, key):
+        self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if self.filekeys[key] in eachfile and self.timestr in eachfile]
+        if len(self.files[key]) == self.required[key]:
+            return True
+        else:
+            return False
+
     def get_data(self):
         return [v for v in self.data.df]
 
@@ -92,23 +103,6 @@ class Video(object):
 
     def run_posttracking(self):
         pass
-
-    def set_conditions(self):
-        writing = True
-        condition_dict = {}
-        k = None
-        print('\nEnter conditions for {}'.format(self.name))
-        for k in self.vars.keys():
-            v = input('Value for key {} (multiple values are separated by whitespace): '.format(k))
-            v = v.split(' ')
-            for each in v:
-                if each not in self.vars[k]:
-                    print('Warning: {} not found in possible values for {}.'. format(each, k))
-                    self.set_conditions()
-            condition_dict[k] = v
-            k = None
-        self.conditions = condition_dict
-        write_yaml(op.join(self.dir, self.name.split('.')[0]+'.yaml'), self.conditions)
 
 
 
@@ -135,12 +129,6 @@ def parse_file(filename, basedir):
                     "timestart" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "timestart" in eachfile and timestampstr in eachfile],
                 }
     return file_dict
-
-"""
-Returns list of video objects of all raw data files
-"""
-def parse_files(basedir, vars):
-    return [Video(each_avi, basedir, vars) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
 
 
 """
@@ -172,7 +160,120 @@ def parse_time(video):
 Returns list of video objects of all raw data files
 """
 def parse_videos(basedir):
-    return [op.join(basedir, each_avi) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
+    return [Video(each_avi, basedir) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
+
+""" ### v0.1
+Returns dict of experiment details
+"""
+def register(videos):
+    outdict = {}
+    listtimes = []
+    for video in videos:
+        videotime, _ = parse_time(video.name)
+        listtimes.append(videotime)
+        listtimes = sorted(listtimes)
+    outdict['Title'] = input('Title of the experiment: ')
+    ID = ''
+    while len(ID) != 4:
+        ID = input('Four-letter ID: ')
+    outdict['ID'] = ID.upper()
+    outdict['Start date'] = datetime.strftime(listtimes[0], '%Y-%m-%d')
+    outdict['End date'] = datetime.strftime(listtimes[-1], '%Y-%m-%d')
+    outdict['Number of videos'] = len(videos)
+    outdict['Videos'] = [video.name for video in videos]
+
+    outdict['Constants'] = set_constants(outdict['Title'])
+    outdict['Variables'] = set_variables(outdict['Title'])
+    outdict['Conditions'] = {}
+    for video in videos:
+        outdict['Conditions'][video.name] = set_conditions(video, variables=outdict['Variables'])
+
+    uniques = []
+    for video in videos:
+        conds = outdict['Conditions'][video.name]
+        condslist = [v for k, v in conds.items()]
+        for i in range(4):
+            fly_cond = [el[i] for el in condslist]
+            if fly_cond not in uniques:
+                uniques.append(fly_cond)
+    outdict['Number of conditions'] = len(uniques)
+    show(outdict)
+
+    outfile = SUFFIX_EXP+ID+'.yaml'
+    if query_yn('Confirm and save experiment yaml file {}?'.format(outfile), default='yes'):
+        write_yaml(op.join(video.dir, outfile), outdict)
+        return outdict
+    else:
+        return register(videos)
+
+def show(_dict):
+    print(bc.BOLD+'\nExperiment summary:\n'+bc.ENDC)
+    for k, v in _dict.items():
+        if type(v) is dict:
+            print("{}:".format(k))
+            for k2, v2 in v.items():
+                print("\t{}:\t{}".format(k2, v2))
+        else:
+            print("{}:\t{}".format(k, v))
+    print()
+
+def set_conditions(video, variables=None):
+    writing = True
+    condition_dict = {}
+    k = None
+    print('\nEnter'+bc.OKBLUE+' conditions '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(video.name)+bc.ENDC)
+    for k in variables.keys():
+        v = input('Value for key'+bc.BOLD+' {} '.format(k)+bc.ENDC+'(multiple values are separated by whitespace): '.format(k))
+        v = v.split(' ')
+        lv = len(v)
+        for i in range(4-lv):   ### if less then 4 conditions are given, last condition will be repeated
+            v.append(v[-1])
+        for each in v:
+            if each not in variables[k]:
+                print('Warning: {} not found in possible values for {}.'. format(each, k))
+                return set_conditions(video, variables=variables)
+        condition_dict[k] = v
+        k = None
+    return condition_dict
+
+""" ### v0.1
+Sets constants of experiment
+"""
+def set_constants(exptitle):
+    writing = True
+    constants_dict = {}
+    k = None
+    print('\nEnter'+bc.OKBLUE+' constants '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(exptitle)+bc.ENDC)
+    while writing:
+        if k == None:
+            k = input('\nPlease type constants key ("enter to quit"): ')
+        if k == '':
+            writing = False
+        else:
+            v = input('Value for key'+bc.BOLD+' {}'.format(k)+bc.ENDC+': '.format(k))
+            constants_dict[k] = v
+            k = None
+    return constants_dict
+
+""" ### v0.1
+Sets variables of experiment
+"""
+def set_variables(exptitle):
+    writing = True
+    variables_dict = {}
+    k = None
+    print('\nEnter'+bc.OKBLUE+' variables '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(exptitle)+bc.ENDC)
+    while writing:
+        if k == None:
+            k = input('\nPlease type variables key ("enter to quit"): ')
+        if k == '':
+            writing = False
+        else:
+            v = input('Possible values for key'+bc.BOLD+' {} '.format(k)+bc.ENDC+'(multiple values are separated by whitespace): '.format(k))
+            v = v.split(' ')
+            variables_dict[k] = v
+            k = None
+    return variables_dict
 
 """
 Returns translated data for given session start (PROCESSING)
@@ -183,9 +284,39 @@ def translate_to(data, start, time=''):
     return data, data.index[0]
 
 class VideoRawData(object):
-    def __init__(self, experiment, basedir, columns=None, units=None, noVideo=False, VERBOSE=False):
+    def __init__(self, basedir, columns=None, units=None, noVideo=False, VERBOSE=False):
+
+        ### Load videos
         prn(__name__)
-        flprint("Loading raw data folders and file structure...")
+        self.dir = basedir
+        flprint("Loading raw data videos...")
+        self.videos = parse_videos(basedir)
+        self.nvids = len(self.videos)
+        flprint("found {} sessions...".format(self.nvids))
+        colorprint("done.", color='success')
+
+        ### Register experiment
+        self.init_experiment()
+
+        for video in self.videos:
+            print('Video:\t{}'.format(video.name))
+
+            ### load fly data
+            self.init_files(video, 'raw fly data files', 'data')
+            ### load timestart file
+            self.init_files(video, 'timestart file', 'timestart')
+
+
+        ### Load geometry
+        """
+        flprint("Loading raw fly data files...")
+        for video in self.videos:
+            video.load_fly_files()
+        """
+
+
+
+        """
         self.experiment = experiment
         self.dir = basedir
         self.manual_dir = op.join(basedir, 'manual')
@@ -204,14 +335,39 @@ class VideoRawData(object):
         self.files = [_video.files for _video in self.videos]
         self.dtime = [_video.time for _video in self.videos]
         self.timestr = [_video.timestr for _video in self.videos]
-        self.nvids = len(self.videos)
-        flprint("found {} sessions...".format(self.nvids))
         if VERBOSE:
             print('\n')
             for i, video in enumerate(self.videos):
                 print('[{}]'.format(i))
                 print(video)
-        colorprint("done.", color='success')
+
+        """
+
+    def init_experiment(self):
+        exps_files = [_file for _file in os.listdir(self.dir) if _file.endswith('yaml') and _file.startswith('pytrack_exp')]
+        prn(__name__)
+        print("Found {} pytrack experiment file(s)...".format(len(exps_files)))
+        if len(exps_files) == 0:
+            if query_yn('Do you want to register experiment (NO will exit the script)', default='yes'):
+                self.experiment = register(self.videos)
+            else:
+                sys.exit(0)
+        else:
+            for i, exp in enumerate(exps_files):
+                if query_yn('Found pytrack experiment yaml file {} - Do you want to use it?'.format(exp), default='yes'):
+                    self.experiment = read_yaml(op.join(self.dir, exp))
+                    break
+                elif i == len(exps_files)-1:
+                    self.experiment = register(self.videos)
+        show(self.experiment)
+
+    def init_files(self, video, title, key):
+        flprint("Loading {}...".format(title))
+        if video.load_files(key):
+            flprint("found {} file(s)...".format(len(video.files[key])))
+            colorprint("done.", color='success')
+        else:
+            colorprint("ERROR: found invalid number of raw fly data files ({} instead of {}).".format(len(video.files[key]), video.required[key]), color='error')
 
     def get_data(self, fly=None):
         if fly is None:
@@ -289,43 +445,6 @@ class VideoRawData(object):
                         print("\t",_k, ':', _v)
                 for arg in args:
                     print("\t", list(_val.keys())[arg], ':', list(_val.values())[arg])
-
-    ### v0.1
-    def set_constants(self):
-        writing = True
-        constants_dict = {}
-        k = None
-        print('\nEnter constants for {}'.format(parse_videos(self.dir)))
-        while writing:
-            if k == None:
-                k = input('\nPlease type constants key ("enter to quit"): ')
-            if k == '':
-                writing = False
-            else:
-                v = input('Value for key {}: '.format(k))
-                constants_dict[k] = v
-                k = None
-        self.constants = constants_dict
-        write_yaml(op.join(self.manual_dir, 'constants.yaml'), self.constants)
-
-    ### v0.1
-    def set_variables(self):
-        writing = True
-        variables_dict = {}
-        k = None
-        print('\nEnter variables for {}'.format(parse_videos(self.dir)))
-        while writing:
-            if k == None:
-                k = input('\nPlease type variables key ("enter to quit"): ')
-            if k == '':
-                writing = False
-            else:
-                v = input('Possible values for key {} (multiple values are separated by whitespace): '.format(k))
-                v = v.split(' ')
-                variables_dict[k] = v
-                k = None
-        self.variables = variables_dict
-        write_yaml(op.join(self.manual_dir, 'variables.yaml'), self.variables)
 
     def set_scale(self, _which, _value, unit=None):
         if _which == 'fix_scale':

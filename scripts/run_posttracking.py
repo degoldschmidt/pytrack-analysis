@@ -21,27 +21,27 @@ def get_args():
     return BASEDIR, OPTION, OVERWRITE
 
 def main(_basedir, _option, _overwrite):
-    experiment = 'DIFF' ### TODO
-    profile = get_profile(experiment)
+    user = 'degoldschmidt' ### TODO
+    profile = get_profile(user)
     basedir = profile.set_folder(_basedir)
 
     ### Define raw data structure
     colnames = ['datetime', 'elapsed_time', 'frame_dt', 'body_x',   'body_y',   'angle',    'major',    'minor']
-    raw_data = VideoRawData(experiment, basedir)
+    raw_data = VideoRawData(basedir)
     ### go through all session
     for i, video in enumerate(raw_data.videos):
-
+        pass
         ### arena + food spots
         #video.load_arena()
         ### trajectory data
-        video.load_data()
+        #video.load_data()
         #video.data.reindex(colnames)
         #video.data.center_to_arena(video.arenas)
         ### fly/experiment metadata
         #for fly_idx, fly_data in enumerate(raw_data.get_data()):
 
         ###
-        video.unload_data()
+        #video.unload_data()
     del profile
 
 if __name__ == '__main__':

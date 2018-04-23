@@ -1,6 +1,16 @@
 import argparse
 import sys
 
+class bc:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 """
 Print function for same line printing
 """
@@ -10,19 +20,19 @@ def colorprint(*args, color="default", sln=False, bg='40m'):
         out += arg
 
     if color == 'success':
-        colorstr = '\x1b[0;32;'+bg
+        colorstr = bc.OKGREEN
     if color == 'warning':
-        colorstr = '\x1b[1;33;'+bg
+        colorstr = bc.WARNING
     if color == 'profile':
-        colorstr = '\x1b[0;95;'+bg
+        colorstr = bc.HEADER
     if color == 'error':
-        colorstr = '\x1b[1;31;'+bg
+        colorstr = bc.FAIL
     if color == 'namespace':
-        colorstr = '\x1b[0;36;'+bg
+        colorstr = bc.HEADER
     if sln:
-        flprint(colorstr + out + '\x1b[0m')
+        flprint(colorstr + out + bc.ENDC)
     else:
-        print(colorstr + out + '\x1b[0m')
+        print(colorstr + out + bc.ENDC)
 
 """
 Returns arguments from CLI (CLI)
