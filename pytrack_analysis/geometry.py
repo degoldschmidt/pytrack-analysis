@@ -99,7 +99,7 @@ def detect_geometry(_fullpath):
             loc[1] = np.append(loc[1], temp[1])
     patches = []
     for pt in zip(*loc[::-1]):
-        cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
+        #cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
         if len(patches) == 0:
             patches.append([pt])
         else:
@@ -158,8 +158,8 @@ def detect_geometry(_fullpath):
             spots.append(tismean)
     for pt in spots:
         ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
-        cv2.circle(img_rgb, ept, int(w/2), (0,165,255), 1)
-        cv2.circle(img_rgb, ept, 1, (0,165,255), 2)
+        #cv2.circle(img_rgb, ept, int(w/2), (0,165,255), 1)
+        #cv2.circle(img_rgb, ept, 1, (0,165,255), 2)
     #print(loc)
 
     preview = cv2.resize(img_rgb, (704, 700))

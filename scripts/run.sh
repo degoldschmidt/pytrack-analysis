@@ -1,6 +1,6 @@
 #!/bin/sh
 cd ..
-sudo python3 setup.py install --force ##> /dev/null 2>&1
+sudo python3 setup.py install --force > /dev/null 2>&1
 cd scripts
 
 BASEDIR=$1
