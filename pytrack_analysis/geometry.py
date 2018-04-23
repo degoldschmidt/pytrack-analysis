@@ -79,6 +79,7 @@ def detect_geometry(_fullpath):
     templates_arena = [cv2.imread(_file,0) for _file in arenas]
     w, h = templates[0].shape[::-1]
     w_arena, h_arena = templates_arena[0].shape[::-1]
+    print(w_arena, h_arena)
     res = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates]
     res_arena = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates_arena]
 
