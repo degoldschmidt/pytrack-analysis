@@ -299,12 +299,17 @@ class VideoRawData(object):
         self.init_experiment()
 
         for video in self.videos:
-            print('Video:\t{}'.format(video.name))
 
+            ### print video name
+            prn(__name__)
+            print('Video:\t{}'.format(video.name))
             ### load fly data
+            prn(__name__)
             self.init_files(video, 'raw fly data files', 'data')
             ### load timestart file
+            prn(__name__)
             self.init_files(video, 'timestart file', 'timestart')
+            print()
 
 
         ### Load geometry
