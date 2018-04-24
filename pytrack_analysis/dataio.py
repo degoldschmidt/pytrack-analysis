@@ -1,17 +1,16 @@
 import os
 import os.path as op
+import warnings
+import sys
 import numpy as np
 import pandas as pd
 from datetime import datetime
 from pytrack_analysis.cli import colorprint, flprint, prn, query_yn, bc
 from pytrack_analysis.arena import get_geom
 from pytrack_analysis.food_spots import get_food
+from pytrack_analysis.experiment import parse_setup, parse_time, add, remove, register, show
 from pytrack_analysis.geometry import get_angle, get_distance, rot, detect_geometry
-import warnings
-import io, yaml
-import sys
-
-SUFFIX_EXP = 'pytrack_exp'
+from pytrack_analysis.yamlio import read_yaml
 
 SETUPNAMES = {  'cam01': 'Adler',
                 'cam02': 'Baer',
@@ -19,18 +18,6 @@ SETUPNAMES = {  'cam01': 'Adler',
                 'cam04': 'Dachs',
                 'cam05': 'Elefant',
             }
-
-
-def read_yaml(_file):
-    """ Returns a dict of a YAML-readable file '_file'. Returns None, if file is empty. """
-    with open(_file, 'r') as stream:
-        out = yaml.load(stream)
-    return out
-
-def write_yaml(_file, _dict):
-    """ Writes a given dictionary '_dict' into file '_file' in YAML format. Uses UTF8 encoding and no default flow style. """
-    with io.open(_file, 'w+', encoding='utf8') as outfile:
-        yaml.dump(_dict, outfile, default_flow_style=False, allow_unicode=True)
 
 class Data(object):
     def __init__(self, _files):
@@ -64,10 +51,10 @@ class Video(object):
     def __init__(self, filename, dirname):
         self.name = filename
         self.dir = dirname
+        self.fullpath = op.join(dirname, filename)
         self.files = {}
         self.time, self.timestr = parse_time(filename)
-        self.filekeys = {'data': 'fly', 'timestart': 'timestart'}
-        self.required = {'data': 4, 'timestart': 1}
+        self.required = {'fly': 4, 'timestart': 1, 'arena': 1}
         """
         self.setup = parse_setup(filename)
         self.setup += ' ({})'.format(SETUPNAMES[self.setup])
@@ -88,7 +75,10 @@ class Video(object):
         pass
 
     def load_files(self, key):
-        self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if self.filekeys[key] in eachfile and self.timestr in eachfile]
+        self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
+        if key == 'arena' and len(self.files[key]) == 0:
+            colorprint('no file found: starting automatic arena geometry detection', color='warning')
+            detect_geometry(self.fullpath)
         if len(self.files[key]) == self.required[key]:
             return True
         else:
@@ -109,28 +99,6 @@ class Video(object):
     def unload_data(self):
         del self.data
 
-
-"""
-Returns list of directories in given path d with full path (DATAIO)
-"""
-def flistdir(d):
-    return [op.join(d, f) for f in os.listdir(d) if '.txt' in f]
-
-"""
-Returns dictionary of all files for a given video file
-"""
-def parse_file(filename, basedir):
-    dtstamp, timestampstr = parse_time(filename)
-    file_dict = {
-                    "data" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "fly" in eachfile and timestampstr in eachfile],
-                    "food" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "food" in eachfile and timestampstr in eachfile],
-                    "geometry" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "geometry" in eachfile and timestampstr in eachfile],
-                    "conditions" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if eachfile.endswith('yaml') and timestampstr in eachfile],
-                    "timestart" : [op.join(basedir, eachfile) for eachfile in os.listdir(basedir) if "timestart" in eachfile and timestampstr in eachfile],
-                }
-    return file_dict
-
-
 """
 Returns datetime for session start (DATAIO)
 """
@@ -140,140 +108,19 @@ def parse_timestart(filename):
         data = f.read()
     return datetime.strptime(data.split(' ')[1][:-14], '%Y-%m-%dT%H:%M:%S')
 
-"""
-Returns setup from video file
-"""
-def parse_setup(video):
-    setup = video.split('.')[0].split('_')[0]
-    return setup
-
-"""
-Returns timestamp from video file
-"""
-def parse_time(video):
-    from datetime import datetime
-    timestampstr = video.split('.')[0][-19:]
-    dtstamp = datetime.strptime(timestampstr, "%Y-%m-%dT%H_%M_%S")
-    return dtstamp, timestampstr[:-3]
-
-"""
+""" ### v0.1
 Returns list of video objects of all raw data files
 """
 def parse_videos(basedir):
-    return [Video(each_avi, basedir) for each_avi in [_file for _file in sorted(os.listdir(basedir)) if _file.endswith('avi')]]
-
-""" ### v0.1
-Returns dict of experiment details
-"""
-def register(videos):
-    outdict = {}
-    listtimes = []
-    for video in videos:
-        videotime, _ = parse_time(video.name)
-        listtimes.append(videotime)
-        listtimes = sorted(listtimes)
-    outdict['Title'] = input('Title of the experiment: ')
-    ID = ''
-    while len(ID) != 4:
-        ID = input('Four-letter ID: ')
-    outdict['ID'] = ID.upper()
-    outdict['Start date'] = datetime.strftime(listtimes[0], '%Y-%m-%d')
-    outdict['End date'] = datetime.strftime(listtimes[-1], '%Y-%m-%d')
-    outdict['Number of videos'] = len(videos)
-    outdict['Videos'] = [video.name for video in videos]
-
-    outdict['Constants'] = set_constants(outdict['Title'])
-    outdict['Variables'] = set_variables(outdict['Title'])
-    outdict['Conditions'] = {}
-    for video in videos:
-        outdict['Conditions'][video.name] = set_conditions(video, variables=outdict['Variables'])
-
-    uniques = []
-    for video in videos:
-        conds = outdict['Conditions'][video.name]
-        condslist = [v for k, v in conds.items()]
-        for i in range(4):
-            fly_cond = [el[i] for el in condslist]
-            if fly_cond not in uniques:
-                uniques.append(fly_cond)
-    outdict['Number of conditions'] = len(uniques)
-    show(outdict)
-
-    outfile = SUFFIX_EXP+ID+'.yaml'
-    if query_yn('Confirm and save experiment yaml file {}?'.format(outfile), default='yes'):
-        write_yaml(op.join(video.dir, outfile), outdict)
-        return outdict
-    else:
-        return register(videos)
-
-def show(_dict):
-    print(bc.BOLD+'\nExperiment summary:\n'+bc.ENDC)
-    for k, v in _dict.items():
-        if type(v) is dict:
-            print("{}:".format(k))
-            for k2, v2 in v.items():
-                print("\t{}:\t{}".format(k2, v2))
-        else:
-            print("{}:\t{}".format(k, v))
-    print()
-
-def set_conditions(video, variables=None):
-    writing = True
-    condition_dict = {}
-    k = None
-    print('\nEnter'+bc.OKBLUE+' conditions '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(video.name)+bc.ENDC)
-    for k in variables.keys():
-        v = input('Value for key'+bc.BOLD+' {} '.format(k)+bc.ENDC+'(multiple values are separated by whitespace): '.format(k))
-        v = v.split(' ')
-        lv = len(v)
-        for i in range(4-lv):   ### if less then 4 conditions are given, last condition will be repeated
-            v.append(v[-1])
-        for each in v:
-            if each not in variables[k]:
-                print('Warning: {} not found in possible values for {}.'. format(each, k))
-                return set_conditions(video, variables=variables)
-        condition_dict[k] = v
-        k = None
-    return condition_dict
-
-""" ### v0.1
-Sets constants of experiment
-"""
-def set_constants(exptitle):
-    writing = True
-    constants_dict = {}
-    k = None
-    print('\nEnter'+bc.OKBLUE+' constants '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(exptitle)+bc.ENDC)
-    while writing:
-        if k == None:
-            k = input('\nPlease type constants key ("enter to quit"): ')
-        if k == '':
-            writing = False
-        else:
-            v = input('Value for key'+bc.BOLD+' {}'.format(k)+bc.ENDC+': '.format(k))
-            constants_dict[k] = v
-            k = None
-    return constants_dict
-
-""" ### v0.1
-Sets variables of experiment
-"""
-def set_variables(exptitle):
-    writing = True
-    variables_dict = {}
-    k = None
-    print('\nEnter'+bc.OKBLUE+' variables '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(exptitle)+bc.ENDC)
-    while writing:
-        if k == None:
-            k = input('\nPlease type variables key ("enter to quit"): ')
-        if k == '':
-            writing = False
-        else:
-            v = input('Possible values for key'+bc.BOLD+' {} '.format(k)+bc.ENDC+'(multiple values are separated by whitespace): '.format(k))
-            v = v.split(' ')
-            variables_dict[k] = v
-            k = None
-    return variables_dict
+    all_file_tstamp = [_file[6:] for _file in os.listdir(basedir) if _file.endswith('avi')]
+    sorted_ts = sorted(all_file_tstamp)
+    print(sorted_ts)
+    filelist_sorted = []
+    for ts in sorted_ts:
+        for _file in os.listdir(basedir):
+            if ts in _file:
+                filelist_sorted.append(_file)
+    return [Video(each_avi, basedir) for each_avi in [_file for _file in filelist_sorted if _file.endswith('avi')]]
 
 """
 Returns translated data for given session start (PROCESSING)
@@ -305,10 +152,15 @@ class VideoRawData(object):
             print('Video:\t{}'.format(video.name))
             ### load fly data
             prn(__name__)
-            self.init_files(video, 'raw fly data files', 'data')
+            self.init_files(video, 'raw fly data files', 'fly')
             ### load timestart file
             prn(__name__)
             self.init_files(video, 'timestart file', 'timestart')
+
+            ### load arena geometry file
+            prn(__name__)
+            self.init_files(video, 'arena file', 'arena')
+
             print()
 
 
@@ -361,10 +213,16 @@ class VideoRawData(object):
             for i, exp in enumerate(exps_files):
                 if query_yn('Found pytrack experiment yaml file {} - Do you want to use it?'.format(exp), default='yes'):
                     self.experiment = read_yaml(op.join(self.dir, exp))
+                    show(self.experiment)
                     break
                 elif i == len(exps_files)-1:
                     self.experiment = register(self.videos)
-        show(self.experiment)
+        if self.nvids > len(self.experiment['Videos']):
+            if query_yn('Found'+bc.FAIL+ ' {} '.format(self.nvids-len(self.experiment['Videos'])) +bc.ENDC+'more videos than registered - Do you want to add them to the registry?', default='yes'):
+                add(self.videos, self.experiment)
+        if self.nvids < len(self.experiment['Videos']):
+            if query_yn('Found'+bc.FAIL+ ' {} '.format(len(self.experiment['Videos'])-self.nvids) +bc.ENDC+'less videos than registered - Do you want to remove them to the registry?', default='yes'):
+                remove(self.videos, self.experiment)
 
     def init_files(self, video, title, key):
         flprint("Loading {}...".format(title))
@@ -373,6 +231,8 @@ class VideoRawData(object):
             colorprint("done.", color='success')
         else:
             colorprint("ERROR: found invalid number of raw fly data files ({} instead of {}).".format(len(video.files[key]), video.required[key]), color='error')
+            #sys.exit(0)
+
 
     def get_data(self, fly=None):
         if fly is None:

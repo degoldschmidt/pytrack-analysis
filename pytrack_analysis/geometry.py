@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
-import cv2
 import platform, subprocess
-import os
+import os, sys
+import cv2
+from io import StringIO
 from pytrack_analysis.cli import colorprint, flprint, prn
+from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates
 
 NAMESPACE = 'geometry'
 
@@ -45,71 +47,107 @@ def rot(angle, in_degrees=False):
         return np.array([[np.cos(angle), -np.sin(angle)],[np.sin(angle), np.cos(angle)]])
 """
 
-"""
-Class for defining food spots
-"""
-class Spot(object):
-    def __init__(self, _x, _y, _r, _s):
-        self.x = _x
-        self.y = _y
-        self.r = _r
-        self.substrate = _s
+class Arena(object):
+    def __init__(self, x, y, scale, c, layout=None):
+        self.x = x
+        self.y = y
+        self.r = scale * 25.
+        self.r0 = scale * .1
+        self.scale = scale
+        self.rotation = 0.
+        self.substr = ['yeast', 'sucrose']
+        self.spots = self.get_rings((scale, 10., 0., np.pi/3., 0), (scale, 20., np.pi/6., np.pi/3., 1))
 
-class SpotCollection(object):
-    def __init__(self):
-        self.spots = []
-    def add(self, _spot):
-        self.spots.append(_spot)
-    def get(self, _index):
-        if type(_index) is int:
-            return self.spots[_index]
-    def __getitem__(self, key):
-        return self.spots[key]
+    def get_dict(self):
+        return {'x': self.x, 'y': self.y, 'radius': self.r, 'scale': self.scale, 'rotation': self.rotation}
+
+    def move_to(self, x, y):
+        dx = x - self.x
+        dy = y - self.y
+        self.x = x
+        self.y = y
+        for spot in self.spots:
+            spot.move_by(dx, dy)
+
+    def rotate_by(self, value):
+        self.rotation += value
+        self.rotation = round(self.rotation, 2)
+        self.spots = self.get_rings((self.scale, 10., 0.+self.rotation, np.pi/3., 0), (self.scale, 20., np.pi/6.+self.rotation, np.pi/3., 1))
+
+    def scale_by(self, value):
+        self.scale += value
+        self.scale = round(self.scale, 5)
+        if self.scale < 0.0:
+            self.scale = 0.00
+        self.r = self.scale * 25.
+        self.r0 = self.scale * .5
+        self.spots = self.get_rings((self.scale, 10., 0.+self.rotation, np.pi/3., 0), (self.scale, 20., np.pi/6.+self.rotation, np.pi/3., 1))
+
+    def get_rings(self, *args):
+        """
+        takes tuples: (scale, distance, offset, interval, substrate_move)
+        """
+        out = []
+        for arg in args:
+            sc = arg[0]
+            r = sc * arg[1]
+            t = arg[2]
+            w = arg[3]
+            sm = arg[4]
+            angles = np.arange(t, t+2*np.pi, w)
+            xs, ys = r * np.cos(angles), r * np.sin(angles)
+            for i, (x, y) in enumerate(zip(xs, ys)):
+                out.append(Spot(x+self.x, y+self.y, sc * 1.5, self.substr[(i+sm)%2]))
+        return out
+
+
+class Spot(object):
+    def __init__(self, x, y, r, s):
+        self.x = x
+        self.y = y
+        self.r = r
+        self.substrate = s
+
+    def move_by(self, dx, dy):
+        self.x += dx
+        self.y += dy
+
+    def move_to(self, x, y):
+        self.x = x
+        self.y = y
+
+    def toggle_substrate(self):
+        s = {'yeast': 'sucrose', 'sucrose': 'yeast'}
+        self.substrate = s[self.substrate]
 
 def detect_geometry(_fullpath):
-    cap = cv2.VideoCapture(_fullpath)
     setup = os.path.basename(_fullpath).split('_')[0]
-    ret, img = cap.read()
+    video = VideoCapture(_fullpath, 0)
+    img = video.get_average(100) #### takes average of 100 frames
+    video.stop()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    cv2.imwrite('res.png',img)
-    yeasts = [os.path.join('..', 'media', 'templates', setup, _file) for _file in os.listdir(os.path.join('..', 'media', 'templates', setup)) if 'yeast' in _file]
-    arenas = [os.path.join('..', 'media', 'templates', setup, _file) for _file in os.listdir(os.path.join('..', 'media', 'templates', setup)) if 'arena' in _file]
-    print(yeasts, arenas)
-    templates = [cv2.imread(_file,0) for _file in yeasts]
-    templates_arena = [cv2.imread(_file,0) for _file in arenas]
-    w, h = templates[0].shape[::-1]
-    w_arena, h_arena = templates_arena[0].shape[::-1]
-    print(w_arena, h_arena)
-    res = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates]
-    res_arena = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates_arena]
+    img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB) ### this is for coloring
 
-    img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+    ### this is for putting more templates
+    cv2.imwrite('res.png',img)
 
     """
     Get arenas
     """
-    arena_threshold = 0.85
-    loc = None
-    for r in res_arena:
-        if loc is None:
-            loc = list(np.where( r >= arena_threshold ))
-        else:
-            temp = list(np.where( r >= arena_threshold ))
-            loc[0] = np.append(loc[0], temp[0])
-            loc[1] = np.append(loc[1], temp[1])
+    loc, w = match_templates(img, 'arena', setup, 0.9)
     patches = []
     for pt in zip(*loc[::-1]):
-        #cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
+        cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 2)
         if len(patches) == 0:
             patches.append([pt])
         else:
             flagged = False
             for i, each_patch in enumerate(patches):
                 for eachpt in each_patch:
-                    if abs(eachpt[0]-pt[0]) < w_arena/4 and abs(eachpt[1]-pt[1]) < w_arena/4:
+                    if abs(eachpt[0]-pt[0]) < w/4 and abs(eachpt[1]-pt[1]) < w/4:
                         patches[i].append(pt)
                         break
-                    elif abs(eachpt[0]-pt[0]) < w_arena and abs(eachpt[1]-pt[1]) < w_arena:
+                    elif abs(eachpt[0]-pt[0]) < w and abs(eachpt[1]-pt[1]) < w:
                         flagged = True
             if all([pt not in each_patch for each_patch in patches]) and not flagged:
                 patches.append([pt])
@@ -118,13 +156,19 @@ def detect_geometry(_fullpath):
         tis = np.array(each_patch)
         arenas.append(np.mean(tis, axis=0))
     for pt in arenas:
-        ept = (int(round(pt[0]+w_arena/2)), int(round(pt[1]+w_arena/2)))
-        cv2.circle(img_rgb, ept, int(w_arena/2), (0,255,0), 2)
+        ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
+        cv2.circle(img_rgb, ept, int(w/2), (0,255,0), 1)
         cv2.circle(img_rgb, ept, 1, (0,255,0), 2)
+
 
     """
     Get spots
     """
+    """
+    yeasts = [os.path.join('..', 'media', 'templates', setup, _file) for _file in os.listdir(os.path.join('..', 'media', 'templates', setup)) if 'yeast' in _file]
+    templates = [cv2.imread(_file,0) for _file in yeasts]
+    w, h = templates[0].shape[::-1]
+    res = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates]
     threshold = 0.9
     loc = None
     for r in res:
@@ -138,7 +182,7 @@ def detect_geometry(_fullpath):
     loc = tuple(loc)
     patches = []
     for pt in zip(*loc[::-1]):
-        #cv2.rectangle(img_rgb, pt, (pt[0] + w_arena, pt[1] + w_arena), (0,0,255), 2)
+        #cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 1)
         if len(patches) == 0:
             patches.append([pt])
         else:
@@ -158,9 +202,10 @@ def detect_geometry(_fullpath):
             spots.append(tismean)
     for pt in spots:
         ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
-        #cv2.circle(img_rgb, ept, int(w/2), (0,165,255), 1)
-        #cv2.circle(img_rgb, ept, 1, (0,165,255), 2)
+        cv2.circle(img_rgb, ept, int(w/2), (0,165,255), 1)
+        cv2.circle(img_rgb, ept, 1, (0,165,255), 1)
     #print(loc)
+    """
 
     preview = cv2.resize(img_rgb, (704, 700))
     cv2.imshow('preview geometry (press any key to continue)',preview)
@@ -170,7 +215,7 @@ def detect_geometry(_fullpath):
         output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    return arenas, spots
+    return arenas
 
 
 """

@@ -20,14 +20,11 @@ def get_args():
         OPTION = parser.parse_args().option
     return BASEDIR, OPTION, OVERWRITE
 
-def main(_basedir, _option, _overwrite):
-    user = 'degoldschmidt' ### TODO
-    profile = get_profile(user)
-    basedir = profile.set_folder(_basedir)
-
+def main():
+    BASEDIR, OPTION, OVERWRITE = get_args()
     ### Define raw data structure
     colnames = ['datetime', 'elapsed_time', 'frame_dt', 'body_x',   'body_y',   'angle',    'major',    'minor']
-    raw_data = VideoRawData(basedir)
+    raw_data = VideoRawData(BASEDIR)
     ### go through all session
     for i, video in enumerate(raw_data.videos):
         pass
@@ -42,8 +39,9 @@ def main(_basedir, _option, _overwrite):
 
         ###
         #video.unload_data()
-    del profile
 
 if __name__ == '__main__':
-    BASEDIR, OPTION, OVERWRITE = get_args()
-    main(BASEDIR, OPTION, OVERWRITE)
+    # runs as benchmark test
+    test = Multibench("", SILENT=False, SLIM=True)
+    test(main)
+    del test
