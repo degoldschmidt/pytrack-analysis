@@ -5,17 +5,21 @@ import os, sys
 import cv2
 from io import StringIO
 from pytrack_analysis.cli import colorprint, flprint, prn
-from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates, get_peak_matches
+from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates, get_peak_matches, preview
 
 NAMESPACE = 'geometry'
 
 """
 Returns angle between to given points centered on pt1 (GEOMETRY)
 """
-def get_angle(pt1, pt2):
+def get_angle(pt1, pt2, flipy=False):
     dx = pt2[0]-pt1[0]
-    dy = pt2[1]-pt1[1]
+    if flipy:
+        dy = pt1[1]-pt2[1]
+    else:
+        dy = pt2[1]-pt1[1]
     return np.arctan2(dy,dx)
+
 
 """
 Returns distance between to given points (GEOMETRY)
@@ -126,7 +130,6 @@ def detect_geometry(_fullpath):
     img = video.get_average(100) #### takes average of 100 frames
     video.stop()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB) ### this is for coloring
 
     ### this is for putting more templates
     cv2.imwrite('res.png',img)
@@ -134,16 +137,51 @@ def detect_geometry(_fullpath):
     """
     Get arenas
     """
-    loc, vals, w = match_templates(img, 'arena', setup, 0.8)
-    patches = get_peak_matches(loc, vals, w, img_rgb)
-    arenas = patches
-    #for each_patch in patches:
-        #tis = np.array(each_patch)
-        #arenas.append(np.mean(tis, axis=0))
-    for pt in arenas:
-        ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
-        cv2.circle(img_rgb, ept, int(w/2), (0,255,0), 1)
-        cv2.circle(img_rgb, ept, 1, (0,255,0), 2)
+    thresh = 0.8
+    arenas = []
+    while len(arenas) != 4:
+        img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB) ### this is for coloring
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(img_rgb, 'Threshold: {}'.format(thresh), (50, 50), font, 1, (0, 167, 56), 2, cv2.LINE_AA)
+
+        loc, vals, w = match_templates(img, 'arena', setup, thresh)
+        patches = get_peak_matches(loc, vals, w, img_rgb)
+        arenas = patches
+        #for each_patch in patches:
+            #tis = np.array(each_patch)
+            #arenas.append(np.mean(tis, axis=0))
+        if len(arenas) < 4:
+            thresh -= 0.05
+            thresh = round(thresh,2)
+            print('Not enough arenas detected. Decrease matching threshold to {}.'.format(thresh))
+        elif len(arenas) == 4:
+            print('Detected 4 arenas. Exiting arena detection.')
+            for pt in arenas:
+                ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
+                cv2.circle(img_rgb, ept, int(w/2), (0,255,0), 1)
+                cv2.circle(img_rgb, ept, 1, (0,255,0), 2)
+        #preview(img_rgb)
+    """ Correction algorithm (not used)
+    for i, arena in enumerate(arenas):
+        print('(x, y) = ({}, {})'.format(arena[0], arena[1]))
+    for i, j in zip([0, 1, 3, 2], [1, 3, 2, 0]):
+        print('distance ({}-{}) = {}'.format(i, j, get_distance(arenas[i], arenas[j])))
+        print('Angle: {}'.format(get_angle(arenas[i], arenas[j], flipy=True)))
+    for i, j, k in zip([3, 2, 1, 0], [1, 0, 0, 1], [2, 3, 3, 2]): ### i is anchor
+        for m in range(4):
+            if m not in [i, j, k]:
+                print(m)
+        da = [arenas[j][0]-arenas[i][0], arenas[j][1]-arenas[i][1]]
+        pta = [arenas[k][0]+da[0], arenas[k][1]+da[1]]
+        db = [arenas[k][0]-arenas[i][0], arenas[k][1]-arenas[i][1]]
+        ptb = [arenas[j][0]+db[0], arenas[j][1]+db[1]]
+        if get_distance(pta, ptb) < 5:
+            pt = (int((pta[0]+ptb[0])/2 + w/2), int((pta[1]+ptb[1])/2 + w/2))
+            cv2.circle(img_rgb, pt, int(w/2), (255,0,255), 1)
+            cv2.circle(img_rgb, pt, 1, (255,0,255), 2)
+    """
+    preview(img_rgb)
+
 
 
     """
@@ -191,15 +229,6 @@ def detect_geometry(_fullpath):
         cv2.circle(img_rgb, ept, 1, (0,165,255), 1)
     #print(loc)
     """
-
-    preview = cv2.resize(img_rgb, (704, 700))
-    cv2.imshow('preview geometry (press any key to continue)',preview)
-    if platform.system() == 'Darwin':
-        tmpl = 'tell application "System Events" to set frontmost of every process whose unix id is {} to true'
-        script = tmpl.format(os.getpid())
-        output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
     return arenas
 
 

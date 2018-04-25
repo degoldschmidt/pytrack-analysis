@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import os
 import os.path as op
+import platform, subprocess
 
 class VideoCapture:
     def __init__(self, src, var):
@@ -133,5 +134,15 @@ def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=True):
     if show_peaks:
         for pt in patches:
             cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 1)
-        print('found {} patches.'.format(len(patches)))
+        #print('found {} patches.'.format(len(patches)))
     return patches
+
+def preview(img):
+    preview = cv2.resize(img, (704, 700))
+    cv2.imshow('preview geometry (press any key to continue)',preview)
+    if platform.system() == 'Darwin':
+        tmpl = 'tell application "System Events" to set frontmost of every process whose unix id is {} to true'
+        script = tmpl.format(os.getpid())
+        output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
