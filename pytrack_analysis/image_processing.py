@@ -91,11 +91,47 @@ def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NOR
     size = templates[0].shape[0]    ### templates should have same size
     result = [cv2.matchTemplate(img,template,method) for template in templates]
     loc = None
+    vals = None
     for r in result:
         if loc is None:
             loc = list(np.where( r >= threshold ))
+            vals = r[np.where( r >= threshold )]
         else:
             temp = list(np.where( r >= threshold ))
+            tempvals = r[np.where( r >= threshold )]
             loc[0] = np.append(loc[0], temp[0])
             loc[1] = np.append(loc[1], temp[1])
-    return loc, size
+            vals = np.append(vals, tempvals)
+    return loc, vals, size
+
+def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=True):
+    patches = []
+    maxv = []
+    for i, pt in enumerate(zip(*loc[::-1])):
+        v = vals[i]
+        if show_all:
+            cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 2)
+        if len(patches) == 0:
+            patches.append(pt)
+            maxv.append(v)
+        else:
+            flagged = False
+            outside = len(patches)*[False]
+            for j, each_patch in enumerate(patches):
+                if abs(each_patch[0]-pt[0]) < w and abs(each_patch[1]-pt[1]) < w:
+                    if v > maxv[j]:
+                        patches[j] = pt
+                        maxv[j] = v
+                        break
+                elif abs(each_patch[0]-pt[0]) < w and abs(each_patch[1]-pt[1]) < w:
+                    flagged = True
+                elif abs(each_patch[0]-pt[0]) > w or abs(each_patch[1]-pt[1]) > w:
+                    outside[j] = True
+            if all(outside):
+                patches.append(pt)
+                maxv.append(v)
+    if show_peaks:
+        for pt in patches:
+            cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 1)
+        print('found {} patches.'.format(len(patches)))
+    return patches

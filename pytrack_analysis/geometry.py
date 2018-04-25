@@ -5,7 +5,7 @@ import os, sys
 import cv2
 from io import StringIO
 from pytrack_analysis.cli import colorprint, flprint, prn
-from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates
+from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates, get_peak_matches
 
 NAMESPACE = 'geometry'
 
@@ -134,27 +134,12 @@ def detect_geometry(_fullpath):
     """
     Get arenas
     """
-    loc, w = match_templates(img, 'arena', setup, 0.9)
-    patches = []
-    for pt in zip(*loc[::-1]):
-        cv2.rectangle(img_rgb, pt, (pt[0] + w, pt[1] + w), (0,0,255), 2)
-        if len(patches) == 0:
-            patches.append([pt])
-        else:
-            flagged = False
-            for i, each_patch in enumerate(patches):
-                for eachpt in each_patch:
-                    if abs(eachpt[0]-pt[0]) < w/4 and abs(eachpt[1]-pt[1]) < w/4:
-                        patches[i].append(pt)
-                        break
-                    elif abs(eachpt[0]-pt[0]) < w and abs(eachpt[1]-pt[1]) < w:
-                        flagged = True
-            if all([pt not in each_patch for each_patch in patches]) and not flagged:
-                patches.append([pt])
-    arenas = []
-    for each_patch in patches:
-        tis = np.array(each_patch)
-        arenas.append(np.mean(tis, axis=0))
+    loc, vals, w = match_templates(img, 'arena', setup, 0.8)
+    patches = get_peak_matches(loc, vals, w, img_rgb)
+    arenas = patches
+    #for each_patch in patches:
+        #tis = np.array(each_patch)
+        #arenas.append(np.mean(tis, axis=0))
     for pt in arenas:
         ept = (int(round(pt[0]+w/2)), int(round(pt[1]+w/2)))
         cv2.circle(img_rgb, ept, int(w/2), (0,255,0), 1)
