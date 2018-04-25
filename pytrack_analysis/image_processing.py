@@ -105,7 +105,7 @@ def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NOR
             vals = np.append(vals, tempvals)
     return loc, vals, size
 
-def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=True):
+def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=False):
     patches = []
     maxv = []
     for i, pt in enumerate(zip(*loc[::-1])):
@@ -137,9 +137,11 @@ def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=True):
         #print('found {} patches.'.format(len(patches)))
     return patches
 
-def preview(img):
-    preview = cv2.resize(img, (704, 700))
-    cv2.imshow('preview geometry (press any key to continue)',preview)
+def preview(img, title='preview geometry', topleft=''):
+    preview = cv2.resize(img, (700, 700))
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(preview, topleft, (10, 30), font, 1, (255, 0, 255), 2, cv2.LINE_AA)
+    cv2.imshow(title+' (press any key to continue)',preview)
     if platform.system() == 'Darwin':
         tmpl = 'tell application "System Events" to set frontmost of every process whose unix id is {} to true'
         script = tmpl.format(os.getpid())

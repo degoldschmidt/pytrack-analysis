@@ -141,15 +141,11 @@ def detect_geometry(_fullpath):
     arenas = []
     while len(arenas) != 4:
         img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB) ### this is for coloring
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img_rgb, 'Threshold: {}'.format(thresh), (50, 50), font, 1, (0, 167, 56), 2, cv2.LINE_AA)
-
+        ### Template matching function
         loc, vals, w = match_templates(img, 'arena', setup, thresh)
         patches = get_peak_matches(loc, vals, w, img_rgb)
         arenas = patches
-        #for each_patch in patches:
-            #tis = np.array(each_patch)
-            #arenas.append(np.mean(tis, axis=0))
+        ### Required to have 4 arenas detected, lower threshold if not matched
         if len(arenas) < 4:
             thresh -= 0.05
             thresh = round(thresh,2)
@@ -161,7 +157,7 @@ def detect_geometry(_fullpath):
                 cv2.circle(img_rgb, ept, int(w/2), (0,255,0), 1)
                 cv2.circle(img_rgb, ept, 1, (0,255,0), 2)
         #preview(img_rgb)
-    """ Correction algorithm (not used)
+    """ Geometry correction algorithm (not used)
     for i, arena in enumerate(arenas):
         print('(x, y) = ({}, {})'.format(arena[0], arena[1]))
     for i, j in zip([0, 1, 3, 2], [1, 3, 2, 0]):
@@ -180,17 +176,42 @@ def detect_geometry(_fullpath):
             cv2.circle(img_rgb, pt, int(w/2), (255,0,255), 1)
             cv2.circle(img_rgb, pt, 1, (255,0,255), 2)
     """
-    preview(img_rgb)
+    preview(img_rgb, title='Preview arena', topleft='Threshold: {}'.format(thresh))
 
 
 
     """
     Get spots
     """
+    labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
+    for ia, arena in enumerate(arenas):
+        print(arena)
+        arena_img = img[arena[1]:arena[1]+w, arena[0]:arena[0]+w]
+        spots = []
+        thresh = 0.95
+        while len(spots) < 6:
+            img_rgb =  cv2.cvtColor(arena_img,cv2.COLOR_GRAY2RGB) ### this is for coloring
+            ### Template matching function
+            loc, vals, ws = match_templates(arena_img, 'yeast', setup, thresh)
+            patches = get_peak_matches(loc, vals, ws, img_rgb)
+            spots = patches
+            ### Required to have 6 yeast spots detected, lower threshold if not matched
+            if len(spots) < 6:
+                thresh -= 0.01
+                thresh = round(thresh,2)
+                print('Not enough yeast spots detected. Decrease matching threshold to {}.'.format(thresh))
+            else:
+                print('Detected 6 yeast spots. Exiting spot detection.')
+                for pt in spots:
+                    ept = (int(round(pt[0]+ws/2)), int(round(pt[1]+ws/2)))
+                    cv2.circle(img_rgb, ept, int(ws/2), (0,165,255), 1)
+                    cv2.circle(img_rgb, ept, 1, (0,165,255), 1)
+        preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(labels[ia], thresh))
+
     """
     yeasts = [os.path.join('..', 'media', 'templates', setup, _file) for _file in os.listdir(os.path.join('..', 'media', 'templates', setup)) if 'yeast' in _file]
     templates = [cv2.imread(_file,0) for _file in yeasts]
-    w, h = templates[0].shape[::-1]
+    ws, h = templates[0].shape[::-1]
     res = [cv2.matchTemplate(img,template,cv2.TM_CCOEFF_NORMED) for template in templates]
     threshold = 0.9
     loc = None
