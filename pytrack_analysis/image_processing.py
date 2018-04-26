@@ -105,7 +105,7 @@ def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NOR
             vals = np.append(vals, tempvals)
     return loc, vals, size
 
-def get_peak_matches(loc, vals, w, img_rgb, show_all=False, show_peaks=False):
+def get_peak_matches(loc, vals, w, img_rgb, arena=None, show_all=False, show_peaks=False):
     patches = []
     maxv = []
     for i, pt in enumerate(zip(*loc[::-1])):

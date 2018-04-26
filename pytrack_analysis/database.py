@@ -4,7 +4,7 @@ import pandas as pd
 import yaml, json
 from collections.abc import Mapping
 from asciitree import draw_tree
-from ._globals import *
+#from ._globals import *
 from pytrack_analysis.cli import colorprint, flprint, prn
 
 """

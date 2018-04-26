@@ -185,15 +185,14 @@ def detect_geometry(_fullpath):
     """
     labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
     for ia, arena in enumerate(arenas):
-        print(arena)
         arena_img = img[arena[1]:arena[1]+w, arena[0]:arena[0]+w]
         spots = []
-        thresh = 0.95
+        thresh = 0.99
         while len(spots) < 6:
             img_rgb =  cv2.cvtColor(arena_img,cv2.COLOR_GRAY2RGB) ### this is for coloring
             ### Template matching function
             loc, vals, ws = match_templates(arena_img, 'yeast', setup, thresh)
-            patches = get_peak_matches(loc, vals, ws, img_rgb)
+            patches = get_peak_matches(loc, vals, ws, img_rgb, arena=arena)
             spots = patches
             ### Required to have 6 yeast spots detected, lower threshold if not matched
             if len(spots) < 6:
