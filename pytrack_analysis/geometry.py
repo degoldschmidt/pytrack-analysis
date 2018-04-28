@@ -6,6 +6,7 @@ import cv2
 from io import StringIO
 from pytrack_analysis.cli import colorprint, flprint, prn
 from pytrack_analysis.image_processing import VideoCaptureAsync, VideoCapture, match_templates, get_peak_matches, preview
+from pytrack_analysis.yamlio import read_yaml, write_yaml
 
 NAMESPACE = 'geometry'
 
@@ -124,9 +125,10 @@ class Spot(object):
         s = {'yeast': 'sucrose', 'sucrose': 'yeast'}
         self.substrate = s[self.substrate]
 
-def detect_geometry(_fullpath):
+def detect_geometry(_fullpath, _timestr):
     setup = os.path.basename(_fullpath).split('_')[0]
     video = VideoCapture(_fullpath, 0)
+    outfile = os.path.join(os.path.dirname(_fullpath), setup+'_arena_' +_timestr+'.yaml')
     img = video.get_average(100) #### takes average of 100 frames
     video.stop()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -184,8 +186,10 @@ def detect_geometry(_fullpath):
     Get spots
     """
     labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
+    geometry = {}
     for ia, arena in enumerate(arenas):
         arena_img = img[arena[1]:arena[1]+w, arena[0]:arena[0]+w]
+        c_arena = (arena[0]+w/2, arena[1]+w/2)
         spots = []
         thresh = 0.95
         min_spots = 3
@@ -201,12 +205,52 @@ def detect_geometry(_fullpath):
                 thresh = round(thresh,2)
                 print('Not enough yeast spots detected. Decrease matching threshold to {}.'.format(thresh))
             else:
-                
-                print('Detected 6 yeast spots. Exiting spot detection.')
+
+                #print('Detected 6 yeast spots. Exiting spot detection.')
+                spotdf = {'x': [], 'y': [], 'angle': [], 'distance': [], 'orientation': []}
                 for pt in spots:
                     ept = (int(round(pt[0]+ws/2)), int(round(pt[1]+ws/2)))
-                    cv2.circle(img_rgb, ept, int(ws/2), (0,165,255), 1)
-                    cv2.circle(img_rgb, ept, 1, (0,165,255), 1)
-        preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(labels[ia], thresh))
+                    rx, ry = pt[0]+arena[0]+ws/2, pt[1]+arena[1]+ws/2
+                    dist = get_distance([rx, ry], c_arena)
+                    angle = get_angle([c_arena[0], -c_arena[1]], [rx, -ry])
+                    if angle < 0:
+                        angle = 2*np.pi+angle
+                    orientation = angle%(np.pi/6)
+                    if orientation > np.pi/12:
+                        orientation = orientation - np.pi/6
 
-    return arenas
+                    spotdf['x'].append(rx-c_arena[0])
+                    spotdf['y'].append(-(ry-c_arena[1]))
+                    spotdf['distance'].append(dist)
+                    spotdf['angle'].append(angle)
+                    spotdf['orientation'].append(orientation)
+                    cv2.circle(img_rgb, ept, int(ws/2), (255,0,255), 1)
+                    cv2.circle(img_rgb, ept, 1, (255,0,255), 1)
+                spotdf = pd.DataFrame(spotdf)
+                mean_orient = spotdf['orientation'].mean()
+                correct_spots = {'x': [], 'y': [], 's': []}
+                for i, angle in enumerate(np.arange(mean_orient+np.pi/3,2*np.pi+mean_orient+np.pi/3, np.pi/3)):
+                    for j in range(2):
+                        x, y, s = (j+1)*85.2 * np.cos(angle+j*np.pi/6), (j+1) * 85.2*np.sin(angle+j*np.pi/6), i%2
+                        correct_spots['x'].append(x)
+                        correct_spots['y'].append(y)
+                        if s == 0:
+                            correct_spots['s'].append('yeast')
+                        else:
+                            correct_spots['s'].append('sucrose')
+                correct_spots = pd.DataFrame(correct_spots)
+                all_spots = []
+                for index, row in correct_spots.iterrows():
+                    if row['s'] == 'yeast':
+                        color = (0,165,255)
+                    else:
+                        color = (255, 144, 30)
+                    x, y = row['x']+w/2, -row['y']+w/2
+                    all_spots.append({'x': row['x'], 'y': row['y'], 'r': 1.5, 'substr': row['s']})
+                    cv2.circle(img_rgb, (int(x), int(y)), int(ws/2), color, 1)
+                    cv2.circle(img_rgb, (int(x), int(y)), 1, color, 1)
+        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50, 'x': float(c_arena[0]), 'y': float(c_arena[1]), 'name': labels[ia]}, 'food_spots': all_spots}
+        preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(labels[ia], thresh))
+    print('save geometry to {}'.format(outfile))
+    write_yaml(outfile, geometry)
+    return geometry

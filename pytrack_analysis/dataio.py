@@ -78,7 +78,8 @@ class Video(object):
         self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
         if key == 'arena' and len(self.files[key]) == 0:
             colorprint('no file found: starting automatic arena geometry detection', color='warning')
-            detect_geometry(self.fullpath)
+            self.geometry = detect_geometry(self.fullpath, self.timestr)
+            self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
         if len(self.files[key]) == self.required[key]:
             return True
         else:
