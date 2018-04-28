@@ -4,6 +4,7 @@ import threading
 import os
 import os.path as op
 import platform, subprocess
+import imageio
 
 class VideoCapture:
     def __init__(self, src, var):
@@ -84,6 +85,31 @@ class VideoCaptureAsync:
         self.cap.release()
 
 """
+Detect jumps and mistracking
+"""
+class JumpDetection:
+    def __init__(self, video, start_frame=0):
+        self.cap = VideoCapture(video, start_frame)
+        #self.cap.start()
+        self.ret, self.frame = self.cap.grabbed, self.cap.frame
+
+
+    def run(self, data, nframes):
+        x, y = np.array(data['Item1.Item1.X']), np.array(data['Item1.Item1.Y'])
+        for i in range(nframes-1):
+            if i%1800==0:   ### every minute
+                print('frame: {} {}'.format(i, (int(x[i]), int(y[i]))))
+                if self.ret == True:
+                    cv2.circle(self.cap.frame, (int(x[i]), int(y[i])), 5, (0,165,255), 1)
+                    resized_image = self.cap.frame[int(y[i])-50:int(y[i])+50, int(x[i])-50:int(x[i])+50]#cv2.resize(self.cap.frame, (350, 350))
+                    cv2.imshow('Frame',resized_image)
+                    # Press Q on keyboard to  exit
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+            self.ret, self.frame = self.cap.read()
+        self.cap.stop()
+
+"""
 Returns locations that match templates
 """
 def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NORMED):
@@ -148,3 +174,26 @@ def preview(img, title='preview geometry', topleft=''):
         output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+def main():
+    import pandas as pd
+    from pytrack_analysis.yamlio import read_yaml
+    video = "/media/degoldschmidt/DATA_BACKUP/data/tracking/videos/cam01_2017-11-24T11_42_04.avi"
+    data = "/home/degoldschmidt/post_tracking/cam01_fly01_2017-11-24T11_42_04.csv"
+    data2 = "/home/degoldschmidt/post_tracking/DIFF_013.csv"
+    meta = "/home/degoldschmidt/post_tracking/DIFF_013.yaml"
+
+    meta_dict = read_yaml(meta)
+    sf = meta_dict['video']['first_frame']
+    nframes = meta_dict['video']['nframes']
+    df = pd.read_csv(data, sep="\s+").loc[sf:,:]
+
+    jd = JumpDetection(video, start_frame=sf)
+    jd.run(df, nframes)
+
+if __name__ == '__main__':
+    from pytrack_analysis import Multibench
+    # runs as benchmark test
+    test = Multibench("", SILENT=False)
+    test(main)
+    del test
