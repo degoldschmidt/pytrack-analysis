@@ -93,6 +93,11 @@ class JumpDetection:
         #self.cap.start()
         self.ret, self.frame = self.cap.grabbed, self.cap.frame
 
+    def displacements(self, x, y, dt):
+        dx = np.append(0, np.diff(x))
+        dy = np.append(0, np.diff(y))
+        dr = np.sqrt(dx*dx + dy*dy)
+        return np.divide(dr,dt)
 
     def run(self, data, nframes):
         x, y = np.array(data['Item1.Item1.X']), np.array(data['Item1.Item1.Y'])
@@ -189,7 +194,9 @@ def main():
     df = pd.read_csv(data, sep="\s+").loc[sf:,:]
 
     jd = JumpDetection(video, start_frame=sf)
-    jd.run(df, nframes)
+    df['displacements'] = jd.displacements(df['Item1.Item1.X'], df['Item1.Item1.Y'], df['Item4'])
+    print(df['displacements'])
+    #jd.run(df, nframes)
 
 if __name__ == '__main__':
     from pytrack_analysis import Multibench
