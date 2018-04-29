@@ -133,7 +133,6 @@ def translate_to(data, start, time=''):
 
 class VideoRawData(object):
     def __init__(self, basedir, columns=None, units=None, noVideo=False, VERBOSE=False):
-
         ### Load videos
         prn(__name__)
         self.dir = basedir
@@ -142,12 +141,9 @@ class VideoRawData(object):
         self.nvids = len(self.videos)
         flprint("found {} sessions...".format(self.nvids))
         colorprint("done.", color='success')
-
         ### Register experiment
         self.init_experiment()
-
         for video in self.videos:
-
             ### print video name
             prn(__name__)
             print('Video:\t{}'.format(video.name))
@@ -157,49 +153,10 @@ class VideoRawData(object):
             ### load timestart file
             prn(__name__)
             self.init_files(video, 'timestart file', 'timestart')
-
             ### load arena geometry file
             prn(__name__)
             self.init_files(video, 'arena file', 'arena')
-
             print()
-
-
-        ### Load geometry
-        """
-        flprint("Loading raw fly data files...")
-        for video in self.videos:
-            video.load_fly_files()
-        """
-
-
-
-        """
-        self.experiment = experiment
-        self.dir = basedir
-        self.manual_dir = op.join(basedir, 'manual')
-        if not op.isdir(self.manual_dir):
-            os.mkdir(self.manual_dir)
-        if not op.isfile(op.join(self.manual_dir, 'constants.yaml')):
-            self.set_constants()
-        else:
-            self.constants = read_yaml(op.join(self.manual_dir, 'constants.yaml'))
-        if not op.isfile(op.join(self.manual_dir, 'variables.yaml')):
-            self.set_variables()
-        else:
-            self.variables = read_yaml(op.join(self.manual_dir, 'variables.yaml'))
-        ### get timestamp and all files from session folder
-        self.videos = parse_files(basedir, self.variables)
-        self.files = [_video.files for _video in self.videos]
-        self.dtime = [_video.time for _video in self.videos]
-        self.timestr = [_video.timestr for _video in self.videos]
-        if VERBOSE:
-            print('\n')
-            for i, video in enumerate(self.videos):
-                print('[{}]'.format(i))
-                print(video)
-
-        """
 
     def init_experiment(self):
         exps_files = [_file for _file in os.listdir(self.dir) if _file.endswith('yaml') and _file.startswith('pytrack_exp')]
@@ -232,109 +189,4 @@ class VideoRawData(object):
             colorprint("done.", color='success')
         else:
             colorprint("ERROR: found invalid number of raw fly data files ({} instead of {}).".format(len(video.files[key]), video.required[key]), color='error')
-            #sys.exit(0)
-
-
-    def get_data(self, fly=None):
-        if fly is None:
-            return self.raw_data
-        else:
-            return self.raw_data[fly]
-
-
-    ### not used
-    def get_session(self, _id):
-        prn(__name__)
-        self.timestamp = self.dtime[_id]
-        self.sessiontimestr = self.timestr[_id]
-        self.starttime = get_session_start(self.allfiles[_id]['timestart'])
-        print("starting post-tracking analysis for session {}/{} ({})...".format(_id+1, self.nvids, self.timestamp))
-        self.video_file = self.allfiles[_id]['video']
-
-        ### load raw data and define columns/units
-        self.raw_data = get_data(self.videos[_id]['data'])
-        ### raw data is in pixel space (i.e., uncentered, unflipped, and unscaled)
-        self.centered, self.flipped_y, self.scaled = False, False, False
-        ### load the four data files
-        for each_df in self.raw_fly_data:
-            # renaming columns with standard header
-            each_df.columns = self.columns
-            if "Datetime" in self.units:
-                # datetime strings to datetime objects
-                each_df['datetime'] =  pd.to_datetime(each_df['datetime'])
-        ### check whether dataframes are of same dimensions
-        lens = [len(each_df) for each_df in self.raw_data]
-        minl, maxl = np.amin(lens), np.amax(lens)
-        for ix, each_df in enumerate(self.raw_data):
-            each_df = each_df.iloc[:minl]
-            ### move to start position
-            self.raw_data[ix], self.first_frame = translate_to(each_df, self.starttime, time='datetime')
-        self.last_frame = minl - 1
-        ### getting metadata for each arena
-        self.labels = {'topleft': 0, 'topright': 1, 'bottomleft': 2, 'bottomright': 3}
-        ### arenas
-        self.arenas = get_geom(self.allfiles[_id]['geometry'], self.labels.keys())
-        ### food spots
-        self.food_spots = get_food(self.allfiles[_id]['food'], self.arenas)
-        ### conditions for session
-        self.condition = self.allconditions['metabolic'][self.sessiontimestr]
-
-    def center(self):
-        ### center around arena center
-        if not self.centered:
-            for ix, each_df in enumerate(self.raw_data):
-                for each_col in each_df.columns:
-                    if '_x' in each_col:
-                        each_df[each_col] -= self.arenas[ix].x
-                    if  '_y' in each_col:
-                        each_df[each_col] -= self.arenas[ix].y
-        self.centered = True
-
-    def flip_y(self):
-        if not self.flipped_y:
-            for ix, each_df in enumerate(self.raw_data):
-                for each_spot in self.arenas[ix].spots:
-                    each_spot.ry *= -1
-                for jx, each_col in enumerate(each_df.columns):
-                    if '_y' in each_col:
-                        self.raw_data[ix][each_col] *= -1
-        self.flipped = True
-
-    def print_conditions(self, *args):
-        for _conds, _val in self.allconditions.items():
-            if type(_val) is not dict:
-                print(_conds, ':', _val)
-            else:
-                print(_conds, ':')
-                if len(args) == 0:
-                    for _k, _v in _val.items():
-                        print("\t",_k, ':', _v)
-                for arg in args:
-                    print("\t", list(_val.keys())[arg], ':', list(_val.values())[arg])
-
-    def set_scale(self, _which, _value, unit=None):
-        if _which == 'fix_scale':
-            outval = _value
-            if unit == 'px':
-                outval = 1/_value
-            if not self.scaled:
-                self.arenas.set_scale(outval)
-        else:
-            if _which == 'diameter':
-                outval = _value/2
-            if unit == 'cm':
-                outval *= 10
-            elif unit == 'm':
-                outval *= 1000
-            if not self.scaled:
-                self.arenas.set_rscale(outval)
-        if not self.scaled:
-            for each_df in self.raw_data:
-                for each in [c for c in each_df.columns if '_x' in c or '_y' in c or 'or' in c]:
-                    each_df[each] *= 1/_value
-        self.scaled = True
-
-
-    def show(self):
-        for i,each in enumerate(self.raw_data[0].columns):
-            print('{}: {} [{}]'.format(i, each, self.units[i]))
+            sys.exit(0)
