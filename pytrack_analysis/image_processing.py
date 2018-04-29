@@ -85,6 +85,34 @@ class VideoCaptureAsync:
         self.cap.release()
 
 """
+Writes overlay
+"""
+class WriteOverlay:
+    def __init__(self, video, start_frame=0, view=None, outfile=None):
+        self.cap = VideoCapture(video, start_frame)
+        out = os.path.join(os.path.dirname(video), 'videos', outfile)
+        self.view = view
+        self.writer = cv2.VideoWriter(out, cv2.VideoWriter_fourcc('M','J','P','G'), 30, (int(view[2]), int(view[3])))
+
+    def run(self, xy, state, nframes):
+        x, y = np.array(xy[0]), np.array(xy[1])
+        x0, y0 = int(self.view[0]), int(self.view[1])
+        w, h = int(self.view[2]), int(self.view[3])
+        for i in range(nframes-1):
+            ret, frame = self.cap.read()
+            if i%1800==0:   ### every minute
+                print('frame: {}'.format(i))
+            if ret:
+                cv2.circle(frame, (int(x[i]), int(y[i])), 2, (255,0,255), 1)
+                if state[i]:
+                    cv2.circle(frame, (x0+10, y0+10), 10, (0,0,255), -1)
+                resized_image = frame[y0:y0+h, x0:x0+w]
+                self.writer.write(resized_image)
+        self.cap.stop()
+        self.writer.release()
+
+
+"""
 Detect jumps and mistracking
 """
 class JumpDetection:

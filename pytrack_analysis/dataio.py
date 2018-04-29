@@ -25,6 +25,9 @@ class Data(object):
         self.dfs = []
         self.centered, self.flipped_y, self.scaled = False, False, False
 
+    def destruct(self):
+        del self.dfs
+
     def center_to_arena(self, arenas):
         ### center around arena center
         if not self.centered:
@@ -52,6 +55,7 @@ class Data(object):
             self.dfs[i]['datetime'] = pd.to_datetime(df['datetime'])
             mask = (df['datetime'] > timestart)
             self.dfs[i] = df.loc[mask]
+            self.first_frame = self.dfs[i].index[0]
 
 class Video(object):
     def __init__(self, filename, dirname):
@@ -76,7 +80,12 @@ class Video(object):
         return full_str
 
     def load_arena(self):
-        pass
+        for _file in self.files['arena']:
+            _dict = read_yaml(_file)
+        self.arena, self.spots = [], []
+        for k in _dict.keys():
+            self.arena.append(_dict[k]['arena'])
+            self.spots.append(_dict[k]['food_spots'])
 
     def load_files(self, key):
         self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
@@ -106,7 +115,7 @@ class Video(object):
         pass
 
     def unload_data(self):
-        del self.data
+        self.data.destruct()
 
 """
 Returns datetime for session start (DATAIO)

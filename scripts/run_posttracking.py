@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
+from pytrack_analysis.image_processing import WriteOverlay
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -27,31 +28,49 @@ def main():
     colnames = ['datetime', 'elapsed_time', 'frame_dt', 'body_x',   'body_y',   'angle',    'major',    'minor']
     raw_data = VideoRawData(BASEDIR)
     ### go through all session
-    for i, video in enumerate(raw_data.videos):
-        ### arena + food spots
-        video.load_arena()
-        ### trajectory data
-        video.load_data()
-        ### rename columns
-        video.data.reindex(colnames)
-        ### data to timestart
-        video.data.to_timestart(video.timestart)
-        print(video.data.dfs[0].head(3))
-        ### calculate displacements
-        dt = video.data.dfs[0]['frame_dt']
-        dx, dy = np.append(0, np.diff(video.data.dfs[0]['body_x'])), np.append(0, np.diff(video.data.dfs[0]['body_y']))
-        dx, dy = np.divide(dx, dt), np.divide(dy, dt)
-        dr = np.sqrt(dx*dx + dy*dy)
-        video.data.dfs[0]['displacements'] = dr
-        plt.plot(dr)
-        plt.show()
+    for iv, video in enumerate(raw_data.videos):
+        if iv == 0:
+            i=0
+            ### arena + food spots
+            video.load_arena()
+            ### trajectory data
+            video.load_data()
+            ### rename columns
+            video.data.reindex(colnames)
+            ### data to timestart
+            video.data.to_timestart(video.timestart)
+            ### calculate displacements
+            dt = video.data.dfs[i]['frame_dt']
+            dx, dy = np.append(0, np.diff(video.data.dfs[i]['body_x'])), np.append(0, np.diff(video.data.dfs[i]['body_y']))
+            dx, dy = np.divide(dx, dt), np.divide(dy, dt)
+            dr = np.sqrt(dx*dx + dy*dy)
+            video.data.dfs[i]['displacements'] = dr
+            win = 30
+            threshold = 4.*video.data.dfs[i]['displacements'].rolling(window=30, center=True).median()/.65
+            threshold = threshold.fillna(method='bfill')
+            threshold = threshold.fillna(method='ffill')
+            threshold = 400
+            jumps = np.array(dr>threshold)
+            jumps = np.convolve(jumps,[1,1,1], mode='same')
+            video.data.dfs[i]['jumps'] = jumps
+            angle = video.data.dfs[i]['angle']
+            print(np.amax(angle))
+            bx, by = video.data.dfs[i]['body_x'], video.data.dfs[i]['body_y']
+            m = video.data.dfs[i]['major']
+            x, y = bx+0.5*m*np.cos(angle), by+0.5*m*np.sin(angle)
+            x0, y0, w = video.arena[i]['x']-video.arena[i]['outer'], video.arena[i]['y']-video.arena[i]['outer'], 2*video.arena[i]['outer']
+            ow = WriteOverlay(video.fullpath, start_frame=video.data.first_frame, view=(x0, y0, w, w), outfile='jumps_{}.avi'.format(video.timestr))
+            ow.run((x,y), jumps, 2*1800)
+            #plt.plot(dr)
+            #plt.plot(video.data.dfs[i]['jumps']*200, 'r.')
+            #plt.show()
 
-        #video.data.center_to_arena(video.arenas)
-        ### fly/experiment metadata
-        #for fly_idx, fly_data in enumerate(raw_data.get_data()):
+            #video.data.center_to_arena(video.arenas)
+            ### fly/experiment metadata
+            #for fly_idx, fly_data in enumerate(raw_data.get_data()):
 
-        ###
-        video.unload_data()
+            ###
+            video.unload_data()
 
 if __name__ == '__main__':
     # runs as benchmark test
