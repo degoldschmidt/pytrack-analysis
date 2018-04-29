@@ -2,6 +2,7 @@ import argparse
 import subprocess, os
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
@@ -27,18 +28,30 @@ def main():
     raw_data = VideoRawData(BASEDIR)
     ### go through all session
     for i, video in enumerate(raw_data.videos):
-        pass
         ### arena + food spots
-        #video.load_arena()
+        video.load_arena()
         ### trajectory data
-        #video.load_data()
-        #video.data.reindex(colnames)
+        video.load_data()
+        ### rename columns
+        video.data.reindex(colnames)
+        ### data to timestart
+        video.data.to_timestart(video.timestart)
+        print(video.data.dfs[0].head(3))
+        ### calculate displacements
+        dt = video.data.dfs[0]['frame_dt']
+        dx, dy = np.append(0, np.diff(video.data.dfs[0]['body_x'])), np.append(0, np.diff(video.data.dfs[0]['body_y']))
+        dx, dy = np.divide(dx, dt), np.divide(dy, dt)
+        dr = np.sqrt(dx*dx + dy*dy)
+        video.data.dfs[0]['displacements'] = dr
+        plt.plot(dr)
+        plt.show()
+
         #video.data.center_to_arena(video.arenas)
         ### fly/experiment metadata
         #for fly_idx, fly_data in enumerate(raw_data.get_data()):
 
         ###
-        #video.unload_data()
+        video.unload_data()
 
 if __name__ == '__main__':
     # runs as benchmark test

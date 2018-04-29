@@ -47,6 +47,12 @@ class Data(object):
         for data in self.dfs:
             data.columns = cols
 
+    def to_timestart(self, timestart):
+        for i, df in enumerate(self.dfs):
+            self.dfs[i]['datetime'] = pd.to_datetime(df['datetime'])
+            mask = (df['datetime'] > timestart)
+            self.dfs[i] = df.loc[mask]
+
 class Video(object):
     def __init__(self, filename, dirname):
         self.name = filename
@@ -58,8 +64,6 @@ class Video(object):
         """
         self.setup = parse_setup(filename)
         self.setup += ' ({})'.format(SETUPNAMES[self.setup])
-        self.timestart = parse_timestart(op.join(dirname, self.files['timestart'][0]))
-        self.data = Data(self.files['data'])
         self.arenas = None
         """
 
@@ -80,22 +84,26 @@ class Video(object):
             colorprint('no file found: starting automatic arena geometry detection', color='warning')
             self.geometry = detect_geometry(self.fullpath, self.timestr)
             self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
+        if key == 'timestart' and len(self.files[key]) == 1:
+            self.timestart = parse_timestart(op.join(self.dir, self.files['timestart'][0]))
         if len(self.files[key]) == self.required[key]:
             return True
         else:
             return False
 
-    def get_data(self):
-        return [v for v in self.data.df]
+    def get_data(self, i=None):
+        if i is None:
+            return [v for v in self.data.dfs]
+        else:
+            return self.data.dfs[i]
 
 
     def load_data(self):
+        self.data = Data(self.files['fly'])
         self.data.load()
 
     def run_posttracking(self):
         pass
-
-
 
     def unload_data(self):
         del self.data
