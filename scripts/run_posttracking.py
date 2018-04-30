@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
-from pytrack_analysis.image_processing import WriteOverlay
+from pytrack_analysis.image_processing import WriteOverlay, PixelDiff
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -58,12 +58,22 @@ def main():
             bx, by = video.data.dfs[i]['body_x'], video.data.dfs[i]['body_y']
             m = video.data.dfs[i]['major']
             x, y = bx+0.5*m*np.cos(angle), by+0.5*m*np.sin(angle)
+            tx, ty = bx-0.5*m*np.cos(angle), by-0.5*m*np.sin(angle)
             x0, y0, w = video.arena[i]['x']-video.arena[i]['outer'], video.arena[i]['y']-video.arena[i]['outer'], 2*video.arena[i]['outer']
-            ow = WriteOverlay(video.fullpath, start_frame=video.data.first_frame, view=(x0, y0, w, w), outfile='jumps_{}.avi'.format(video.timestr))
-            ow.run((x,y), jumps, 2*1800)
-            #plt.plot(dr)
+            print(x0, y0, w)
+            #ow = WriteOverlay(video.fullpath, start_frame=video.data.first_frame, view=(x0, y0, w, w), outfile='jumps_{}.avi'.format(video.timestr))
+            #ow.run((x,y), jumps, 150)##2*1800)
+            pxdiff = PixelDiff(video.fullpath, start_frame=video.data.first_frame)
+            px, tpx = pxdiff.run((x,y), (tx,ty), 108000, show=False)
+            pxd_data = pd.DataFrame({'headpx': px, 'tailpx': tpx})
+            pxd_data.to_csv(os.path.join(BASEDIR,'processed','pixeldiff.csv'), index_label='frame')
+            plt.figure(figsize=(10,1.5))
+            plt.plot(px[:1800], 'm-')
+            plt.plot(tpx[:1800], 'g-')
+            plt.plot(100*jumps[:1800], 'r-')
             #plt.plot(video.data.dfs[i]['jumps']*200, 'r.')
-            #plt.show()
+            plt.tight_layout()
+            plt.savefig(os.path.join(BASEDIR,'plots','pixeldiff.png'))
 
             #video.data.center_to_arena(video.arenas)
             ### fly/experiment metadata

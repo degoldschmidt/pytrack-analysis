@@ -9,7 +9,7 @@ import imageio
 class VideoCapture:
     def __init__(self, src, var):
         self.src = src
-        self.cap = cv2.VideoCapture(self.src)
+        self.cap = cv2.VideoCapture(self.src,0)
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, var)
         self.grabbed, self.frame = self.cap.read()
 
@@ -87,6 +87,38 @@ class VideoCaptureAsync:
 """
 Writes overlay
 """
+class PixelDiff:
+    def __init__(self, video, start_frame=0):
+        self.cap = VideoCapture(video, start_frame)
+        ret, frame = self.cap.read()
+        self.sf = start_frame
+
+    def run(self, xy, txy, nframes, show=True):
+        x, y = np.array(xy[0]), np.array(xy[1])
+        tx, ty = np.array(txy[0]), np.array(txy[1])
+        px, tpx = np.zeros(nframes), np.zeros(nframes)
+        for i in range(nframes-1):
+            if i%int(nframes/10)==0:
+                print('frame: {}'.format(i))
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
+            ret, frame = self.cap.read()
+            xi, yi = int(round(x[i],0)), int(round(y[i],0))
+            txi, tyi = int(round(tx[i],0)), int(round(ty[i],0))
+            px[i] = np.mean(frame[yi-1:yi+2, xi-1:xi+2,0])
+            tpx[i] = np.mean(frame[tyi-1:tyi+2, txi-1:txi+2,0])
+            cv2.circle(frame, (xi, yi), 3, (255,0,255), 1)
+            cv2.circle(frame, (txi, tyi), 3, (25,255,25), 1)
+            if show:
+                resized_image = frame[101:101+520, 106:106+520]
+                cv2.imshow('Frame', resized_image)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+        self.cap.stop()
+        return px, tpx
+
+"""
+Writes overlay
+"""
 class WriteOverlay:
     def __init__(self, video, start_frame=0, view=None, outfile=None):
         self.cap = VideoCapture(video, start_frame)
@@ -98,12 +130,14 @@ class WriteOverlay:
         x, y = np.array(xy[0]), np.array(xy[1])
         x0, y0 = int(self.view[0]), int(self.view[1])
         w, h = int(self.view[2]), int(self.view[3])
+        px = np.array(nframes)
+        print (w,h)
         for i in range(nframes-1):
             ret, frame = self.cap.read()
             if i%1800==0:   ### every minute
                 print('frame: {}'.format(i))
             if ret:
-                cv2.circle(frame, (int(x[i]), int(y[i])), 2, (255,0,255), 1)
+                cv2.circle(frame, (int(x[i]), int(y[i])), 3, (255,0,255), 1)
                 if state[i]:
                     cv2.circle(frame, (x0+10, y0+10), 10, (0,0,255), -1)
                 resized_image = frame[y0:y0+h, x0:x0+w]
