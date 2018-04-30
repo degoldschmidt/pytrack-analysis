@@ -90,7 +90,7 @@ Writes overlay
 class PixelDiff:
     def __init__(self, video, start_frame=0):
         self.cap = VideoCapture(video, start_frame)
-        ret, frame = self.cap.read()
+        #ret, frame = self.cap.read()
         self.sf = start_frame
 
     def run(self, xy, txy, nframes, show=True):
@@ -98,9 +98,10 @@ class PixelDiff:
         tx, ty = np.array(txy[0]), np.array(txy[1])
         px, tpx = np.zeros(nframes), np.zeros(nframes)
         for i in range(nframes-1):
-            if i%int(nframes/10)==0:
-                print('frame: {}'.format(i))
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
+            if i%int(nframes/20)==0:
+                print('frames processed: {:3d}%'.format(int(100*i/nframes)))
+            if i == 0:
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
             ret, frame = self.cap.read()
             xi, yi = int(round(x[i],0)), int(round(y[i],0))
             txi, tyi = int(round(tx[i],0)), int(round(ty[i],0))

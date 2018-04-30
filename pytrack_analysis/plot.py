@@ -269,7 +269,7 @@ Swarmbox plot
 """
 def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_order=None, multi=False,
                 dodge=False, orient=None, color=None, palette=None, table=False, compare=[],
-                size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, **kwargs):
+                size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, boxonly=False, **kwargs):
     # default parameters
     defs = {
                 'ps':   2,          # pointsize for swarmplot (3)
@@ -290,7 +290,8 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
                         width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
     #ax = sns.boxplot(x=x, y=y, hue=hue, data=data, palette=my_pal, showfliers=False, boxprops=dict(lw=1))
     # swarmplot
-    ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True,
+    if not boxonly:
+        ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True,
                      orient=orient, color=defs['pc'], size=defs['ps'], ax=ax, **kwargs)
 
     if order is None:
