@@ -4,7 +4,6 @@ Demo Animation
 ===============
 """
 from pytrack_analysis.profile import get_profile
-import seaborn as sns
 import numpy as np
 import imageio
 import pandas as pd
@@ -20,6 +19,7 @@ import pytrack_analysis.plot as plot
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import matplotlib.animation as anim
+import seaborn as sns
 import argparse
 
 ONLY_VIDEO = False
@@ -303,12 +303,16 @@ def main():
     parser.add_argument('-ses', action="store", dest="session", type=int)
     parser.add_argument('-sf', action="store", dest="startfr", type=int)
     parser.add_argument('-ef', action="store", dest="endfr", type=int)
+    parser.add_argument('folder')
+    parser.add_argument('db')
     SESSION = parser.parse_args().session
     START = parser.parse_args().startfr
     END = parser.parse_args().endfr
-    OUT = '/home/degoldschmidt/post_tracking'
-    DB = '/home/degoldschmidt/post_tracking/DIFF.yaml'
+    OUT = parser.parse_args().folder#'/home/degoldschmidt/post_tracking'
+    DB = os.path.join(OUT, parser.parse_args().db)#'/home/degoldschmidt/post_tracking/DIFF.yaml'
 
+    print('success!')
+    sys.exit(1)
     ### input data
     _in, _in2 = 'kinematics', 'classifier'
     _out = 'plots'
