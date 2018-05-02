@@ -87,7 +87,8 @@ def get_tseries_axes(grid, position, sharex=None, n=1, labels=[]):
             lines.append(line)
     return ax, lines
 
-def init_animation(data, video, pixelpos, config=None, figsize=(10.666,6), dpi=180, playback=1, meta=None):
+### 10.666, 6 ->  7.111, 4
+def init_animation(data, video, pixelpos, config=None, figsize=(7, 4), dpi=120, playback=1, meta=None):
     f = plt.figure(figsize=figsize, dpi=dpi)
     ## gridspec
     cols = config['cols']
@@ -112,7 +113,7 @@ def init_animation(data, video, pixelpos, config=None, figsize=(10.666,6), dpi=1
     print(pixelpos.head(3))
     xs, ys = pixelpos['body_x_px'], pixelpos['body_y_px']
     rangex, rangey = xs.max()-xs.min(), ys.max()-ys.min()
-    w = int(round(1.1*max(rangex,rangey)/2))
+    w = int(round(1.25*max(rangex,rangey)/2))
     x0, y0 = int(round((xs.max()+xs.min())/2)), int(round((ys.max()+ys.min())/2))
     frame = video.get_data(data.index[0])[y0-w:y0+w, x0-w:x0+w]
     im = axv.imshow(frame, animated=True)
@@ -127,17 +128,16 @@ def init_animation(data, video, pixelpos, config=None, figsize=(10.666,6), dpi=1
     yarrays = np.array(data[series])
 
     ### draw food spots
-    """
     if not ONLY_TRAJ:
         for ii,each in enumerate(meta['food_spots']):
-            sx, sy = scale * each['x'] + x0 - (x-radius), -scale * each['y'] + y0 - (y-radius)
-            ax_video.add_artist(plt.Circle((sx,sy), scale*1.5, color=spot_colors[each['substr']], lw=2.5, alpha=0.5, fill=False, zorder=100))
-            if ii in [1, 3, 9]:
-                ax_video.add_artist(plt.Circle((sx,sy), scale*2.5, color='#ffffff', ls='dashed', lw=1.5, alpha=0.5, fill=False, zorder=100))
-            if ii == 1:
-                ax_video.add_artist(plt.Circle((sx,sy), scale*5, color='#ffffff', ls='dotted', lw=1, alpha=0.5, fill=False, zorder=100))
-            #ax_video.text(sx,sy, "{}".format(ii), zorder=100)
-    """
+            ax, ay, scale = meta['arena']['x'], meta['arena']['y'], meta['arena']['scale']
+            sx, sy = scale * each['x'] + ax - (x0-w), -scale * each['y'] + ay - (y0-w)
+            axv.add_artist(plt.Circle((sx,sy), scale*1.5, color=spot_colors[each['substr']], lw=1.5, alpha=0.5, fill=False, zorder=100))
+            if ii in [5,11]:
+                axv.add_artist(plt.Circle((sx,sy), scale*2.5, color='#ffffff', ls='dashed', lw=1., alpha=0.5, fill=False, zorder=100))
+            if ii == 5:
+                axv.add_artist(plt.Circle((sx,sy), scale*5, color='#ffffff', ls='dotted', lw=.75, alpha=0.5, fill=False, zorder=100))
+            #axv.text(sx,sy, "{:02d}".format(ii), zorder=100)
 
     ### time series
     axts, lines = None, None
@@ -159,7 +159,7 @@ def init_animation(data, video, pixelpos, config=None, figsize=(10.666,6), dpi=1
                 ax, l = get_tseries_axes(gs, [4-i, 5], sharex=axts[0], n=2, labels=['head', 'body'])
             else:
                 ax, l = get_tseries_axes(gs, [4-i, 5], sharex=axts[0])
-            play_line.append(ax.axvline(0, ymin=-5, ymax=1, c='#ff0000', ls='-', lw=.75, zorder=100, clip_on=False))
+            play_line.append(ax.axvline(0, ymin=-4, ymax=1, c='#ff0000', ls='-', lw=.75, zorder=100, clip_on=False))
             if type(l) is list:
                 for jj,each in enumerate(l):
                     each.set_color(ts_colors[count])
@@ -179,7 +179,7 @@ def init_animation(data, video, pixelpos, config=None, figsize=(10.666,6), dpi=1
                 lab['label'] = lab['label'].replace('\\n', '\n')
                 ax.set_ylabel(lab['label'], labelpad=lab['pad'])
             axts[4] = respine(axts[4], [0,10], 5, True)
-            axts[3] = respine(axts[3], [0,20], [0,2,5,10,15,20], True)
+            axts[3] = respine(axts[3], [0,15], [0,2,5,10,15], True)
             if NO_ANNOS:
                 axts[2] = respine(axts[2], [-600,600], [-500,-125,0,125,500], False)
                 axts[2].get_xaxis().set_visible(True)
@@ -349,7 +349,7 @@ def get_data(parser):
     pixelpos.index = df.index
 
     ### get minimum distance to patch
-    df['min_patch'] = df.loc[:,['dpatch_{}'.format(i) for i in range(11)]].min(axis=1)
+    df['min_patch'] = df.loc[:,['dpatch_{}'.format(i) for i in range(12)]].min(axis=1)
     ### chosen stuff
     allcols = unflatten(conf['cols'])
     allcols.append(conf['time'])
