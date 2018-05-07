@@ -88,7 +88,7 @@ def get_tseries_axes(grid, position, sharex=None, n=1, labels=[]):
     return ax, lines
 
 ### 10.666, 6 ->  7.111, 4
-def init_animation(data, video, pixelpos, config=None, figsize=(7, 4), dpi=120, playback=1, meta=None):
+def init_animation(data, video, pixelpos, config=None, figsize=(5, 4), dpi=90, playback=1, meta=None):
     f = plt.figure(figsize=figsize, dpi=dpi)
     ## gridspec
     cols = config['cols']
@@ -133,10 +133,10 @@ def init_animation(data, video, pixelpos, config=None, figsize=(7, 4), dpi=120, 
             ax, ay, scale = meta['arena']['x'], meta['arena']['y'], meta['arena']['scale']
             sx, sy = scale * each['x'] + ax - (x0-w), -scale * each['y'] + ay - (y0-w)
             axv.add_artist(plt.Circle((sx,sy), scale*1.5, color=spot_colors[each['substr']], lw=1.5, alpha=0.5, fill=False, zorder=100))
-            if ii in [5,11]:
+            if ii in config['visited_spots']:
                 axv.add_artist(plt.Circle((sx,sy), scale*2.5, color='#ffffff', ls='dashed', lw=1., alpha=0.5, fill=False, zorder=100))
-            if ii == 5:
-                axv.add_artist(plt.Circle((sx,sy), scale*5, color='#ffffff', ls='dotted', lw=.75, alpha=0.5, fill=False, zorder=100))
+            #if ii in config['multiple_mmovs']:
+                #axv.add_artist(plt.Circle((sx,sy), scale*5, color='#ffffff', ls='dotted', lw=.75, alpha=0.5, fill=False, zorder=100))
             #axv.text(sx,sy, "{:02d}".format(ii), zorder=100)
 
     ### time series
@@ -179,13 +179,13 @@ def init_animation(data, video, pixelpos, config=None, figsize=(7, 4), dpi=120, 
                 lab['label'] = lab['label'].replace('\\n', '\n')
                 ax.set_ylabel(lab['label'], labelpad=lab['pad'])
             axts[4] = respine(axts[4], [0,10], 5, True)
-            axts[3] = respine(axts[3], [0,15], [0,2,5,10,15], True)
+            axts[3] = respine(axts[3], [0,12], [0,2,5,10], True)
             if NO_ANNOS:
-                axts[2] = respine(axts[2], [-600,600], [-500,-125,0,125,500], False)
+                axts[2] = respine(axts[2], [-400,400], [-250,-125,0,125,250], False)
                 axts[2].get_xaxis().set_visible(True)
                 axts[2].set_xticks(np.arange(0,30+1,5))
             else:
-                axts[2] = respine(axts[2], [-600,600], [-500,-125,0,125,500], True)
+                axts[2] = respine(axts[2], [-300,300], [-250,-125,0,125,250], True)
             axts[1] = respine(axts[1], None, 1, True)
             axts[0] = respine(axts[0], None, 0.5, False)
             if NO_ANNOS:
@@ -267,7 +267,6 @@ def animate(frame, *args):
                         a -= 0.0333
         else:
             each_line.set_data(xdata, ydata[j])
-
     return tuple(lines) + (image,)
 
 def run_animation(_file, _f, _image, _video, _pixelpos, _lines, _datarrays, _play_line, config=None, playback=1, n=None):
@@ -348,6 +347,8 @@ def get_data(parser):
     pixelpos = get_pixel_positions(df, meta)
     pixelpos.index = df.index
 
+    conf['visited_spots'] = df.query('visit_index > 0')['visit_index'].unique()
+    conf['multiple_mmovs'] = df.query('visit > 0 and etho < 4')['visit_index'].unique()
     ### get minimum distance to patch
     df['min_patch'] = df.loc[:,['dpatch_{}'.format(i) for i in range(12)]].min(axis=1)
     ### chosen stuff
