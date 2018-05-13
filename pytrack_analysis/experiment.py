@@ -3,6 +3,7 @@ import os.path as op
 from datetime import datetime
 from pytrack_analysis.cli import colorprint, flprint, prn, query_yn, bc
 from pytrack_analysis.yamlio import read_yaml, write_yaml
+import itertools
 
 """ ### v0.1
 Namespace constants
@@ -56,7 +57,7 @@ def add(videos, _dict):
     outdict['Number of conditions'] = len(uniques)
     show(outdict)
 
-    outfile = SUFFIX_EXP+outdict['ID']+'.yaml'
+    outfile = '{}_{}.yaml'.format(SUFFIX_EXP, outdict['ID'])
     if query_yn('Confirm and save experiment yaml file {}?'.format(outfile), default='yes'):
         write_yaml(op.join(video.dir, outfile), outdict)
         return outdict
@@ -131,10 +132,10 @@ def register(videos):
     outdict['Videos'] = [video.name for video in videos]
 
     outdict['Constants'] = set_constants(outdict['Title'])
-    outdict['Variables'] = set_variables(outdict['Title'])
+    outdict['Variables'], outdict['all_conditions'] = set_variables(outdict['Title'])
     outdict['Conditions'] = {}
     for video in videos:
-        outdict['Conditions'][video.name] = set_conditions(video, variables=outdict['Variables'])
+        outdict['Conditions'][video.name] = set_conditions(video, variables=outdict['Variables'], shortcuts=outdict['all_conditions'])
 
     uniques = []
     for video in videos:
@@ -157,22 +158,33 @@ def register(videos):
 """ ### v0.1
 Sets conditions of video
 """
-def set_conditions(video, variables=None):
+def set_conditions(video, variables=None, shortcuts=None):
     writing = True
     condition_dict = {}
     k = None
     print('\nEnter'+bc.OKBLUE+' conditions '+bc.ENDC+'for'+bc.OKBLUE+' {}'.format(video.name)+bc.ENDC)
-    for k in variables.keys():
-        v = input('Value for key'+bc.BOLD+' {} '.format(k)+bc.ENDC+'(multiple values are separated by whitespace): '.format(k))
+    if shortcuts is None:
+        for k in variables.keys():
+            lv = len(v)
+            for i in range(4-lv):   ### if less then 4 conditions are given, last condition will be repeated
+                v.append(v[-1])
+            for each in v:
+                if each not in variables[k]:
+                    print('Warning: {} not found in possible values for {}.'. format(each, k))
+                    return set_conditions(video, variables=variables)
+    else:
+        v = input('Enter shortcut index (multiple values are separated by whitespace): ')
         v = v.split(' ')
-        lv = len(v)
-        for i in range(4-lv):   ### if less then 4 conditions are given, last condition will be repeated
-            v.append(v[-1])
-        for each in v:
-            if each not in variables[k]:
-                print('Warning: {} not found in possible values for {}.'. format(each, k))
-                return set_conditions(video, variables=variables)
-        condition_dict[k] = v
+        for i, el in enumerate(v):
+            if el.isdigit():
+                index = int(el)
+                if index >= 0 and index < len(shortcuts):
+                    v[i] = shortcuts[index]
+                else:
+                    print('Warning: index {} out of range for {}.'. format(index, shortcuts))
+                    return set_conditions(video, variables=variables, shortcuts=shortcuts)
+        for k in variables.keys():
+            condition_dict[k] = [el[k] for el in v]
         k = None
     return condition_dict
 
@@ -213,7 +225,19 @@ def set_variables(exptitle):
             v = v.split(' ')
             variables_dict[k] = v
             k = None
-    return variables_dict
+    print('All possible conditions:')
+    elms = []
+    keys = []
+    for k, v in variables_dict.items():
+        keys.append(k)
+        elms.append(v)
+    all_conds = list(itertools.product(*elms))
+    all_conds_out = []
+    for i, cond in enumerate(all_conds):
+        print('{}:\t{}'.format(i, cond))
+        all_conds_out.append({k: el for k, el in zip(keys, cond)})
+    print(all_conds_out)
+    return variables_dict, all_conds_out
 
 def show(_dict):
     print(bc.BOLD+'\nExperiment summary:\n'+bc.ENDC)

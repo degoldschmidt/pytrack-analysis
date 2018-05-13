@@ -27,6 +27,8 @@ def main():
     ### Define raw data structure
     colnames = ['datetime', 'elapsed_time', 'frame_dt', 'body_x',   'body_y',   'angle',    'major',    'minor']
     raw_data = VideoRawData(BASEDIR)
+    if OPTION == 'registration':
+        return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
         if iv == 0:
