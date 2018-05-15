@@ -362,10 +362,10 @@ def manual_geometry(_fullpath, _timestr):
                 color = (255, 144, 30)
             x, y = row['x']+pt[0], -row['y']+pt[1]
             scale = w/50.
-            all_spots.append({'x': row['x']/scale, 'y': row['y']/scale, 'r': 1.5, 'substr': row['s']})
+            all_spots.append({'x': float(row['x']/scale), 'y': float(row['y']/scale), 'r': 1.5, 'substr': row['s']})
             cv2.circle(img_rgb, (int(round(x)), int(round(y))), int(0.15*r), color, 1)
             cv2.circle(img_rgb, (int(round(x)), int(round(y))), 1, color, 1)
-        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(pt[0]), 'y': float(pt[1]), 'name': labels[ia]}, 'food_spots': all_spots}
+        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': float(w/2), 'outer': 260.0, 'scale': float(w/50.), 'x': float(pt[0]), 'y': float(pt[1]), 'name': labels[ia]}, 'food_spots': all_spots}
         arena_img = img_rgb[pt[1]-int(w/2):pt[1]+int(w/2), pt[0]-int(w/2):pt[0]+int(w/2)]
         preview(arena_img, title='Preview spots', topleft='Arena: {}'.format(labels[ia]), hold=True)
         ia += 1

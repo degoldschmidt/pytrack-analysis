@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
-from pytrack_analysis.image_processing import WriteOverlay, PixelDiff
+from pytrack_analysis.image_processing import ShowOverlay, PixelDiff
 import pytrack_analysis.preprocessing as prp
 
 def get_args():
@@ -35,7 +35,7 @@ def main():
     if OPTION == 'registration':
         return 1
     ### go through all session
-    for iv, video in enumerate(raw_data.videos):
+    for iv, video in enumerate(raw_data.videos[:1]):
         print('{}: {}'.format(iv, video.name))
         ### arena + food spots
         video.load_arena()
@@ -46,27 +46,17 @@ def main():
         ### data to timestart
         video.data.to_timestart(video.timestart)
         ### calculate displacements
-        """
-        video.data.dfs[i]['displacements'] = dr
-        win = 30
-        threshold = 4.*video.data.dfs[i]['displacements'].rolling(window=30, center=True).median()/.65
-        threshold = threshold.fillna(method='bfill')
-        threshold = threshold.fillna(method='ffill')
-        threshold = 400
-        jumps = np.array(dr>threshold)
-        jumps = np.convolve(jumps,[1,1,1], mode='same')
-        video.data.dfs[i]['jumps'] = jumps
-        print(np.amax(angle))
-        """
-        x, y, tx, ty = [], [], [], []
+
+        x, y, tx, ty, bx, by = [], [], [], [], [], []
         for i in range(4):
-            bx, by = video.data.dfs[i]['body_x'], video.data.dfs[i]['body_y']
+            bx.append(video.data.dfs[i]['body_x'])
+            by.append(video.data.dfs[i]['body_y'])
             m = video.data.dfs[i]['major']
             angle = video.data.dfs[i]['angle']
-            x.append(bx+0.5*m*np.cos(angle))
-            y.append(by+0.5*m*np.sin(angle))
-            tx.append(bx-0.5*m*np.cos(angle))
-            ty.append(by-0.5*m*np.sin(angle))
+            x.append(bx[-1]+0.5*m*np.cos(angle))
+            y.append(by[-1]+0.5*m*np.sin(angle))
+            tx.append(bx[-1]-0.5*m*np.cos(angle))
+            ty.append(by[-1]-0.5*m*np.sin(angle))
             dt = video.data.dfs[i]['frame_dt']
             dx, dy = np.append(0, np.diff(video.data.dfs[i]['body_x'])), np.append(0, np.diff(-video.data.dfs[i]['body_y']))
             dx, dy = np.divide(dx, dt), np.divide(dy, dt)
@@ -93,33 +83,8 @@ def main():
                                         'headpx_fly4': px[:,3], 'tailpx_fly4': tpx[:,3],})
             pxd_data.to_csv(_ofile, index_label='frame')
 
-        for interval in range(10):
-            f, axes = plt.subplots(4, figsize=(10,8))
-            for i, ax in enumerate(axes):
-                index = 'smspeed'
-                ax.plot(video.data.dfs[i][index], 'r-')
-                ax.plot(5.*video.data.dfs[i]['align'], 'b-')
-                ax.set_xlim([interval*10800, (interval+1)*10800])
-            plt.tight_layout()
-            plt.savefig(op.join(RESULT,'plots','speed_{:03d}_{:02d}.png'.format(iv, interval)))
-            f, axes = plt.subplots(4, figsize=(10,8))
-            for i, ax in enumerate(axes):
-                fly = 'fly{}'.format(i+1)
-                hi = 'headpx_{}'.format(fly)
-                ti = 'tailpx_{}'.format(fly)
-                ax.plot(df[hi].rolling(window=333).mean(), 'g-')
-                ax.plot(df[ti].rolling(window=333).mean(), 'm-')
-                ax.set_xlim([interval*10800, (interval+1)*10800])
-            #plt.plot(px[:1800], 'm-')
-            #plt.plot(tpx[:1800], 'g-')
-            #plt.plot(100*jumps[:1800], 'r-')
-            #plt.plot(video.data.dfs[i]['jumps']*200, 'r.')
-            plt.tight_layout()
-            plt.savefig(op.join(RESULT,'plots','pixeldiff_{:03d}_{:02d}.png'.format(iv, interval)))
-
-        #video.data.center_to_arena(video.arenas)
-        ### fly/experiment metadata
-        #for fly_idx, fly_data in enumerate(raw_data.get_data()):
+        pxdiff = ShowOverlay(video.fullpath, start_frame=video.data.first_frame)
+        px, tpx = pxdiff.run((x,y), (tx,ty), (bx,by), 10*1800, show=True)
 
         ###
         video.unload_data()
