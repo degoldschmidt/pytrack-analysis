@@ -247,7 +247,7 @@ def preview(img, title='preview geometry', topleft=''):
         tmpl = 'tell application "System Events" to set frontmost of every process whose unix id is {} to true'
         script = tmpl.format(os.getpid())
         output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
-    cv2.waitKey(0)
+    cv2.waitKey(1)
     cv2.destroyAllWindows()
 
 def main():

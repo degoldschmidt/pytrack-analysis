@@ -285,10 +285,10 @@ def detect_geometry(_fullpath, _timestr, onlyIm=False):
                         color = (255, 144, 30)
                     x, y = row['x']+mean_est[0], -row['y']+mean_est[1]
                     scale = w/50.
-                    all_spots.append({'x': row['x'], 'y': -row['y'], 'r': 1.5, 'substr': row['s']})
+                    all_spots.append({'x': row['x']/scale, 'y': row['y']/scale, 'r': 1.5, 'substr': row['s']})
                     cv2.circle(img_rgb, (int(x), int(y)), int(ws/2), color, 1)
                     cv2.circle(img_rgb, (int(x), int(y)), 1, color, 1)
-        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(mean_est[0]+c_arena[0]), 'y': float(mean_est[1]+c_arena[1]), 'name': labels[ia]}, 'food_spots': all_spots}
+        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(mean_est[0]+arena[0]), 'y': float(mean_est[1]+arena[1]), 'name': labels[ia]}, 'food_spots': all_spots}
         preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(labels[ia], thresh))
     print('save geometry to {}'.format(outfile))
     write_yaml(outfile, geometry)
