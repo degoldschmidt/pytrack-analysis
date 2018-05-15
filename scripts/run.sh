@@ -11,6 +11,6 @@ if [ "$2" = "all" ] || [ "$2" = "posttracking" ] || [ "$2" = "registration" ]; t
     python3 run_posttracking.py "$1" --option "$2""$3"
 fi
 
-#if [ "$2" = "all" ] || [ "$2" = "posttracking" ]; then
-#    python3 run_database.py "$1" --option "$2""$3"
-#fi
+if [ "$2" = "all" ] || [ "$2" = "manual_geometry" ]; then
+    python3 run_manual_geometry.py "$1"
+fi

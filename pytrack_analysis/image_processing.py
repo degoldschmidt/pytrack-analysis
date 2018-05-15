@@ -238,16 +238,20 @@ def get_peak_matches(loc, vals, w, img_rgb, arena=None, show_all=False, show_pea
         #print('found {} patches.'.format(len(patches)))
     return patches
 
-def preview(img, title='preview geometry', topleft=''):
+def preview(img, title='preview geometry', topleft='', hold=False):
     preview = cv2.resize(img, (700, 700))
     font = cv2.FONT_HERSHEY_SIMPLEX
+    if hold:
+        toff = 0
+    else:
+        toff = 1
     cv2.putText(preview, topleft, (10, 30), font, 1, (255, 0, 255), 2, cv2.LINE_AA)
     cv2.imshow(title+' (press any key to continue)',preview)
     if platform.system() == 'Darwin':
         tmpl = 'tell application "System Events" to set frontmost of every process whose unix id is {} to true'
         script = tmpl.format(os.getpid())
         output = subprocess.check_call(['/usr/bin/osascript', '-e', script])
-    cv2.waitKey(1)
+    cv2.waitKey(toff)
     cv2.destroyAllWindows()
 
 def main():

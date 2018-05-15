@@ -293,3 +293,82 @@ def detect_geometry(_fullpath, _timestr, onlyIm=False):
     print('save geometry to {}'.format(outfile))
     write_yaml(outfile, geometry)
     return geometry
+
+def manual_geometry(_fullpath, _timestr):
+    setup = op.basename(_fullpath).split('_')[0]
+    video = VideoCapture(_fullpath, 0)
+    dir = op.dirname(_fullpath)
+    if not op.isdir(op.join(dir, 'pytrack_res', 'arena')):
+        os.mkdir(op.join(dir, 'pytrack_res', 'arena'))
+    outfile = op.join(dir, 'pytrack_res','arena', setup+'_arena_' +_timestr+'_manual.yaml')
+    img = video.get_average(100) #### takes average of 100 frames
+    video.stop()
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    """
+    Manual entry
+    """
+    centers = []
+    widths = []
+    angles = []
+    for fly in range(1):
+        print('Fly {}:'.format(fly+1))
+        pts = []
+        for each in ['first', 'second', 'third']:
+            pts.append(input('Type coordinates of {} inner yeast spot: '.format(each)))
+        pts = [each.split(' ') for each in pts]
+        pts = [(int(el[0]), int(el[1])) for el in pts]
+        centers.append((sum([el[0] for el in pts])/3, sum([el[1] for el in pts])/3))
+        centers[-1] = (int(round(centers[-1][0])), int(round(centers[-1][1])))
+        r = get_distance(pts[0],centers[-1])
+        widths.append(5*r)
+        angles.append(np.arctan2(-(pts[0][1]-centers[-1][1]), pts[0][0]-centers[-1][0]))
+
+    """
+    Get arenas
+    """
+    img_rgb =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB) ### this is for coloring
+    for pt, w in zip(centers, widths):
+        #for ept in pts:
+        #    cv2.circle(img_rgb, ept, 1, (255,255,0), 2)
+        cv2.circle(img_rgb, pt, int(w/2), (0,255,0), 1)
+        cv2.circle(img_rgb, pt, 1, (0,255,0), 2)
+    preview(img_rgb, title='Preview arena', topleft='manual', hold=True)
+
+    """
+    Get spots
+    """
+    labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
+    geometry = {}
+    ia = 0
+    for pt, w, a in zip(centers, widths, angles):
+        correct_spots = {'x': [], 'y': [], 's': []}
+        for i, angle in enumerate(np.arange(a, 2*np.pi+a, np.pi/3)):
+            for j in range(2):
+                r = w/5.
+                x, y, s = (j+1)*r * np.cos(angle+j*np.pi/6), (j+1)*r*np.sin(angle+j*np.pi/6), i%2
+                correct_spots['x'].append(x)
+                correct_spots['y'].append(y)
+                if s == 0:
+                    correct_spots['s'].append('yeast')
+                else:
+                    correct_spots['s'].append('sucrose')
+        correct_spots = pd.DataFrame(correct_spots)
+        all_spots = []
+        for index, row in correct_spots.iterrows():
+            if row['s'] == 'yeast':
+                color = (0,165,255)
+            else:
+                color = (255, 144, 30)
+            x, y = row['x']+pt[0], -row['y']+pt[1]
+            scale = w/50.
+            all_spots.append({'x': row['x']/scale, 'y': row['y']/scale, 'r': 1.5, 'substr': row['s']})
+            cv2.circle(img_rgb, (int(round(x)), int(round(y))), int(0.15*r), color, 1)
+            cv2.circle(img_rgb, (int(round(x)), int(round(y))), 1, color, 1)
+        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(pt[0]), 'y': float(pt[1]), 'name': labels[ia]}, 'food_spots': all_spots}
+        arena_img = img_rgb[pt[1]-int(w/2):pt[1]+int(w/2), pt[0]-int(w/2):pt[0]+int(w/2)]
+        preview(arena_img, title='Preview spots', topleft='Arena: {}'.format(labels[ia]), hold=True)
+        ia += 1
+    print('save geometry to {}'.format(outfile))
+    write_yaml(outfile, geometry)
+    return geometry
