@@ -48,11 +48,16 @@ class Data(object):
 
     def reindex(self, cols):
         for data in self.dfs:
+            n = len(data.columns)-len(cols)
+            for i in range(n):
+                cols.append('unknown_'+str(i))
             data.columns = cols
 
     def to_timestart(self, timestart):
         for i, df in enumerate(self.dfs):
             self.dfs[i]['datetime'] = pd.to_datetime(df['datetime'])
+            if timestart - self.dfs[i]['datetime'].iloc[0] > pd.Timedelta(minutes=60):
+                self.dfs[i]['datetime'] += pd.Timedelta(hours=1)
             mask = (df['datetime'] > timestart)
             self.dfs[i] = df.loc[mask]
             self.first_frame = self.dfs[i].index[0]
@@ -88,11 +93,16 @@ class Video(object):
             self.spots.append(_dict[k]['food_spots'])
 
     def load_files(self, key):
-        self.files[key] = [op.join(self.dir, eachfile) for eachfile in sorted(os.listdir(self.dir)) if key in eachfile and self.timestr in eachfile]
-        if key == 'arena' and len(self.files[key]) == 0:
-            colorprint('no file found: starting automatic arena geometry detection', color='warning')
-            self.geometry = detect_geometry(self.fullpath, self.timestr)
-            self.files[key] = [op.join(self.dir, eachfile) for eachfile in os.listdir(self.dir) if key in eachfile and self.timestr in eachfile]
+        onlyIm = False
+        self.files[key] = [op.join(self.dir, eachfile) for eachfile in sorted(os.listdir(self.dir)) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
+        if key == 'arena':
+            self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
+            if len(self.files[key]) == 0:
+                colorprint('no file found: starting automatic arena geometry detection', color='warning')
+                self.geometry = detect_geometry(self.fullpath, self.timestr, onlyIm=onlyIm)
+                if onlyIm:
+                    return True
+                self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
         if key == 'timestart' and len(self.files[key]) == 1:
             self.timestart = parse_timestart(op.join(self.dir, self.files['timestart'][0]))
         if len(self.files[key]) == self.required[key]:
@@ -176,7 +186,7 @@ class VideoRawData(object):
             print()
 
     def init_experiment(self):
-        exps_files = [_file for _file in os.listdir(self.dir) if _file.endswith('yaml') and _file.startswith('pytrack_exp')]
+        exps_files = [_file for _file in os.listdir(op.join(self.dir, 'pytrack_res')) if _file.endswith('yaml') and _file.startswith('pytrack_exp')]
         prn(__name__)
         print("Found {} pytrack experiment file(s)...".format(len(exps_files)))
         if len(exps_files) == 0:
@@ -187,7 +197,7 @@ class VideoRawData(object):
         else:
             for i, exp in enumerate(exps_files):
                 if query_yn('Found pytrack experiment yaml file {} - Do you want to use it?'.format(exp), default='yes'):
-                    self.experiment = read_yaml(op.join(self.dir, exp))
+                    self.experiment = read_yaml(op.join(self.dir, 'pytrack_res', exp))
                     show(self.experiment)
                     break
                 elif i == len(exps_files)-1:
@@ -205,5 +215,5 @@ class VideoRawData(object):
             flprint("found {} file(s)...".format(len(video.files[key])))
             colorprint("done.", color='success')
         else:
-            colorprint("ERROR: found invalid number of raw fly data files ({} instead of {}).".format(len(video.files[key]), video.required[key]), color='error')
+            colorprint("ERROR: found invalid number of {} files ({} instead of {}).".format(key, len(video.files[key]), video.required[key]), color='error')
             sys.exit(0)

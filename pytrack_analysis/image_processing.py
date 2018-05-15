@@ -94,23 +94,29 @@ class PixelDiff:
         self.sf = start_frame
 
     def run(self, xy, txy, nframes, show=True):
-        x, y = np.array(xy[0]), np.array(xy[1])
-        tx, ty = np.array(txy[0]), np.array(txy[1])
-        px, tpx = np.zeros(nframes), np.zeros(nframes)
+        x, y = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
+        tx, ty = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
+        px, tpx = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
+        for fly, each in enumerate(xy[0]):
+            x[:,fly], y[:,fly] = np.array(xy[0][fly])[:nframes], np.array(xy[1][fly])[:nframes]
+            tx[:,fly], ty[:,fly] = np.array(txy[0][fly])[:nframes], np.array(txy[1][fly])[:nframes]
         for i in range(nframes-1):
             if i%int(nframes/20)==0:
                 print('frames processed: {:3d}%'.format(int(100*i/nframes)))
             if i == 0:
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
             ret, frame = self.cap.read()
-            xi, yi = int(round(x[i],0)), int(round(y[i],0))
-            txi, tyi = int(round(tx[i],0)), int(round(ty[i],0))
-            px[i] = np.mean(frame[yi-1:yi+2, xi-1:xi+2,0])
-            tpx[i] = np.mean(frame[tyi-1:tyi+2, txi-1:txi+2,0])
-            cv2.circle(frame, (xi, yi), 3, (255,0,255), 1)
-            cv2.circle(frame, (txi, tyi), 3, (25,255,25), 1)
-            if show:
-                resized_image = frame[101:101+520, 106:106+520]
+            for fly, each in enumerate(xy[0]):
+                if not (np.isnan(x[i,fly]) and np.isnan(y[i,fly])):
+                    xi, yi = int(round(x[i,fly])), int(round(y[i,fly]))
+                    txi, tyi = int(round(tx[i,fly])), int(round(ty[i,fly]))
+                    #print('fly {}: ({}, {}) ({}, {})'.format(fly, xi, yi, txi, tyi))
+                    px[i, fly] = np.mean(frame[yi-1:yi+2, xi-1:xi+2,0])
+                    tpx[i, fly] = np.mean(frame[tyi-1:tyi+2, txi-1:txi+2,0])
+                    cv2.circle(frame, (xi, yi), 3, (255,0,255), 1)
+                    cv2.circle(frame, (txi, tyi), 3, (25,255,25), 1)
+            if show and i%300==0:
+                resized_image = cv2.resize(frame, (500,500), interpolation = cv2.INTER_CUBIC)
                 cv2.imshow('Frame', resized_image)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -180,8 +186,9 @@ class JumpDetection:
 """
 Returns locations that match templates
 """
-def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NORMED):
-    files = [op.join('..', 'media', 'templates', setup, _file) for _file in os.listdir(os.path.join('..', 'media', 'templates', setup)) if object_name in _file]
+def match_templates(img, object_name, setup, threshold, method=cv2.TM_CCOEFF_NORMED, dir=None):
+    idir = op.join(dir, 'pytrack_res', 'templates')
+    files = [op.join(idir, setup, _file) for _file in os.listdir(os.path.join(idir, setup)) if object_name in _file and not _file.startswith('.')]
     templates = [cv2.imread(_file,0) for _file in files]
     size = templates[0].shape[0]    ### templates should have same size
     result = [cv2.matchTemplate(img,template,method) for template in templates]

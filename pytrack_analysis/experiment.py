@@ -150,7 +150,7 @@ def register(videos):
 
     outfile = SUFFIX_EXP+outdict['ID']+'.yaml'
     if query_yn('Confirm and save experiment yaml file {}?'.format(outfile), default='yes'):
-        write_yaml(op.join(video.dir, outfile), outdict)
+        write_yaml(op.join(video.dir, 'pytrack_res', outfile), outdict)
         return outdict
     else:
         return register(videos)
