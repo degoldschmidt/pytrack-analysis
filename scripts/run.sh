@@ -19,7 +19,7 @@ if [ "$2" = "all" ] || [ "$2" = "kinematics" ]; then
     python3 run_kinematics.py "$1" "$3" "$4"
 fi
 
-if [ "$2" = "all" ] || [ "$2" = "classify" ]; then
+if [ "$2" = "all" ] || [ "$2" = "classifier" ]; then
     python3 run_classification.py "$1" "$3" "$4"
 fi
 
