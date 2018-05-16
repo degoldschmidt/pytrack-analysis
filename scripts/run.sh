@@ -18,3 +18,11 @@ fi
 if [ "$2" = "kinematics" ]; then
     python3 run_kinematics.py "$1" "$3" "$4"
 fi
+
+if [ "$2" = "classify" ]; then
+    python3 run_classification.py "$1" "$3" "$4"
+fi
+
+if [ "$2" = "segments" ]; then
+    python3 run_segmentation.py "$1" "$3" "$4"
+fi

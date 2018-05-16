@@ -1,20 +1,24 @@
-import os
+import os, argparse
 import os.path as op
-import argparse
 from pytrack_analysis.profile import get_profile
 from pytrack_analysis.database import Experiment
 import pytrack_analysis.preprocessing as prp
-from pytrack_analysis import Kinematics
+from pytrack_analysis import Classifier
 from pytrack_analysis import Multibench
 from pytrack_analysis.yamlio import read_yaml
 
+import warnings
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 import pandas as pd
 pd.set_option('display.max_columns', 30)
 pd.set_option('display.max_rows', 10000)
 pd.set_option('display.width', 260)
 pd.set_option('precision', 4)
-
+import tkinter as tk
 RUN_STATS = True
 
 def get_args():
@@ -44,37 +48,29 @@ def main():
      * n_ses:      number of sessions
      * stats:      list for stats
     """
-    experiment = EXP
-    infolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
-    outfolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
-    sessions = [_file for _file in os.listdir(infolder) if EXP in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)]
+    rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
+    infolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
+    outfolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
+    sessions = [_file for _file in os.listdir(rawfolder) if EXP in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
+    print(sorted(sessions))
     n_ses = len(sessions)
     stats = []
+    _in, _out = 'kinematics', 'classifier'
 
     ### GO THROUGH SESSIONS
-    for i_ses, each in enumerate(sessions):
-        datafile = op.join(infolder, each)
-        yamlfile = op.join(infolder, each[:-3]+'yaml')
-        df = pd.read_csv(datafile, index_col='frame')
-        m = np.array(df['major'])/2.
-        a = np.array(df['angle'])
-        bx, by = np.array(df['body_x']), np.array(df['body_y'])
-        df['head_x'] = bx+np.multiply(m,np.cos(a))
-        df['head_y'] = by+np.multiply(m,np.sin(a))
-        df['tail_x'] = bx-np.multiply(m,np.cos(a))
-        df['tail_y'] = by-np.multiply(m,np.sin(a))
+    for i_ses, each in enumerate(sorted(sessions)):
+        csv_file = os.path.join(infolder,  each[:-4]+'_'+_in+'.csv')
+        df = pd.read_csv(csv_file, index_col='frame')
+        yamlfile = op.join(rawfolder, each[:-3]+'yaml')
         meta = read_yaml(yamlfile)
-        kine = Kinematics(df, meta)
-        ### run kinematics
-        outdf = kine.run(save_as=outfolder, ret=True)
-        ### get stats and append to list
-        if RUN_STATS: stats.append(kine.stats())
-
-    ### save stats
-    statdf = pd.concat(stats, ignore_index=True)
-    print(statdf)
-    statfile = os.path.join(outfolder, experiment+'_kinematics_stats.csv')
-    statdf.to_csv(statfile, index=False)
+        ## total micromoves
+        nancheck = df['sm_head_speed'].isnull().values.any()
+        print('mistracked: ', meta['flags']['mistracked_frames'])
+        print('food spots: ', len(meta['food_spots']))
+        if not (meta['flags']['mistracked_frames'] > 300 or meta['condition'] =='NA' or nancheck or len(meta['food_spots']) == 0):
+            classify = Classifier(df, meta)
+            odf = classify.run(save_as=outfolder, ret=True)
+    #print(odf.iloc[1924:1926])
 
 if __name__ == '__main__':
     # runs as benchmark test
