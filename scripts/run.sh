@@ -14,3 +14,7 @@ fi
 if [ "$2" = "manual_geometry" ]; then
     python3 run_manual_geometry.py "$1"
 fi
+
+if [ "$2" = "kinematics" ]; then
+    python3 run_kinematics.py "$1" "$3" "$4"
+fi

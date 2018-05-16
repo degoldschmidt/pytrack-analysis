@@ -87,10 +87,23 @@ class Video(object):
     def load_arena(self):
         for _file in self.files['arena']:
             _dict = read_yaml(_file)
-        self.arena, self.spots = [], []
+        self.arena, self.spots = [{}, {}, {}, {}], [{}, {}, {}, {}]
         for k in _dict.keys():
-            self.arena.append(_dict[k]['arena'])
-            self.spots.append(_dict[k]['food_spots'])
+            if _dict[k]['arena']['name'] == 'topleft':
+                self.arena[0] = _dict[k]['arena']
+                self.spots[0] = _dict[k]['food_spots']
+            elif _dict[k]['arena']['name'] == 'topright':
+                self.arena[1] = _dict[k]['arena']
+                self.spots[1] = _dict[k]['food_spots']
+            elif _dict[k]['arena']['name'] == 'bottomleft':
+                self.arena[2] = _dict[k]['arena']
+                self.spots[2] = _dict[k]['food_spots']
+            elif _dict[k]['arena']['name'] == 'bottomright':
+                self.arena[3] = _dict[k]['arena']
+                self.spots[3] = _dict[k]['food_spots']
+        for i in self.arena:
+            print(i['name'], i['x'], i['y'])
+
 
     def load_files(self, key):
         onlyIm = False

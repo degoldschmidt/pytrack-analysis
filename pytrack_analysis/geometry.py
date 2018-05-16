@@ -189,7 +189,7 @@ def detect_geometry(_fullpath, _timestr, onlyIm=False):
             cv2.circle(img_rgb, pt, int(w/2), (255,0,255), 1)
             cv2.circle(img_rgb, pt, 1, (255,0,255), 2)
     """
-    preview(img_rgb, title='Preview arena', topleft='Threshold: {}'.format(thresh))
+    #preview(img_rgb, title='Preview arena', topleft='Threshold: {}'.format(thresh))
 
 
 
@@ -201,6 +201,14 @@ def detect_geometry(_fullpath, _timestr, onlyIm=False):
     for ia, arena in enumerate(arenas):
         arena_img = img[arena[1]:arena[1]+w, arena[0]:arena[0]+w]
         c_arena = (arena[0]+w/2, arena[1]+w/2)
+        if c_arena[1]<700:
+            label='top'
+        else:
+            label='bottom'
+        if c_arena[0]<700:
+            label += 'left'
+        else:
+            label += 'right'
         spots = []
         thresh = 0.99
         min_spots = 6
@@ -288,8 +296,8 @@ def detect_geometry(_fullpath, _timestr, onlyIm=False):
                     all_spots.append({'x': row['x']/scale, 'y': row['y']/scale, 'r': 1.5, 'substr': row['s']})
                     cv2.circle(img_rgb, (int(x), int(y)), int(ws/2), color, 1)
                     cv2.circle(img_rgb, (int(x), int(y)), 1, color, 1)
-        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(mean_est[0]+arena[0]), 'y': float(mean_est[1]+arena[1]), 'name': labels[ia]}, 'food_spots': all_spots}
-        preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(labels[ia], thresh))
+        geometry['fly{:02}'.format(ia+1)] = {   'arena': {'radius': w/2, 'outer': 260.0, 'scale': w/50., 'x': float(mean_est[0]+arena[0]), 'y': float(mean_est[1]+arena[1]), 'name': label}, 'food_spots': all_spots}
+        #preview(img_rgb, title='Preview spots', topleft='Arena: {}, threshold: {}'.format(label, thresh))
     print('save geometry to {}'.format(outfile))
     write_yaml(outfile, geometry)
     return geometry
@@ -311,7 +319,7 @@ def manual_geometry(_fullpath, _timestr):
     centers = []
     widths = []
     angles = []
-    for fly in range(1):
+    for fly in range(3):
         print('Fly {}:'.format(fly+1))
         pts = []
         for each in ['first', 'second', 'third']:

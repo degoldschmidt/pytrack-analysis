@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
-from pytrack_analysis.image_processing import WriteOverlay, PixelDiff
 import pytrack_analysis.preprocessing as prp
 from pytrack_analysis.geometry import manual_geometry
 from pytrack_analysis.experiment import parse_time

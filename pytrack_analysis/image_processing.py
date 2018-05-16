@@ -132,20 +132,23 @@ class ShowOverlay:
         #ret, frame = self.cap.read()
         self.sf = start_frame
 
-    def run(self, xy, txy, bxy, nframes, show=True):
+    def run(self, xy, txy, bxy, pxls, nframes, show=True):
         x, y = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
         tx, ty = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
         bx, by = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
         px, tpx = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
+        flipped = np.zeros((nframes, len(xy[0])))
         for fly, each in enumerate(xy[0]):
             x[:,fly], y[:,fly] = np.array(xy[0][fly])[:nframes], np.array(xy[1][fly])[:nframes]
             tx[:,fly], ty[:,fly] = np.array(txy[0][fly])[:nframes], np.array(txy[1][fly])[:nframes]
             bx[:,fly], by[:,fly] = np.array(bxy[0][fly])[:nframes], np.array(bxy[1][fly])[:nframes]
+            px[:,fly], tpx[:,fly] = pxls[fly][0][:nframes], pxls[fly][1][:nframes]
         for i in range(nframes-1):
-            if i%int(nframes/20)==0:
+            if i%int(nframes/10)==0:
                 print('frames processed: {:3d}%'.format(int(100*i/nframes)))
             #if i == 0:
-            if i%30==0:
+            intev = 300
+            if i%intev==0:
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
                 ret, frame = self.cap.read()
                 for fly, each in enumerate(xy[0]):
@@ -153,11 +156,15 @@ class ShowOverlay:
                         bxi, byi = int(round(bx[i,fly])), int(round(by[i,fly]))
                         xi, yi = int(round(x[i,fly])), int(round(y[i,fly]))
                         txi, tyi = int(round(tx[i,fly])), int(round(ty[i,fly]))
-                        #print('fly {}: ({}, {}) ({}, {})'.format(fly, xi, yi, txi, tyi))
-                        px[i, fly] = np.mean(frame[yi-1:yi+2, xi-1:xi+2,0])
-                        tpx[i, fly] = np.mean(frame[tyi-1:tyi+2, txi-1:txi+2,0])
+                        post = i + intev
+                        if post > flipped.shape[0]-1:
+                            post = flipped.shape[0]-1
+                        mpx, mtpx = np.mean(px[i:post,fly]), np.mean(tpx[i:post,fly])
                         cv2.circle(frame, (xi, yi), 3, (255,0,255), 1)
                         cv2.circle(frame, (txi, tyi), 3, (25,255,25), 1)
+                        if mpx > mtpx + 5:
+                            cv2.circle(frame, (bxi+40, byi+40), 5, (0,0,255), -1)
+                            flipped[i:i+intev] = 1
                 if show:
                     resized_image = frame.copy()
                     resized_image = resized_image[:200, :200]
@@ -169,11 +176,12 @@ class ShowOverlay:
                     resized_image[100:, :100] =  frame[byi-50:byi+50, bxi-50:bxi+50]
                     bxi, byi = int(round(bx[i,3])), int(round(by[i,3]))
                     resized_image[100:, 100:] =  frame[byi-50:byi+50, bxi-50:bxi+50]
+                    #resized_image = cv2.resize(resized_image, (500,500), interpolation = cv2.INTER_CUBIC)
                     cv2.imshow('Frame', resized_image)
-                    if cv2.waitKey(1000) & 0xFF == ord('q'):
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
         self.cap.stop()
-        return px, tpx
+        return flipped
 
 
 """
