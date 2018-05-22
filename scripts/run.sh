@@ -7,7 +7,7 @@ BASEDIR=$1
 OPTION=$2
 FORCE=$3
 
-if [ "$2" = "all" ] || [ "$2" = "posttracking" ] || [ "$2" = "registration" ]; then
+if [ "$2" = "all" ] || [ "$2" = "post_tracking" ] || [ "$2" = "registration" ] || [ "$2" = "jump_detection" ]; then
     python3 run_posttracking.py "$1" --option "$2""$3"
 fi
 

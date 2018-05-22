@@ -85,7 +85,7 @@ class VideoCaptureAsync:
         self.cap.release()
 
 """
-Writes overlay
+PixelDiff algorithm
 """
 class PixelDiff:
     def __init__(self, video, start_frame=0):
@@ -102,7 +102,7 @@ class PixelDiff:
             tx[:,fly], ty[:,fly] = np.array(txy[0][fly])[:nframes], np.array(txy[1][fly])[:nframes]
         for i in range(nframes-1):
             if i%int(nframes/20)==0:
-                print('frames processed: {:3d}%'.format(int(100*i/nframes)))
+                print('Run PixelDiff: frames processed: {:3d}%'.format(int(100*i/nframes)))
             if i == 0:
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, i+self.sf)
             ret, frame = self.cap.read()
@@ -111,8 +111,8 @@ class PixelDiff:
                     xi, yi = int(round(x[i,fly])), int(round(y[i,fly]))
                     txi, tyi = int(round(tx[i,fly])), int(round(ty[i,fly]))
                     #print('fly {}: ({}, {}) ({}, {})'.format(fly, xi, yi, txi, tyi))
-                    px[i, fly] = np.mean(frame[yi-1:yi+2, xi-1:xi+2,0])
-                    tpx[i, fly] = np.mean(frame[tyi-1:tyi+2, txi-1:txi+2,0])
+                    px[i, fly] = frame[yi, xi,0]
+                    tpx[i, fly] = frame[tyi, txi,0]
                     cv2.circle(frame, (xi, yi), 3, (255,0,255), 1)
                     cv2.circle(frame, (txi, tyi), 3, (25,255,25), 1)
             if show and i%300==0:
@@ -145,7 +145,7 @@ class ShowOverlay:
             px[:,fly], tpx[:,fly] = pxls[fly][0][:nframes], pxls[fly][1][:nframes]
         for i in range(nframes-1):
             if i%int(nframes/10)==0:
-                print('frames processed: {:3d}%'.format(int(100*i/nframes)))
+                print('Run ShowOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
             #if i == 0:
             intev = 300
             if i%intev==0:
@@ -183,6 +183,44 @@ class ShowOverlay:
         self.cap.stop()
         return flipped
 
+"""
+Writes overlay
+"""
+class WriteOverlay:
+    def __init__(self, video, outfolder=None):
+        self.cap = VideoCapture(video, 0)
+        self.out = os.path.join(outfolder, os.path.basename(video)[:-4])
+        if not op.isdir(self.out):
+            os.mkdir(self.out)
+
+    def __del__(self):
+        self.cap.stop()
+
+    def run(self, xy, hxy, speed, start_frame, end_frame, view, fly):
+        x, y = np.array(xy[0]), np.array(xy[1])
+        hx, hy = np.array(hxy[0]), np.array(hxy[1])
+        x0, y0 = int(view[0]), int(view[1])
+        w, h = int(view[2]), int(view[3])
+        dr = np.array(speed)
+        of = os.path.join(self.out, 'fly{}_{}_{}.avi'.format(fly+1, start_frame, end_frame))
+        #print('Save video to ', of)
+        self.writer = cv2.VideoWriter(of, cv2.VideoWriter_fourcc('M','J','P','G'), 30.0, (w, h))
+
+        nframes = end_frame - start_frame
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+        for i in range(nframes-1):
+            ret, frame = self.cap.read()
+            #if i%int(nframes/10)==0:
+            #    print('Run WriteOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
+            if ret:
+                cv2.circle(frame, (int(hx[i]), int(hy[i])), 3, (255,0,255), 1)
+                cv2.line(frame, (int(x[i]), int(y[i])), (int(hx[i]), int(hy[i])), (255,0,255), 1)
+                resized_image = frame[y0:y0+h, x0:x0+w]
+                cv2.putText(resized_image, '{}'.format(i+start_frame), (40, 50), cv2.FONT_HERSHEY_SIMPLEX,0.75,(255,0,255),1, cv2.LINE_AA)
+                cv2.putText(resized_image,'{:.3f}'.format(dr[i]), (w-80, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(255,0,255),1, cv2.LINE_AA)
+                self.writer.write(resized_image)
+        self.writer.release()
 
 """
 Detect jumps and mistracking

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pytrack_analysis import Multibench
 from pytrack_analysis.dataio import VideoRawData
 from pytrack_analysis.profile import get_profile, get_scriptname, show_profile
-from pytrack_analysis.image_processing import ShowOverlay, PixelDiff
+from pytrack_analysis.image_processing import ShowOverlay, WriteOverlay, PixelDiff
 import pytrack_analysis.preprocessing as prp
 import pytrack_analysis.plot as plot
 from pytrack_analysis.yamlio import write_yaml
@@ -33,11 +33,19 @@ def main():
     if not op.isdir(op.join(BASEDIR, 'pytrack_res')):
         os.mkdir(op.join(BASEDIR, 'pytrack_res'))
     RESULT = op.join(BASEDIR, 'pytrack_res')
+    if not op.isdir(op.join(RESULT,'post_tracking')):
+        os.mkdir(op.join(RESULT,'post_tracking'))
+    if not op.isdir(op.join(RESULT,'pixeldiff')):
+        os.mkdir(op.join(RESULT,'pixeldiff'))
+    if not op.isdir(op.join(RESULT,'jumps')):
+        os.mkdir(op.join(RESULT,'jumps'))
     raw_data = VideoRawData(BASEDIR)
     if OPTION == 'registration':
         return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
+        if iv < 12:
+            continue
         print('{}: {}'.format(iv, video.name))
         ### arena + food spots
         video.load_arena()
@@ -50,33 +58,53 @@ def main():
         ### calculate displacements
 
         x, y, tx, ty, bx, by = [], [], [], [], [], []
+        wo = WriteOverlay(video.fullpath, outfolder=op.join(RESULT,'jumps'))
         for i in range(4):
-            bx.append(video.data.dfs[i]['body_x'])
-            by.append(video.data.dfs[i]['body_y'])
-            m = video.data.dfs[i]['major']
-            angle = video.data.dfs[i]['angle']
-            x.append(bx[-1]+0.5*m*np.cos(angle))
-            y.append(by[-1]+0.5*m*np.sin(angle))
-            tx.append(bx[-1]-0.5*m*np.cos(angle))
-            ty.append(by[-1]-0.5*m*np.sin(angle))
+            xpos = video.data.dfs[i]['body_x'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            ypos = video.data.dfs[i]['body_y'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            bx.append(xpos)
+            by.append(ypos)
+            m = video.data.dfs[i]['major'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            angle = video.data.dfs[i]['angle'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            if np.any(np.isnan(xpos)) or np.any(np.isnan(ypos)) or np.any(np.isnan(m)) or np.any(np.isnan(angle)):
+                print(np.any(np.isnan(xpos)), np.any(np.isnan(ypos)), np.any(np.isnan(m)), np.any(np.isnan(angle)))
+            x.append(xpos+0.5*m*np.cos(angle))
+            y.append(ypos+0.5*m*np.sin(angle))
+            tx.append(xpos-0.5*m*np.cos(angle))
+            ty.append(ypos-0.5*m*np.sin(angle))
             dt = video.data.dfs[i]['frame_dt']
-            dx, dy = np.append(0, np.diff(video.data.dfs[i]['body_x'])), np.append(0, np.diff(-video.data.dfs[i]['body_y']))
+            dx, dy = np.append(0, np.diff(xpos)), np.append(0, np.diff(-ypos))
             dx, dy = np.divide(dx, dt), np.divide(dy, dt)
             theta = np.arctan2(dy, dx)
-            dr = np.sqrt(dx*dx+dy*dy)/video.arena[i]['scale']
+            dr = np.sqrt(dx*dx+dy*dy)/float(video.arena[i]['scale'])
+            dr_sm = 
+            dr_ssm =
+            view = (video.arena[i]['x']-260, video.arena[i]['y']-260, 520, 520)
+            vsf = video.data.dfs[i].index[0]
+            print("fly {}:\nstartframe: {} ({} >= {})".format(i+1, vsf, video.data.dfs[i].loc[vsf,'datetime'], video.timestart))
+            for jump_index in np.where(dr > 50)[0]:
+                sf, ef = jump_index-30+int(video.data.dfs[i].index[0]), jump_index+30+int(video.data.dfs[i].index[0])
+                print("frames {}-{}".format(sf, ef))
+                if sf < int(video.data.dfs[i].index[0]):
+                    sf = int(video.data.dfs[i].index[0])
+                if ef > int(video.data.dfs[i].index[-1]):
+                    ef = int(video.data.dfs[i].index[-1])
+                wo.run((bx[i].loc[sf:ef], by[i].loc[sf:ef]), (x[i].loc[sf:ef], y[i].loc[sf:ef]), dr.loc[sf:ef], sf, ef, view, i)
             mistracked = np.sum(dr > 50)
             video.data.dfs[i].loc[video.data.dfs[i].angle > np.pi, ['angle']] -= 2.*np.pi
             angle = video.data.dfs[i]['angle']
             window_len = 36
 
-        if not op.isdir(op.join(RESULT,'post_tracking')):
-            os.mkdir(op.join(RESULT,'post_tracking'))
-        _ofile = op.join(RESULT,'post_tracking','pixeldiff_{}.csv'.format(video.timestr))
+        print()
+        if OPTION == 'jump_detection':
+            continue
+
+        _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
         if op.isfile(_ofile):
             pxd_data = pd.read_csv(_ofile, index_col='frame')
         else:
             pxdiff = PixelDiff(video.fullpath, start_frame=video.data.first_frame)
-            px, tpx = pxdiff.run((x,y), (tx,ty), 108000, show=False)
+            px, tpx = pxdiff.run((x,y), (tx,ty), 108100, show=False)
             pxd_data = pd.DataFrame({   'headpx_fly1': px[:,0], 'tailpx_fly1': tpx[:,0],
                                         'headpx_fly2': px[:,1], 'tailpx_fly2': tpx[:,1],
                                         'headpx_fly3': px[:,2], 'tailpx_fly3': tpx[:,2],
