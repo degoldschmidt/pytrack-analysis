@@ -12,6 +12,17 @@ from pytrack_analysis.image_processing import ShowOverlay, WriteOverlay, PixelDi
 import pytrack_analysis.preprocessing as prp
 import pytrack_analysis.plot as plot
 from pytrack_analysis.yamlio import write_yaml
+from scipy import signal
+from scipy.signal import hilbert
+
+def gaussian_filter(_X, _len=16, _sigma=1.6):
+    norm = np.sqrt(2*np.pi)*_sigma ### Scipy's gaussian window is not normalized
+    window = signal.gaussian(_len+1, std=_sigma)/norm
+    convo = np.convolve(_X, window, "same")
+    ## eliminate boundary effects
+    convo[:_len] = _X[:_len]
+    convo[-_len:] = _X[-_len:]
+    return convo
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -39,12 +50,12 @@ def main():
         os.mkdir(op.join(RESULT,'pixeldiff'))
     if not op.isdir(op.join(RESULT,'jumps')):
         os.mkdir(op.join(RESULT,'jumps'))
-    raw_data = VideoRawData(BASEDIR)
+    raw_data = VideoRawData(BASEDIR, VERBOSE=(OPTION == 'registration'))
     if OPTION == 'registration':
         return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
-        if iv < 12:
+        if iv != 0:
             continue
         print('{}: {}'.format(iv, video.name))
         ### arena + food spots
@@ -59,6 +70,7 @@ def main():
 
         x, y, tx, ty, bx, by = [], [], [], [], [], []
         wo = WriteOverlay(video.fullpath, outfolder=op.join(RESULT,'jumps'))
+        f, axes = plt.subplots(8) ### TODO
         for i in range(4):
             xpos = video.data.dfs[i]['body_x'].interpolate().fillna(method='ffill').fillna(method='bfill')
             ypos = video.data.dfs[i]['body_y'].interpolate().fillna(method='ffill').fillna(method='bfill')
@@ -77,11 +89,74 @@ def main():
             dx, dy = np.divide(dx, dt), np.divide(dy, dt)
             theta = np.arctan2(dy, dx)
             dr = np.sqrt(dx*dx+dy*dy)/float(video.arena[i]['scale'])
-            dr_sm = 
-            dr_ssm =
+            ddr = np.append(0, np.diff(dr))
+            dddr = np.append(0, np.diff(ddr))
+            wlen = 36
+            dr_sm = gaussian_filter(np.array(dr), _len=wlen, _sigma=0.1*wlen)
+            wlen = 120
+            dddr_sm = gaussian_filter(np.array(np.abs(dddr)), _len=wlen, _sigma=0.5*wlen)
+            threshold = 10.*dddr_sm
+            low, high = 10., 30.
+            threshold[threshold<low] = low
+            threshold[threshold>high] = high
+            #### TODO
+            st = 0
+            en = st+3*1800
+            mistrack_inds = np.where(np.array(dddr)[st:en] > threshold[st:en])[0]
+            #### TODO Pixeldiff test
+            _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
+            if op.isfile(_ofile):
+                pxd_data = pd.read_csv(_ofile, index_col='frame')
+            hpx = np.array(pxd_data['headpx_fly{}'.format(i+1)])
+            wlen = 36
+            hpx = gaussian_filter(hpx, _len=wlen, _sigma=0.1*wlen)
+            tpx = np.array(pxd_data['tailpx_fly{}'.format(i+1)])
+            tpx = gaussian_filter(tpx, _len=wlen, _sigma=0.1*wlen)
+            pxthr = np.array(tpx[st:en+1]>hpx[st:en+1])
+            pxavg = np.zeros(pxthr.shape)
+            for frm in range(pxavg.shape[0]):
+                e = frm + 300
+                if e >= pxavg.shape[0]:
+                    e = pxavg.shape[0]-1
+                pxavg[frm] = np.mean(pxthr[frm:e])
+
+            ### plot
+            axes[2*i].plot(dddr[st:en], 'k-', lw=0.5)
+            axes[2*i].plot(threshold[st:en], '--', color='#fa6800', lw=0.5)
+            axes[2*i].plot(mistrack_inds, 50.*np.ones(len(mistrack_inds)), 'o', color='#d80073', markersize=2)
+            axes[2*i].set_ylim([-5,55])
+            axes[2*i].set_yticks(np.arange(0,60,25))
+
+            ### plot 2nd
+            axes[2*i+1].plot(hpx[st:en], '-', color='#fa0078', lw=0.5)
+            axes[2*i+1].plot(tpx[st:en], '-', color='#00fa64', lw=0.5)
+            axes[2*i+1].plot(100.*pxthr, '--', color='#6e6e6e', lw=0.5)
+            axes[2*i+1].plot(100.*pxavg, '-', color='#000000', lw=0.5)
+            axes[2*i+1].set_ylim([0,255])
+            #axes[i+1].set_yticks(np.arange(0,60,10))
+            ####
+
             view = (video.arena[i]['x']-260, video.arena[i]['y']-260, 520, 520)
             vsf = video.data.dfs[i].index[0]
+            ff = int(video.data.dfs[i].index[0])
+            lf = int(video.data.dfs[i].index[-1])
+            sf, ef = st+ff, en+ff
             print("fly {}:\nstartframe: {} ({} >= {})".format(i+1, vsf, video.data.dfs[i].loc[vsf,'datetime'], video.timestart))
+            thr = np.array(np.array(dddr)[st:en+1] > threshold[st:en+1])
+            flip = np.zeros(thr.shape)
+            thr_ix = np.append(np.append(0, np.where(thr)[0]), len(flip)+ff)
+            if len(thr_ix) > 0:
+                for jj,ji in enumerate(thr_ix[:-1]):
+                    fromfr = thr_ix[jj] + ff
+                    tofr = thr_ix[jj+1] + ff - 1
+                    flip[thr_ix[jj]:thr_ix[jj+1]] = np.mean(pxthr[thr_ix[jj]:thr_ix[jj+1]])>0.5
+                    if flip[thr_ix[jj]] == 0:
+                        x[i].loc[fromfr:tofr], tx[i].loc[fromfr:tofr] = tx[i].loc[fromfr:tofr], x[i].loc[fromfr:tofr]
+                        y[i].loc[fromfr:tofr], ty[i].loc[fromfr:tofr] = ty[i].loc[fromfr:tofr], y[i].loc[fromfr:tofr]
+
+
+            wo.run((bx[i].loc[sf:ef], by[i].loc[sf:ef]), (x[i].loc[sf:ef], y[i].loc[sf:ef]), sf, ef, view, i, bool=[thr, flip])
+            """
             for jump_index in np.where(dr > 50)[0]:
                 sf, ef = jump_index-30+int(video.data.dfs[i].index[0]), jump_index+30+int(video.data.dfs[i].index[0])
                 print("frames {}-{}".format(sf, ef))
@@ -90,11 +165,12 @@ def main():
                 if ef > int(video.data.dfs[i].index[-1]):
                     ef = int(video.data.dfs[i].index[-1])
                 wo.run((bx[i].loc[sf:ef], by[i].loc[sf:ef]), (x[i].loc[sf:ef], y[i].loc[sf:ef]), dr.loc[sf:ef], sf, ef, view, i)
+            """
             mistracked = np.sum(dr > 50)
             video.data.dfs[i].loc[video.data.dfs[i].angle > np.pi, ['angle']] -= 2.*np.pi
             angle = video.data.dfs[i]['angle']
             window_len = 36
-
+        f.savefig(op.join(RESULT,'plots','speed_test.png'), dpi=600)
         print()
         if OPTION == 'jump_detection':
             continue
@@ -111,10 +187,9 @@ def main():
                                         'headpx_fly4': px[:,3], 'tailpx_fly4': tpx[:,3],})
             pxd_data.to_csv(_ofile, index_label='frame')
 
-        pixels = [(np.array(pxd_data['headpx_fly{}'.format(each)]), np.array(pxd_data['tailpx_fly{}'.format(each)])) for each in range(1,5)]
-
-        pxdiff = ShowOverlay(video.fullpath, start_frame=video.data.first_frame)
-        flip = pxdiff.run((x,y), (tx,ty), (bx,by), pixels, 108000, show=False)
+        #pixels = [(np.array(pxd_data['headpx_fly{}'.format(each)]), np.array(pxd_data['tailpx_fly{}'.format(each)])) for each in range(1,5)]
+        #pxdiff = ShowOverlay(video.fullpath, start_frame=video.data.first_frame)
+        #flip = pxdiff.run((x,y), (tx,ty), (bx,by), pixels, 108000, show=False)
 
         labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
         for i in range(4):

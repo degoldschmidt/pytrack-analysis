@@ -172,8 +172,9 @@ def translate_to(data, start, time=''):
     return data, data.index[0]
 
 class VideoRawData(object):
-    def __init__(self, basedir, columns=None, units=None, noVideo=False, VERBOSE=False):
+    def __init__(self, basedir, columns=None, units=None, noVideo=False, VERBOSE=True):
         ### Load videos
+        self.VERBOSE = VERBOSE
         prn(__name__)
         self.dir = basedir
         flprint("Loading raw data videos...")
@@ -208,13 +209,16 @@ class VideoRawData(object):
             else:
                 sys.exit(0)
         else:
-            for i, exp in enumerate(exps_files):
-                if query_yn('Found pytrack experiment yaml file {} - Do you want to use it?'.format(exp), default='yes'):
-                    self.experiment = read_yaml(op.join(self.dir, 'pytrack_res', exp))
-                    show(self.experiment)
-                    break
-                elif i == len(exps_files)-1:
-                    self.experiment = register(self.videos)
+            if self.VERBOSE:
+                for i, exp in enumerate(exps_files):
+                    if query_yn('Found pytrack experiment yaml file {} - Do you want to use it?'.format(exp), default='yes'):
+                        self.experiment = read_yaml(op.join(self.dir, 'pytrack_res', exp))
+                        show(self.experiment)
+                        break
+                    elif i == len(exps_files)-1:
+                        self.experiment = register(self.videos)
+            else:
+                self.experiment = read_yaml(op.join(self.dir, 'pytrack_res', exps_files[0]))
         if self.nvids > len(self.experiment['Videos']):
             if query_yn('Found'+bc.FAIL+ ' {} '.format(self.nvids-len(self.experiment['Videos'])) +bc.ENDC+'more videos than registered - Do you want to add them to the registry?', default='yes'):
                 add(self.videos, self.experiment)

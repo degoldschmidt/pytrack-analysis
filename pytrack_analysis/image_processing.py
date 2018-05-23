@@ -196,29 +196,36 @@ class WriteOverlay:
     def __del__(self):
         self.cap.stop()
 
-    def run(self, xy, hxy, speed, start_frame, end_frame, view, fly):
+    def run(self, xy, hxy, start_frame, end_frame, view, fly, bool=[]):
         x, y = np.array(xy[0]), np.array(xy[1])
         hx, hy = np.array(hxy[0]), np.array(hxy[1])
         x0, y0 = int(view[0]), int(view[1])
         w, h = int(view[2]), int(view[3])
-        dr = np.array(speed)
+        bools = []
+        for b in bool:
+            bools.append(np.array(b))
         of = os.path.join(self.out, 'fly{}_{}_{}.avi'.format(fly+1, start_frame, end_frame))
         #print('Save video to ', of)
         self.writer = cv2.VideoWriter(of, cv2.VideoWriter_fourcc('M','J','P','G'), 30.0, (w, h))
 
         nframes = end_frame - start_frame
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
         for i in range(nframes-1):
             ret, frame = self.cap.read()
-            #if i%int(nframes/10)==0:
-            #    print('Run WriteOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
+            if i%int(nframes/10)==0:
+                print('Run WriteOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
             if ret:
                 cv2.circle(frame, (int(hx[i]), int(hy[i])), 3, (255,0,255), 1)
                 cv2.line(frame, (int(x[i]), int(y[i])), (int(hx[i]), int(hy[i])), (255,0,255), 1)
                 resized_image = frame[y0:y0+h, x0:x0+w]
                 cv2.putText(resized_image, '{}'.format(i+start_frame), (40, 50), cv2.FONT_HERSHEY_SIMPLEX,0.75,(255,0,255),1, cv2.LINE_AA)
-                cv2.putText(resized_image,'{:.3f}'.format(dr[i]), (w-80, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(255,0,255),1, cv2.LINE_AA)
+                #cv2.putText(resized_image,'{:.3f}'.format(dr[i]), (w-80, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(255,0,255),1, cv2.LINE_AA)
+                if bools[1][i] == 0:
+                    cv2.circle(resized_image, (w-50, 50), 25, (0,0,255), -1)
+                if bools[1][i] == 1:
+                    cv2.circle(resized_image, (w-50, 50), 25, (0,255,0), -1)
+                if bools[0][i] == 1:
+                    cv2.circle(resized_image, (w-50, h-50), 25, (0,0,255), -1)
                 self.writer.write(resized_image)
         self.writer.release()
 
