@@ -204,7 +204,7 @@ class WriteOverlay:
         bools = []
         for b in bool:
             bools.append(np.array(b))
-        of = os.path.join(self.out, 'fly{}_{}_{}.avi'.format(fly+1, start_frame, end_frame))
+        of = os.path.join(self.out, 'fly{}_{:06d}_{:06d}.avi'.format(fly+1, start_frame, end_frame))
         #print('Save video to ', of)
         self.writer = cv2.VideoWriter(of, cv2.VideoWriter_fourcc('M','J','P','G'), 30.0, (w, h))
 
@@ -212,8 +212,8 @@ class WriteOverlay:
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
         for i in range(nframes-1):
             ret, frame = self.cap.read()
-            if i%int(nframes/10)==0:
-                print('Run WriteOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
+            #if i%int(nframes/10)==0:
+            #    print('Run WriteOverlay: frames processed: {:3d}%'.format(int(100*i/nframes)))
             if ret:
                 cv2.circle(frame, (int(hx[i]), int(hy[i])), 3, (255,0,255), 1)
                 cv2.line(frame, (int(x[i]), int(y[i])), (int(hx[i]), int(hy[i])), (255,0,255), 1)
@@ -226,7 +226,13 @@ class WriteOverlay:
                     cv2.circle(resized_image, (w-50, 50), 25, (0,255,0), -1)
                 if bools[0][i] == 1:
                     cv2.circle(resized_image, (w-50, h-50), 25, (0,0,255), -1)
-                self.writer.write(resized_image)
+                try:
+                    self.writer.write(resized_image)
+                except cv2.error:
+                    print('frame: ', i)
+                    print('head: ({}, {})'.format(int(hx[i]), int(hy[i])))
+                    print('body: ({}, {})'.format(int(x[i]), int(y[i])))
+                    print('frame resized to (width: {} - {}, height: {} - {})'.format(x0,x0+w, y0,y0+h))
         self.writer.release()
 
 """

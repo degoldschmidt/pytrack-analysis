@@ -55,9 +55,9 @@ def main():
         return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
-        if iv != 0:
-            continue
-        print('{}: {}'.format(iv, video.name))
+        #if iv == 1:
+        #    continue
+        print('\n{}: {}'.format(iv, video.name))
         ### arena + food spots
         video.load_arena()
         ### trajectory data
@@ -100,8 +100,10 @@ def main():
             threshold[threshold<low] = low
             threshold[threshold>high] = high
             #### TODO
+            ff = int(video.data.dfs[i].index[0])
+            lf = int(video.data.dfs[i].index[-1])
             st = 0
-            en = st+3*1800
+            en = min(lf-ff, 108100)
             mistrack_inds = np.where(np.array(dddr)[st:en] > threshold[st:en])[0]
             #### TODO Pixeldiff test
             _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
@@ -118,7 +120,10 @@ def main():
                 e = frm + 300
                 if e >= pxavg.shape[0]:
                     e = pxavg.shape[0]-1
-                pxavg[frm] = np.mean(pxthr[frm:e])
+                if frm == e:
+                    pxavg[frm] = pxthr[frm]
+                else:
+                    pxavg[frm] = np.mean(pxthr[frm:e])
 
             ### plot
             axes[2*i].plot(dddr[st:en], 'k-', lw=0.5)
@@ -137,14 +142,15 @@ def main():
             ####
 
             view = (video.arena[i]['x']-260, video.arena[i]['y']-260, 520, 520)
-            vsf = video.data.dfs[i].index[0]
-            ff = int(video.data.dfs[i].index[0])
-            lf = int(video.data.dfs[i].index[-1])
             sf, ef = st+ff, en+ff
-            print("fly {}:\nstartframe: {} ({} >= {})".format(i+1, vsf, video.data.dfs[i].loc[vsf,'datetime'], video.timestart))
+            total_dur = int((video.data.dfs[i].loc[lf,'elapsed_time'] - video.data.dfs[i].loc[ff,'elapsed_time'])/60.)
+            secs = int(round(video.data.dfs[i].loc[lf,'elapsed_time'] - video.data.dfs[i].loc[ff,'elapsed_time']))%60
+            print("fly {}:\tstart@ {} ({} >= {}) total: {}:{:02d} mins ({} frames)".format(i+1, ff, video.data.dfs[i].loc[ff,'datetime'], video.timestart, total_dur, secs, en-st))
             thr = np.array(np.array(dddr)[st:en+1] > threshold[st:en+1])
             flip = np.zeros(thr.shape)
             thr_ix = np.append(np.append(0, np.where(thr)[0]), len(flip)+ff)
+            print('found {} detection points (start, jumps, mistracking, etc.).'.format(len(thr_ix)-1))
+            count = 0
             if len(thr_ix) > 0:
                 for jj,ji in enumerate(thr_ix[:-1]):
                     fromfr = thr_ix[jj] + ff
@@ -153,24 +159,21 @@ def main():
                     if flip[thr_ix[jj]] == 0:
                         x[i].loc[fromfr:tofr], tx[i].loc[fromfr:tofr] = tx[i].loc[fromfr:tofr], x[i].loc[fromfr:tofr]
                         y[i].loc[fromfr:tofr], ty[i].loc[fromfr:tofr] = ty[i].loc[fromfr:tofr], y[i].loc[fromfr:tofr]
-
-
-            wo.run((bx[i].loc[sf:ef], by[i].loc[sf:ef]), (x[i].loc[sf:ef], y[i].loc[sf:ef]), sf, ef, view, i, bool=[thr, flip])
-            """
-            for jump_index in np.where(dr > 50)[0]:
-                sf, ef = jump_index-30+int(video.data.dfs[i].index[0]), jump_index+30+int(video.data.dfs[i].index[0])
-                print("frames {}-{}".format(sf, ef))
-                if sf < int(video.data.dfs[i].index[0]):
-                    sf = int(video.data.dfs[i].index[0])
-                if ef > int(video.data.dfs[i].index[-1]):
-                    ef = int(video.data.dfs[i].index[-1])
-                wo.run((bx[i].loc[sf:ef], by[i].loc[sf:ef]), (x[i].loc[sf:ef], y[i].loc[sf:ef]), dr.loc[sf:ef], sf, ef, view, i)
-            """
+                    clip_st, clip_en = fromfr-60, fromfr+60
+                    if clip_st < int(video.data.dfs[i].index[0]):
+                        clip_st = int(video.data.dfs[i].index[0])
+                    if clip_en > int(video.data.dfs[i].index[-1]):
+                        clip_en = int(video.data.dfs[i].index[-1])
+                    if clip_en - clip_st < 30:
+                        continue
+                    count += 1
+                    wo.run((bx[i].loc[clip_st:clip_en], by[i].loc[clip_st:clip_en]), (x[i].loc[clip_st:clip_en], y[i].loc[clip_st:clip_en]), clip_st, clip_en, view, i, bool=[thr, flip])
+            print('wrote {} videos.'.format(count))
             mistracked = np.sum(dr > 50)
             video.data.dfs[i].loc[video.data.dfs[i].angle > np.pi, ['angle']] -= 2.*np.pi
             angle = video.data.dfs[i]['angle']
             window_len = 36
-        f.savefig(op.join(RESULT,'plots','speed_test.png'), dpi=600)
+        f.savefig(op.join(RESULT,'plots', 'posttracking','speed_{}.png'.format(video.timestr)), dpi=600)
         print()
         if OPTION == 'jump_detection':
             continue
