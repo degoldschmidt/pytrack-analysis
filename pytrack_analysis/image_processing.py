@@ -196,7 +196,7 @@ class WriteOverlay:
     def __del__(self):
         self.cap.stop()
 
-    def run(self, xy, hxy, start_frame, end_frame, view, fly, bool=[]):
+    def run(self, xy, hxy, start_frame, end_frame, jumpat, view, fly, bool=[]):
         x, y = np.array(xy[0]), np.array(xy[1])
         hx, hy = np.array(hxy[0]), np.array(hxy[1])
         x0, y0 = int(view[0]), int(view[1])
@@ -204,7 +204,7 @@ class WriteOverlay:
         bools = []
         for b in bool:
             bools.append(np.array(b))
-        of = os.path.join(self.out, 'fly{}_{:06d}_{:06d}.avi'.format(fly+1, start_frame, end_frame))
+        of = os.path.join(self.out, 'fly{}_{:06d}.avi'.format(fly+1, jumpat))
         #print('Save video to ', of)
         self.writer = cv2.VideoWriter(of, cv2.VideoWriter_fourcc('M','J','P','G'), 30.0, (w, h))
 
