@@ -16,13 +16,25 @@ if [ "$2" = "manual_geometry" ]; then
 fi
 
 if [ "$2" = "all" ] || [ "$2" = "kinematics" ]; then
-    python3 run_kinematics.py "$1" "$3" "$4"
+    if [ "$3" = "overwrite" ]; then
+      python3 run_kinematics.py "$1" --overwrite
+    else
+      python3 run_kinematics.py "$1"
+    fi
 fi
 
 if [ "$2" = "all" ] || [ "$2" = "classifier" ]; then
-    python3 run_classification.py "$1" "$3" "$4"
+    if [ "$3" = "overwrite" ]; then
+      python3 run_classification.py "$1" --overwrite
+    else
+      python3 run_classification.py "$1"
+    fi
 fi
 
 if [ "$2" = "all" ] || [ "$2" = "segments" ]; then
-    python3 run_segmentation.py "$1" "$3" "$4"
+    if [ "$3" = "overwrite" ]; then
+      python3 run_segmentation.py "$1" --overwrite
+    else
+      python3 run_segmentation.py "$1"
+    fi
 fi

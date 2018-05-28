@@ -24,15 +24,14 @@ def get_args():
     parser.add_argument('--overwrite', action='store_true')
     BASEDIR = parser.parse_args().basedir
     OVERWRITE = parser.parse_args().overwrite
-    EXP = parser.parse_args().exp
     if parser.parse_args().option is None:
         OPTION = 'all'
     else:
         OPTION = parser.parse_args().option
-    return BASEDIR, OPTION, OVERWRITE, EXP
+    return BASEDIR, OPTION, OVERWRITE
 
 def main():
-    BASEDIR, OPTION, OVERWRITE, EXP = get_args()
+    BASEDIR, OPTION, OVERWRITE = get_args()
     """
     --- general parameters
      * thisscript: scriptname
@@ -46,7 +45,8 @@ def main():
     rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
     infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
     outfolder = op.join(BASEDIR, 'pytrack_res', 'segments')
-    sessions = [_file for _file in os.listdir(rawfolder) if EXP in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
+    experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
+    sessions = [_file for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sorted(sessions))
     n_ses = len(sessions)
     stats = []

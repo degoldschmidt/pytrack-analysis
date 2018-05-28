@@ -38,11 +38,11 @@ def main():
     parser.add_argument('-suf', type=str)
     BASEDIR = parser.parse_args().basedir
     OVERWRITE = parser.parse_args().force
-    EXP = parser.parse_args().exp
 
     rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
     outfolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
-    sessions = [_file for _file in os.listdir(rawfolder) if EXP in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
+    experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
+    sessions = [_file for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sorted(sessions))
     n_ses = len(sessions)
 

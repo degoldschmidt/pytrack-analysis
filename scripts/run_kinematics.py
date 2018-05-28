@@ -25,15 +25,14 @@ def get_args():
     parser.add_argument('--overwrite', action='store_true')
     BASEDIR = parser.parse_args().basedir
     OVERWRITE = parser.parse_args().overwrite
-    EXP = parser.parse_args().exp
     if parser.parse_args().option is None:
         OPTION = 'all'
     else:
         OPTION = parser.parse_args().option
-    return BASEDIR, OPTION, OVERWRITE, EXP
+    return BASEDIR, OPTION, OVERWRITE
 
 def main():
-    BASEDIR, OPTION, OVERWRITE, EXP = get_args()
+    BASEDIR, OPTION, OVERWRITE = get_args()
     """
     --- general parameters
      * thisscript: scriptname
@@ -44,10 +43,10 @@ def main():
      * n_ses:      number of sessions
      * stats:      list for stats
     """
-    experiment = EXP
     infolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
     outfolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
-    sessions = [_file for _file in os.listdir(infolder) if EXP in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)]
+    experiment = [_file for _file in os.listdir(infolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)][0][:4]
+    sessions = [_file for _file in os.listdir(infolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)]
     n_ses = len(sessions)
     stats = []
 
