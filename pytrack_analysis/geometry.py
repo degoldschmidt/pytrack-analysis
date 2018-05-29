@@ -329,11 +329,11 @@ def manual_geometry(_fullpath, _timestr):
         else:
             pts = [each.split(' ') for each in pts]
             pts = [(int(el[0]), int(el[1])) for el in pts]
-        centers.append((sum([el[0] for el in pts])/3, sum([el[1] for el in pts])/3))
-        centers[-1] = (int(round(centers[-1][0])), int(round(centers[-1][1])))
-        r = get_distance(pts[0],centers[-1])
-        widths.append(5*r)
-        angles.append(np.arctan2(-(pts[0][1]-centers[-1][1]), pts[0][0]-centers[-1][0]))
+            centers.append((sum([el[0] for el in pts])/3, sum([el[1] for el in pts])/3))
+            centers[-1] = (int(round(centers[-1][0])), int(round(centers[-1][1])))
+            r = get_distance(pts[0],centers[-1])
+            widths.append(5*r)
+            angles.append(np.arctan2(-(pts[0][1]-centers[-1][1]), pts[0][0]-centers[-1][0]))
 
     """
     Get arenas
