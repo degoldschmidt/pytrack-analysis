@@ -319,13 +319,16 @@ def manual_geometry(_fullpath, _timestr):
     centers = []
     widths = []
     angles = []
-    for fly in range(3):
+    for fly in range(4):
         print('Fly {}:'.format(fly+1))
         pts = []
         for each in ['first', 'second', 'third']:
             pts.append(input('Type coordinates of {} inner yeast spot: '.format(each)))
-        pts = [each.split(' ') for each in pts]
-        pts = [(int(el[0]), int(el[1])) for el in pts]
+        if pts[-1] is None:
+            pts = [(0,0), (0,0), (0,0)]
+        else:
+            pts = [each.split(' ') for each in pts]
+            pts = [(int(el[0]), int(el[1])) for el in pts]
         centers.append((sum([el[0] for el in pts])/3, sum([el[1] for el in pts])/3))
         centers[-1] = (int(round(centers[-1][0])), int(round(centers[-1][1])))
         r = get_distance(pts[0],centers[-1])
