@@ -324,7 +324,7 @@ def manual_geometry(_fullpath, _timestr):
         pts = []
         for each in ['first', 'second', 'third']:
             pts.append(input('Type coordinates of {} inner yeast spot: '.format(each)))
-        if pts[-1] is None:
+        if pts[-1] is '':
             pts = [(0,0), (0,0), (0,0)]
         else:
             pts = [each.split(' ') for each in pts]
