@@ -45,6 +45,8 @@ def main():
     """
     infolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
     outfolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
+    if not op.isdir(outfolder):
+        os.mkdir(outfolder)
     experiment = [_file for _file in os.listdir(infolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)][0][:4]
     sessions = [_file for _file in os.listdir(infolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(infolder)]
     n_ses = len(sessions)

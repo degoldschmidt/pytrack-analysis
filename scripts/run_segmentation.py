@@ -45,6 +45,8 @@ def main():
     rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
     infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
     outfolder = op.join(BASEDIR, 'pytrack_res', 'segments')
+    if not op.isdir(outfolder):
+        os.mkdir(outfolder)
     experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
     sessions = [_file for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sorted(sessions))

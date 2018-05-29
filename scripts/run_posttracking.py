@@ -79,23 +79,61 @@ def main():
             """
             Extract some kinematics
             """
+            ff = int(video.data.dfs[i].index[0])
+            lf = int(video.data.dfs[i].index[-1])
+            st = 0
+            en = min(lf-ff, 108100)
             xpos = video.data.dfs[i]['body_x'].interpolate().fillna(method='ffill').fillna(method='bfill')
             ypos = video.data.dfs[i]['body_y'].interpolate().fillna(method='ffill').fillna(method='bfill')
-            bx.append(xpos)
-            by.append(ypos)
             m = video.data.dfs[i]['major'].interpolate().fillna(method='ffill').fillna(method='bfill')
-            mi = video.data.dfs[i]['minor'].interpolate().fillna(method='ffill').fillna(method='bfill')
             angle = video.data.dfs[i]['angle'].interpolate().fillna(method='ffill').fillna(method='bfill')
-            if np.any(np.isnan(xpos)) or np.any(np.isnan(ypos)) or np.any(np.isnan(m)) or np.any(np.isnan(angle)):
-                print(np.any(np.isnan(xpos)), np.any(np.isnan(ypos)), np.any(np.isnan(m)), np.any(np.isnan(angle)))
             x.append(xpos+0.5*m*np.cos(angle))
             y.append(ypos+0.5*m*np.sin(angle))
             tx.append(xpos-0.5*m*np.cos(angle))
             ty.append(ypos-0.5*m*np.sin(angle))
+            bx.append(xpos)
+            by.append(ypos)
+
+        """
+        PixelDiff Algorithm
+        """
+        _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
+        if op.isfile(_ofile):
+            pxd_data = pd.read_csv(_ofile, index_col='frame')
+        else:
+            pxdiff = PixelDiff(video.fullpath, start_frame=video.data.first_frame)
+            px, tpx = pxdiff.run((x,y), (tx,ty), en, show=False)
+            pxd_data = pd.DataFrame({   'headpx_fly1': px[:,0], 'tailpx_fly1': tpx[:,0],
+                                        'headpx_fly2': px[:,1], 'tailpx_fly2': tpx[:,1],
+                                        'headpx_fly3': px[:,2], 'tailpx_fly3': tpx[:,2],
+                                        'headpx_fly4': px[:,3], 'tailpx_fly4': tpx[:,3],})
+            pxd_data.to_csv(_ofile, index_label='frame')
+
+        for i in range(4):
+            ff = int(video.data.dfs[i].index[0])
+            lf = int(video.data.dfs[i].index[-1])
+            st = 0
+            en = min(lf-ff, 108100)
+            xpos = video.data.dfs[i]['body_x'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            ypos = video.data.dfs[i]['body_y'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            m = video.data.dfs[i]['major'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            angle = video.data.dfs[i]['angle'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            mi = video.data.dfs[i]['minor'].interpolate().fillna(method='ffill').fillna(method='bfill')
+            if np.any(np.isnan(xpos)) or np.any(np.isnan(ypos)) or np.any(np.isnan(m)) or np.any(np.isnan(angle)):
+                print(np.any(np.isnan(xpos)), np.any(np.isnan(ypos)), np.any(np.isnan(m)), np.any(np.isnan(angle)))
+
             dt = video.data.dfs[i]['frame_dt']
             dx, dy = np.append(0, np.diff(xpos)), np.append(0, np.diff(-ypos))
             dx, dy = np.divide(dx, dt), np.divide(dy, dt)
             theta = np.arctan2(dy, dx)
+
+            ### pixel data from pixeldiff
+            hpx = np.array(pxd_data['headpx_fly{}'.format(i+1)])
+            wlen = 36
+            hpx = gaussian_filter(hpx, _len=wlen, _sigma=0.1*wlen)
+            tpx = np.array(pxd_data['tailpx_fly{}'.format(i+1)])
+            tpx = gaussian_filter(tpx, _len=wlen, _sigma=0.1*wlen)
+
             """
             diff of diff of displacements (spikes are more pronounced)
             """
@@ -114,31 +152,7 @@ def main():
             threshold[threshold<low] = low
             threshold[threshold>high] = high
             #### TODO
-            ff = int(video.data.dfs[i].index[0])
-            lf = int(video.data.dfs[i].index[-1])
-            st = 0
-            en = min(lf-ff, 108100)
             mistrack_inds = np.where(np.array(dddr)[st:en] > threshold[st:en])[0]
-
-            """
-            PixelDiff Algorithm
-            """
-            _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
-            if op.isfile(_ofile):
-                pxd_data = pd.read_csv(_ofile, index_col='frame')
-            else:
-                pxdiff = PixelDiff(video.fullpath, start_frame=video.data.first_frame)
-                px, tpx = pxdiff.run((x,y), (tx,ty), 108100, show=False)
-                pxd_data = pd.DataFrame({   'headpx_fly1': px[:,0], 'tailpx_fly1': tpx[:,0],
-                                            'headpx_fly2': px[:,1], 'tailpx_fly2': tpx[:,1],
-                                            'headpx_fly3': px[:,2], 'tailpx_fly3': tpx[:,2],
-                                            'headpx_fly4': px[:,3], 'tailpx_fly4': tpx[:,3],})
-                pxd_data.to_csv(_ofile, index_label='frame')
-            hpx = np.array(pxd_data['headpx_fly{}'.format(i+1)])
-            wlen = 36
-            hpx = gaussian_filter(hpx, _len=wlen, _sigma=0.1*wlen)
-            tpx = np.array(pxd_data['tailpx_fly{}'.format(i+1)])
-            tpx = gaussian_filter(tpx, _len=wlen, _sigma=0.1*wlen)
 
             """
             Rolling mean of pixeldiff for flips (window = 10 secs)
@@ -213,6 +227,10 @@ def main():
                 print('wrote {} videos.'.format(count))
             mistracked = np.sum(dr > 80)
             window_len = 36
+        if not op.isdir(op.join(RESULT,'plots')):
+            os.mkdir(op.join(RESULT,'plots'))
+        if not op.isdir(op.join(RESULT,'plots', 'posttracking')):
+            os.mkdir(op.join(RESULT,'plots', 'posttracking'))
         f.savefig(op.join(RESULT,'plots', 'posttracking','speed_{}.png'.format(video.timestr)), dpi=600)
         print()
         if OPTION == 'jump_detection':
@@ -254,14 +272,15 @@ def main():
             meta['fly']['metabolic'] = raw_data.experiment['Constants']['metabolic']
             meta['fly']['sex'] = raw_data.experiment['Constants']['sex']
             meta['fly']['genotype'] = raw_data.experiment['Conditions'][video.name]['genotype'][i]
-            meta['fly']['genetic manipulation'] = raw_data.experiment['Conditions'][video.name]['genetic manipulation'][i]
+            meta['fly']['temperature'] = raw_data.experiment['Conditions'][video.name]['temperature'][i]
+            #meta['fly']['genetic manipulation'] = raw_data.experiment['Conditions'][video.name]['genetic manipulation'][i] === Kir
             meta['food_spots'] = video.spots[i]
             meta['setup'] = {}
             meta['setup']['humidity'] = raw_data.experiment['Constants']['humidity']
             meta['setup']['light'] = raw_data.experiment['Constants']['light']
             meta['setup']['n_per_arena'] = raw_data.experiment['Constants']['n_per_arena']
             meta['setup']['room'] = raw_data.experiment['Constants']['room']
-            meta['setup']['temperature'] = raw_data.experiment['Constants']['temperature']
+            meta['setup']['temperature'] = raw_data.experiment['Conditions'][video.name]['temperature'][i] # raw_data.experiment['Constants']['temperature']
             meta['video'] = {}
             meta['video']['dir'] = video.dir
             meta['video']['file'] = video.fullpath

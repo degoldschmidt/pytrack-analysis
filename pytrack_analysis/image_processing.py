@@ -97,6 +97,7 @@ class PixelDiff:
         x, y = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
         tx, ty = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
         px, tpx = np.zeros((nframes, len(xy[0]))), np.zeros((nframes, len(xy[0])))
+        print(len(xy[0]))
         for fly, each in enumerate(xy[0]):
             x[:,fly], y[:,fly] = np.array(xy[0][fly])[:nframes], np.array(xy[1][fly])[:nframes]
             tx[:,fly], ty[:,fly] = np.array(txy[0][fly])[:nframes], np.array(txy[1][fly])[:nframes]
@@ -326,7 +327,7 @@ def preview(img, title='preview geometry', topleft='', hold=False):
     if hold:
         toff = 0
     else:
-        toff = 1
+        toff = 1000
     cv2.putText(preview, topleft, (10, 30), font, 1, (255, 0, 255), 2, cv2.LINE_AA)
     cv2.imshow(title+' (press any key to continue)',preview)
     if platform.system() == 'Darwin':
