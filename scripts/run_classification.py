@@ -68,9 +68,8 @@ def main():
         meta = read_yaml(yamlfile)
         ## total micromoves
         nancheck = df['sm_head_speed'].isnull().values.any()
-        print('mistracked: ', meta['flags']['mistracked_frames'])
-        print('food spots: ', len(meta['food_spots']))
-        if not (meta['flags']['mistracked_frames'] > 300 or meta['condition'] =='NA' or nancheck or len(meta['food_spots']) == 0):
+        if not (meta['flags']['mistracked_frames'] > 30 or meta['condition'] =='NA' or nancheck or len(meta['food_spots']) == 0):
+            print('fly: {}, mistracked: {}, food spots: {}'.format(i_ses, meta['flags']['mistracked_frames'], len(meta['food_spots'])))
             classify = Classifier(df, meta)
             odf = classify.run(save_as=outfolder, ret=True)
     #print(odf.iloc[1924:1926])

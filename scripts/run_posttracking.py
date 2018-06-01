@@ -70,11 +70,11 @@ def main():
         ### calculate displacements
 
         x, y, tx, ty, bx, by = [], [], [], [], [], []
+        jumps, dr, dddr, thr, flipped = [], [], [], [], []
         wo = WriteOverlay(video.fullpath, outfolder=op.join(RESULT,'jumps'))
 
         ### plotting speed, major/minor, decision points etc
         f, axes = plt.subplots(12, figsize=(6,10)) ### TODO
-        flipped =[]
         for i in range(4):
             """
             Extract some kinematics
@@ -137,13 +137,13 @@ def main():
             """
             diff of diff of displacements (spikes are more pronounced)
             """
-            dr = np.sqrt(dx*dx+dy*dy)/float(video.arena[i]['scale'])
-            ddr = np.append(0, np.diff(dr))
-            dddr = np.append(0, np.diff(ddr))
+            dr.append(np.sqrt(dx*dx+dy*dy)/float(video.arena[i]['scale']))
+            ddr = np.append(0, np.diff(dr[-1]))
+            dddr.append(np.append(0, np.diff(ddr)))
             #wlen = 36
             #dr_sm = gaussian_filter(np.array(dr), _len=wlen, _sigma=0.1*wlen)
             wlen = 120
-            dddr_sm = gaussian_filter(np.array(np.abs(dddr)), _len=wlen, _sigma=0.5*wlen)
+            dddr_sm = gaussian_filter(np.array(np.abs(dddr[-1])), _len=wlen, _sigma=0.5*wlen)
             """
             Thresholding
             """
@@ -151,8 +151,10 @@ def main():
             low, high = 10., 30.
             threshold[threshold<low] = low
             threshold[threshold>high] = high
+            thr.append(threshold)
             #### TODO
-            mistrack_inds = np.where(np.array(dddr)[st:en] > threshold[st:en])[0]
+            jumps.append(np.array(np.array(dddr[-1])[st:en] > threshold[st:en]))
+            mistrack_inds = np.where(np.array(dddr[-1])[st:en] > threshold[st:en])[0]
 
             """
             Rolling mean of pixeldiff for flips (window = 10 secs)
@@ -169,7 +171,7 @@ def main():
                     pxavg[frm] = np.mean(pxthr[frm:e])
 
             ### plot
-            axes[3*i].plot(dddr[st:en], 'k-', lw=0.5)
+            axes[3*i].plot(dddr[-1][st:en], 'k-', lw=0.5)
             axes[3*i].plot(threshold[st:en], '--', color='#fa6800', lw=0.5)
             axes[3*i].plot(mistrack_inds, 50.*np.ones(len(mistrack_inds)), 'o', color='#d80073', markersize=2)
             axes[3*i].set_ylim([-5,55])
@@ -195,10 +197,10 @@ def main():
             secs = int(round(video.data.dfs[i].loc[lf,'elapsed_time'] - video.data.dfs[i].loc[ff,'elapsed_time']))%60
             if OPTION == 'jump_detection':
                 print("fly {}:\tstart@ {} ({} >= {}) total: {}:{:02d} mins ({} frames)".format(i+1, ff, video.data.dfs[i].loc[ff,'datetime'], video.timestart, total_dur, secs, en-st))
-            thr = np.array(np.array(dddr)[st:en+1] > threshold[st:en+1])
-            flip = np.zeros(thr.shape)
+            thrs = np.array(np.array(dddr[i])[st:en+1] > threshold[st:en+1])
+            flip = np.zeros(thrs.shape)
             flipped.append(flip)
-            thr_ix = np.append(np.append(0, np.where(thr)[0]), len(flip)+ff)
+            thr_ix = np.append(np.append(0, np.where(thrs)[0]), len(flip)+ff)
             if OPTION == 'jump_detection':
                 print('found {} detection points (start, jumps, mistracking, etc.).'.format(len(thr_ix)-1))
             count = 0
@@ -225,7 +227,7 @@ def main():
             video.data.dfs[i].loc[:, 'head_y'] = y[i]
             if OPTION == 'jump_detection':
                 print('wrote {} videos.'.format(count))
-            mistracked = np.sum(dr > 80)
+            mistracked = np.sum(dr[-1] > 80)
             window_len = 36
         if not op.isdir(op.join(RESULT,'plots')):
             os.mkdir(op.join(RESULT,'plots'))
@@ -240,6 +242,11 @@ def main():
         for i in range(4):
             outdf = video.data.dfs[i].loc[sf:ef]
             outdf.loc[:, 'flipped'] = flipped[i]
+            print(jumps[i].shape)
+            outdf.loc[:, 'jumps'] = jumps[i]
+            outdf.loc[:, 'dr'] = dr[i]
+            outdf.loc[:, 'dddr'] = dddr[i]
+            outdf.loc[:, 'threshold'] = thr[i]
             dx, dy = outdf['head_x'] - outdf['body_x'], outdf['body_y'] - outdf['head_y']
             outdf.loc[:, 'angle'] = np.arctan2(dy, dx)
             print('Arena:', video.arena[i]['x'], video.arena[i]['y'])
@@ -293,7 +300,13 @@ def main():
             plotfile = op.join(RESULT,'plots','{}_{:03d}.png'.format(raw_data.experiment['ID'], i+iv*4))
             f, ax = plt.subplots(figsize=(4,4))
             ax = plot.arena(video.arena[i], video.spots[i], ax=ax)
-            ax.plot(outdf['body_x'], outdf['body_y'], c='#424242', zorder=1, lw=1, alpha=0.5)
+            x, y, jumps = np.array(outdf['body_x']), np.array(outdf['body_y']), np.array(outdf['jumps'])
+            for i in np.arange(len(x)-2):
+                if jumps[i+1]:
+                    color = '#ff0000'
+                else:
+                    color = '#b1b1b1'
+                ax.plot(x[i:i+2], y[i:i+2], c=color, zorder=1, lw=.5, alpha=0.5)
             f.savefig(plotfile, dpi=300)
 
         ###
