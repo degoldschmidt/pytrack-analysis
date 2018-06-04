@@ -15,6 +15,60 @@ from pytrack_analysis.yamlio import write_yaml
 from scipy import signal
 from scipy.signal import hilbert
 
+def nan_helper(y):
+    """Helper to handle indices and logical indices of NaNs.
+
+    Input:
+        - y, 1d numpy array with possible NaNs
+    Output:
+        - nans, logical indices of NaNs
+        - index, a function, with signature indices= index(logical_indices),
+          to convert logical indices of NaNs to 'equivalent' indices
+    Example:
+        >>> # linear interpolation of NaNs
+        >>> nans, x= nan_helper(y)
+        >>> y[nans]= np.interp(x(nans), x(~nans), y[~nans])
+    """
+    return np.isnan(y), lambda z: z.nonzero()[0]
+
+def remove_mistrack(x, y, ma, mi, thr=100.*0.0333, forced=False):
+    xnew, ynew = x.copy(), y.copy()
+    dx, dy = np.append(0, np.diff(x)), np.append(0, np.diff(y))
+    displ = np.sqrt(dx**2 + dy**2)
+    area = np.multiply(ma,mi)
+    xnew[area > 10] = np.nan
+    ynew[area > 10] = np.nan
+    xnew[area < 2] = np.nan
+    ynew[area < 2] = np.nan
+    print(displ)
+    ides = np.where(displ > thr)[0]
+    print(ides)
+    """
+    for jj, each in enumerate(ides):
+        if jj == 0:
+            print(each)
+            if len(ides) > 1:
+                xnew[ides[jj]:ides[jj+1]] = np.nan
+                ynew[ides[jj]:ides[jj+1]] = np.nan
+            else:
+                xnew[ides[jj]:] = np.nan
+                ynew[ides[jj]:] = np.nan
+        if jj < len(ides)-1:
+            print(jj, np.mean(ma[ides[jj]:ides[jj+1]])*np.mean(mi[ides[jj]:ides[jj+1]]), ma[each]*mi[each])
+            if forced or np.mean(ma[ides[jj]:ides[jj+1]])*np.mean(mi[ides[jj]:ides[jj+1]]) > 10 or np.mean(ma[ides[jj]:ides[jj+1]])*np.mean(mi[ides[jj]:ides[jj+1]]) < 2:
+                xnew[ides[jj]:ides[jj+1]] = np.nan
+                ynew[ides[jj]:ides[jj+1]] = np.nan
+    """
+    ma[np.isnan(xnew)] = np.mean(ma)
+    mi[np.isnan(xnew)] = np.mean(mi)
+    nans, xind = nan_helper(xnew)
+    xnew[nans]= np.interp(xind(nans), xind(~nans), xnew[~nans])
+    nans, yind = nan_helper(ynew)
+    ynew[nans]= np.interp(yind(nans), yind(~nans), ynew[~nans])
+    return xnew, ynew, ma, mi
+
+
+
 ### TODO: move this to signal processing module
 def gaussian_filter(_X, _len=16, _sigma=1.6):
     norm = np.sqrt(2*np.pi)*_sigma ### Scipy's gaussian window is not normalized
@@ -56,8 +110,9 @@ def main():
         return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
-        #if iv > 0:
-        #    continue
+        if iv > 28:
+            continue
+        Nflies = 4
         print('\n{}: {}'.format(iv, video.name))
         ### arena + food spots
         video.load_arena()
@@ -75,7 +130,8 @@ def main():
 
         ### plotting speed, major/minor, decision points etc
         f, axes = plt.subplots(12, figsize=(6,10)) ### TODO
-        for i in range(4):
+        print('extract trajectories...')
+        for i in range(Nflies):
             """
             Extract some kinematics
             """
@@ -97,6 +153,7 @@ def main():
         """
         PixelDiff Algorithm
         """
+        print('pixeldiff...')
         _ofile = op.join(RESULT,'pixeldiff','pixeldiff_{}.csv'.format(video.timestr))
         if op.isfile(_ofile):
             pxd_data = pd.read_csv(_ofile, index_col='frame')
@@ -109,7 +166,8 @@ def main():
                                         'headpx_fly4': px[:,3], 'tailpx_fly4': tpx[:,3],})
             pxd_data.to_csv(_ofile, index_label='frame')
 
-        for i in range(4):
+        print('head detection...')
+        for i in range(Nflies):
             ff = int(video.data.dfs[i].index[0])
             lf = int(video.data.dfs[i].index[-1])
             st = 0
@@ -159,7 +217,7 @@ def main():
             """
             Rolling mean of pixeldiff for flips (window = 10 secs)
             """
-            pxthr = np.array(tpx[st:en+1] < hpx[st:en+1])
+            pxthr = np.array(tpx[st:en] < hpx[st:en])
             pxavg = np.zeros(pxthr.shape)
             for frm in range(pxavg.shape[0]):
                 e = frm + 300
@@ -197,7 +255,7 @@ def main():
             secs = int(round(video.data.dfs[i].loc[lf,'elapsed_time'] - video.data.dfs[i].loc[ff,'elapsed_time']))%60
             if OPTION == 'jump_detection':
                 print("fly {}:\tstart@ {} ({} >= {}) total: {}:{:02d} mins ({} frames)".format(i+1, ff, video.data.dfs[i].loc[ff,'datetime'], video.timestart, total_dur, secs, en-st))
-            thrs = np.array(np.array(dddr[i])[st:en+1] > threshold[st:en+1])
+            thrs = np.array(np.array(dddr[i])[st:en] > threshold[st:en])
             flip = np.zeros(thrs.shape)
             flipped.append(flip)
             thr_ix = np.append(np.append(0, np.where(thrs)[0]), len(flip)+ff)
@@ -227,39 +285,39 @@ def main():
             video.data.dfs[i].loc[:, 'head_y'] = y[i]
             if OPTION == 'jump_detection':
                 print('wrote {} videos.'.format(count))
-            mistracked = np.sum(dr[-1] > 80)
+            mistracked = np.sum(dr[-1] > 100)
+            print('Mistracked frames:', mistracked)
             window_len = 36
         if not op.isdir(op.join(RESULT,'plots')):
             os.mkdir(op.join(RESULT,'plots'))
         if not op.isdir(op.join(RESULT,'plots', 'posttracking')):
             os.mkdir(op.join(RESULT,'plots', 'posttracking'))
         f.savefig(op.join(RESULT,'plots', 'posttracking','speed_{}.png'.format(video.timestr)), dpi=600)
-        print()
         if OPTION == 'jump_detection':
             continue
 
         labels = ['topleft', 'topright', 'bottomleft', 'bottomright']
-        for i in range(4):
-            outdf = video.data.dfs[i].loc[sf:ef]
-            outdf.loc[:, 'flipped'] = flipped[i]
-            print(jumps[i].shape)
-            outdf.loc[:, 'jumps'] = jumps[i]
-            outdf.loc[:, 'dr'] = dr[i]
-            outdf.loc[:, 'dddr'] = dddr[i]
-            outdf.loc[:, 'threshold'] = thr[i]
-            dx, dy = outdf['head_x'] - outdf['body_x'], outdf['body_y'] - outdf['head_y']
-            outdf.loc[:, 'angle'] = np.arctan2(dy, dx)
-            print('Arena:', video.arena[i]['x'], video.arena[i]['y'])
-            outdf.loc[:, 'body_x'] -= video.arena[i]['x']
-            outdf.loc[:, 'body_y'] -= video.arena[i]['y']
-            outdf.loc[:, 'body_x'] /= video.arena[i]['scale']
-            outdf.loc[:, 'body_y'] /= -video.arena[i]['scale']
-            outdf.loc[:, 'major'] /= video.arena[i]['scale']
-            outdf.loc[:, 'minor'] /= video.arena[i]['scale']
-            print('x: ', np.amax(outdf['body_x']), np.amin(outdf['body_x']))
-            print('y: ', np.amax(outdf['body_y']), np.amin(outdf['body_y']))
-            print('major/minor: ', np.mean(outdf['major']), np.mean(outdf['minor']))
-            outdf = outdf[['datetime', 'elapsed_time', 'frame_dt', 'body_x', 'body_y', 'angle', 'major', 'minor', 'flipped']]
+        print('pack data...')
+        for i in range(Nflies):
+            df = video.data.dfs[i].loc[sf:ef-1]
+            df.is_copy = False
+            df.loc[:, ('flipped')] = np.array(flipped[i])
+            df.loc[:, 'jumps'] = jumps[i]
+            df.loc[:, 'dr'] = dr[i][st:en]
+            df.loc[:, 'dddr'] = dddr[i][st:en]
+            df.loc[:, 'threshold'] = thr[i][st:en]
+            dx, dy = df['head_x'] - df['body_x'], df['body_y'] - df['head_y']
+            df.loc[:, 'angle'] = np.arctan2(dy, dx)
+            df.loc[:, 'body_x'] -= video.arena[i]['x']
+            df.loc[:, 'body_y'] -= video.arena[i]['y']
+            df.loc[:, 'body_x'] /= video.arena[i]['scale']
+            df.loc[:, 'body_y'] /= -video.arena[i]['scale']
+            df.loc[:, 'major'] /= video.arena[i]['scale']
+            df.loc[:, 'minor'] /= video.arena[i]['scale']
+            print('x: ', np.amax(df['body_x']), np.amin(df['body_x']))
+            print('y: ', np.amax(df['body_y']), np.amin(df['body_y']))
+            print('major/minor: ', np.mean(df['major']), np.mean(df['minor']))
+            outdf = df[['datetime', 'elapsed_time', 'frame_dt', 'body_x', 'body_y', 'angle', 'major', 'minor', 'flipped']]
             outfile = op.join(RESULT,'post_tracking','{}_{:03d}.csv'.format(raw_data.experiment['ID'], i+iv*4))
             print('saving to ', outfile)
             outdf.to_csv(outfile, index_label='frame')
@@ -298,15 +356,21 @@ def main():
 
             ### plot trajectory
             plotfile = op.join(RESULT,'plots','{}_{:03d}.png'.format(raw_data.experiment['ID'], i+iv*4))
-            f, ax = plt.subplots(figsize=(4,4))
+            f, ax = plt.subplots(figsize=(10,10))
             ax = plot.arena(video.arena[i], video.spots[i], ax=ax)
-            x, y, jumps = np.array(outdf['body_x']), np.array(outdf['body_y']), np.array(outdf['jumps'])
-            for i in np.arange(len(x)-2):
-                if jumps[i+1]:
-                    color = '#ff0000'
-                else:
-                    color = '#b1b1b1'
-                ax.plot(x[i:i+2], y[i:i+2], c=color, zorder=1, lw=.5, alpha=0.5)
+            x, y, jumps, major, minor = np.array(df['body_x']), np.array(df['body_y']), np.array(df['jumps']), np.array(df['major']), np.array(df['minor'])
+            #ax.plot(x, y, c='#595959', zorder=1, lw=.5, alpha=0.5)
+            xnew, ynew, major, minor = remove_mistrack(x, y, major, minor)
+            xnew, ynew, major, minor = remove_mistrack(xnew, ynew, major, minor, thr=300.*0.0333, forced=True)
+            ends = 108100
+            ax.plot(x[0], y[0], '.', c='#00ff4f', alpha=0.75, zorder=10)
+            ax.plot(x[ends-1], y[ends-1], '.', c='#ff3d00', alpha=0.75, zorder=10)
+            #ax.plot(x[:ends], y[:ends], '-', c='#00e0ff', lw=1, alpha=0.5)
+            ax.plot(xnew[:ends], ynew[:ends], '-', c='#ff00ff', lw=1, alpha=0.5)
+            color = jumps
+            color[jumps==1] = '#ff0000'
+            color[jumps==0] = '#b1b1b1'
+            #ax.scatter(x, y, c=displ, s=5, cmap=plt.get_cmap('YlOrRd'), alpha=0.9, edgecolors='none', linewidths=0)
             f.savefig(plotfile, dpi=300)
 
         ###

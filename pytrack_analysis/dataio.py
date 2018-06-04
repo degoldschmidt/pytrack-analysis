@@ -155,7 +155,6 @@ Returns list of video objects of all raw data files
 def parse_videos(basedir):
     all_file_tstamp = [_file[6:] for _file in os.listdir(basedir) if _file.endswith('avi')]
     sorted_ts = sorted(all_file_tstamp)
-    print(sorted_ts)
     filelist_sorted = []
     for ts in sorted_ts:
         for _file in os.listdir(basedir):
@@ -180,29 +179,27 @@ class VideoRawData(object):
         flprint("Loading raw data videos...")
         self.videos = parse_videos(basedir)
         self.nvids = len(self.videos)
-        flprint("found {} sessions...".format(self.nvids))
+        flprint("found {} videos...".format(self.nvids))
         colorprint("done.", color='success')
         ### Register experiment
         self.init_experiment()
         for video in self.videos:
             ### print video name
-            prn(__name__)
-            print('Video:\t{}'.format(video.name))
+            if self.VERBOSE:
+                prn(__name__)
+                print('Video:\t{}'.format(video.name))
             ### load fly data
-            prn(__name__)
             self.init_files(video, 'raw fly data files', 'fly')
             ### load timestart file
-            prn(__name__)
             self.init_files(video, 'timestart file', 'timestart')
             ### load arena geometry file
-            prn(__name__)
             self.init_files(video, 'arena file', 'arena')
-            print()
 
     def init_experiment(self):
         exps_files = [_file for _file in os.listdir(op.join(self.dir, 'pytrack_res')) if _file.endswith('yaml') and _file.startswith('pytrack_exp')]
-        prn(__name__)
-        print("Found {} pytrack experiment file(s)...".format(len(exps_files)))
+        if self.VERBOSE:
+            prn(__name__)
+            print("Found {} pytrack experiment file(s)...".format(len(exps_files)))
         if len(exps_files) == 0:
             if query_yn('Do you want to register experiment (NO will exit the script)', default='yes'):
                 self.experiment = register(self.videos)
@@ -227,10 +224,13 @@ class VideoRawData(object):
                 remove(self.videos, self.experiment)
 
     def init_files(self, video, title, key):
-        flprint("Loading {}...".format(title))
+        if self.VERBOSE:
+            prn(__name__)
+            flprint("Loading {}...".format(title))
         if video.load_files(key):
-            flprint("found {} file(s)...".format(len(video.files[key])))
-            colorprint("done.", color='success')
+            if self.VERBOSE:
+                flprint("found {} file(s)...".format(len(video.files[key])))
+                colorprint("done.", color='success')
         else:
             colorprint("ERROR: found invalid number of {} files ({} instead of {}).".format(key, len(video.files[key]), video.required[key]), color='error')
             sys.exit(0)
