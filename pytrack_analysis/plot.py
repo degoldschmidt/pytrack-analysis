@@ -306,6 +306,35 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
 
     return ax
 
+"""
+Violin plot
+"""
+def violin(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_order=None, multi=False,
+                dodge=False, orient=None, color=None, palette=None, table=False, compare=[],
+                size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, boxonly=False, **kwargs):
+    # default parameters
+    defs = {
+                'ps':   1.5,          # pointsize for swarmplot (3)
+                'pc':   '#666666',  # pointcolor for swarmplot
+                'w':    .65,         # boxwidth for boxplot (0.35)
+                'lw':   0.5,        # linewidth for boxplot
+                'sat':  0.5,         # saturation for boxplot
+                'mlw':  0.3,        # width for median lines
+    }
+
+    # actual plotting using seaborn functions
+    # boxplot
+    ax = sns.violinplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, palette=palette, linewidth=defs['lw'], cut=0, split=True, inner="quartile", ax=ax)
+    ## figure aesthetics
+    ax.tick_params('x', length=0, width=0, which='major')
+    for tick in ax.get_xticklabels():
+        tick.set_rotation(30)
+    sns.despine(ax=ax, bottom=True, trim=True)
+    ax.legend_.remove()
+
+    return ax
+
+
 def set_font(name, ax=None, VERBOSE=False):
     if ax is None:
         ax = plt.gca()

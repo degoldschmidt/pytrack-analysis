@@ -14,7 +14,6 @@ import argparse
 import textwrap
 
 defaults = {
-                'dpi': 900,
                 'fig_width': 5,
                 'fig_height': 2.5,
                 'n_rows': 1,
@@ -63,7 +62,7 @@ def main():
         ### SWARMBOX VARIABLES
         _x, _y, _hue, _order, _hue_order = _prop['x'], _prop['y'], _prop['hue'], _prop['order'], _prop['hue_order']
         ### PLOTTING
-        ax = plot.swarmbox(x=_x, y=_y, hue=_hue, data=rdata, order=_order, hue_order=_hue_order, palette=mypal, ax=ax)
+        ax = plot.violin(x=_x, y=_y, hue=_hue, data=rdata, order=_order, hue_order=_hue_order, palette=mypal, ax=ax)
         xlab = textwrap.fill(_prop['xlabel'][j], 14, break_long_words=False)
         ylab = textwrap.fill(_prop['ylabel'][j], 14, break_long_words=False)
         title = textwrap.fill(_prop['suptitle'][j], 36, break_long_words=False)
@@ -73,10 +72,10 @@ def main():
 
     ### saving files
     plt.tight_layout()
-    _file = os.path.join(_base, "{}_swarmbox".format(_prop['outfile']))
+    _file = os.path.join(_base, "{}_violin".format(_prop['outfile']))
     if _suf is not None:
         _file+"_{}.{}".format(_suf, _prop['outextension'])
-    plt.savefig(_file+'.png', dpi=_prop['dpi'])
+    plt.savefig(_file+'.png', dpi=300)
 
 if __name__ == '__main__':
     # runs as benchmark test
