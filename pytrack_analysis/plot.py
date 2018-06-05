@@ -272,11 +272,11 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
                 size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, boxonly=False, **kwargs):
     # default parameters
     defs = {
-                'ps':   2,          # pointsize for swarmplot (3)
+                'ps':   1.5,          # pointsize for swarmplot (3)
                 'pc':   '#666666',  # pointcolor for swarmplot
-                'w':    .5,         # boxwidth for boxplot (0.35)
-                'lw':   0.0,        # linewidth for boxplot
-                'sat':  1.,         # saturation for boxplot
+                'w':    .65,         # boxwidth for boxplot (0.35)
+                'lw':   1,        # linewidth for boxplot
+                'sat':  0.5,         # saturation for boxplot
                 'mlw':  0.3,        # width for median lines
     }
 
@@ -287,68 +287,23 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
     # boxplot
     ax = sns.boxplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
                         orient=orient, color=color, palette=palette, saturation=defs['sat'],
-                        width=defs['w'], linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), showfliers=False, **kwargs)
+                        linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), whiskerprops={'linewidth':0}, capprops={'linewidth':0}, showfliers=False, **kwargs)
     #ax = sns.boxplot(x=x, y=y, hue=hue, data=data, palette=my_pal, showfliers=False, boxprops=dict(lw=1))
     # swarmplot
     if not boxonly:
-        ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True,
-                     orient=orient, color=defs['pc'], size=defs['ps'], ax=ax, **kwargs)
-
-    if order is None:
-        order = [label.get_text() for label in ax.get_xticklabels()]
-    # median lines
-    print(data.groupby(x)[y].median())
-    med_keys = data.groupby(x)[y].median().index
-    medians = np.array(data.groupby(x)[y].median())
-    new_order = np.zeros(medians.shape)
-    for i,key in enumerate(med_keys):
-        for j,kex in enumerate(order):
-            if key == kex:
-                new_order[i] = j
-    dx = defs['mlw']
-    if new_order is not None:
-        for pos, median in enumerate(medians):
-            ax.hlines(median, new_order[pos]-dx, new_order[pos]+dx, lw=1.5, zorder=10)
-    else:
-        for pos, median in enumerate(medians):
-            ax.hlines(median, pos-dx, pos+dx, lw=1.5, zorder=10)
+        sns.stripplot(x=x, y=y, hue=hue, data=data, jitter=1.0, size=defs['ps'], dodge=True, color=".3", alpha=.75, ax=ax)
+        """
+        ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True, palette=palette,linewidth=1,edgecolor='gray',
+                     orient=orient, size=defs['ps'], ax=ax, **kwargs)
+        """
 
     ## figure aesthetics
     ax.tick_params('x', length=0, width=0, which='major')
-    avoidy = -1
-    for pair in compare:
-        ylims = ax.get_ylim()
-        dy = 0.2*(ylims[1]-ylims[0])
-        if type(pair[0]) is list or type(pair[0]) is tuple:
-            for i, each_left in enumerate(pair[0]):
-                left = each_left
-                right = pair[1]
-                X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
-                Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
-                i0, i1 = get_indices(ax, left, right)
-                stat, pval = ranksums(X, Y)
-                ax, avoidy = annotate(i0, i1 ,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='left', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[0])-1))
-        elif type(pair[1]) is list or type(pair[1]) is tuple:
-            for i, each_right in enumerate(pair[1]):
-                left = pair[0]
-                right = each_right
-                X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
-                Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
-                i0, i1 = get_indices(ax, left, right)
-                stat, pval = ranksums(X, Y)
-                ax, avoidy = annotate(i0, i1, pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='right', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
-        else:
-            print('center')
-            left = pair[0]
-            right = pair[1]
-            X = np.array(data.query('{} == "{}"'.format(x, left)).dropna()[y])
-            Y = np.array(data.query('{} == "{}"'.format(x, right)).dropna()[y])
-            i0, i1 = get_indices(ax, left, right)
-            stat, pval = ranksums(X, Y)
-            if avoidy == -1:
-                ax, avoidy = annotate(i0, i1,pval,X,Y, stars=True, ax=ax, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
-            else:
-                ax, avoidy = annotate(i0, i1,pval,X,Y, stars=True, ax=ax, avoid=avoidy, dy=dy, align='center', _y=1.1*np.max(np.array(data[y].dropna())), only_tick=(i<len(pair[1])-1))
+    for tick in ax.get_xticklabels():
+        tick.set_rotation(30)
+    sns.despine(ax=ax, bottom=True, trim=True)
+    ax.legend_.remove()
+
     return ax
 
 def set_font(name, ax=None, VERBOSE=False):
