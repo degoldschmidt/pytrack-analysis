@@ -61,6 +61,7 @@ class Data(object):
             mask = (df['datetime'] > timestart)
             self.dfs[i] = df.loc[mask]
             self.first_frame = self.dfs[i].index[0]
+            self.nframes = self.dfs[i].index[-1] - self.first_frame
 
 class Video(object):
     def __init__(self, filename, dirname):

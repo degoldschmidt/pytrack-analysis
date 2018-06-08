@@ -5,6 +5,7 @@ import os
 import os.path as op
 import platform, subprocess
 import imageio
+from collections import deque
 
 class VideoCapture:
     def __init__(self, src, var):
@@ -123,6 +124,218 @@ class PixelDiff:
                     break
         self.cap.stop()
         return px, tpx
+
+def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate=0., threshold_value=30, threshold_type=cv2.THRESH_BINARY, subtraction_method='Dark', skip=0, show=False, async=False):
+    from pytrack_analysis.geometry import get_distance
+    if async:
+        precap = VideoCaptureAsync(video, start_frame)
+        cap = VideoCaptureAsync(video, start_frame)
+    else:
+        precap = VideoCapture(video, start_frame)
+        cap = VideoCapture(video, start_frame)
+    ### data arrays
+    xy = np.zeros((nframes, 2, 4))
+    hxy = np.zeros((nframes, 2, 4))
+    txy = np.zeros((nframes, 2, 4))
+    xy.fill(np.nan)
+    hxy.fill(np.nan)
+    txy.fill(np.nan)
+    precap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+    if async:
+        precap.start()
+    ### set up background
+    for iframe in range(background_frames):
+        ret, frame = precap.read()
+        if iframe == 0:
+            ### arrays
+            image = np.zeros(frame.shape, dtype=frame.dtype)
+            difference = np.zeros(frame.shape, dtype=frame.dtype)
+            background = np.zeros(frame.shape, dtype=np.float32)
+            output = np.zeros(frame.shape, dtype=frame.dtype)
+            outputgray = cv2.cvtColor(output,cv2.COLOR_BGR2GRAY).astype(np.uint8)
+        background += frame
+        if iframe == background_frames-1:
+            background /= background_frames
+    precap.stop()
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame+skip)
+    if async:
+        cap.start()
+    for iframe in range(nframes):
+        if iframe%10000==0:
+            print('frame:', iframe)
+        ret, frame = cap.read()
+        if frame is None:
+            break
+        ### set up background
+        image = frame.copy()
+        if subtraction_method == 'Bright':
+            difference = image - background
+        elif subtraction_method == 'Dark':
+            difference = background - image
+        else:
+            difference = np.abs(image - background)
+        if adaptation_rate > 0:
+            background = adaptation_rate * image + (1 - adaptation_rate) * background
+        ret, output = cv2.threshold(difference, threshold_value, 255, threshold_type)
+        outputgray = cv2.cvtColor(output,cv2.COLOR_BGR2GRAY).astype(np.uint8)
+        im2, contours, hierarchy = cv2.findContours(outputgray,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+        contours = [cnt for cnt in contours if len(cnt)>18 and len(cnt)<75]
+        contours = sorted(contours, key=len, reverse=True)
+        ##print([len(cnt) for cnt in contours])
+        for fly, cnt in enumerate(contours[:4]):
+            if len(cnt) > 10:
+                (x,y),(mi,ma), angle = cv2.fitEllipse(cnt)
+                if x < 700 and y < 700:
+                    nfly = 0
+                elif x > 700 and y < 700:
+                    nfly = 1
+                elif x < 700 and y > 700:
+                    nfly = 2
+                else:
+                    nfly = 3
+                xy[iframe,0,nfly], xy[iframe,1,nfly] = x, y
+                ### compute head and tail position (NOT validated)
+                angle = np.radians(angle)+np.pi/2
+                hx, hy = x+0.5*ma*np.cos(angle), y+0.5*ma*np.sin(angle)
+                tx, ty = x-0.5*ma*np.cos(angle), y-0.5*ma*np.sin(angle)
+                hxy[iframe,0,nfly], hxy[iframe,1,nfly] = hx, hy
+                txy[iframe,0,nfly], txy[iframe,1,nfly] = tx, ty
+                ### check continuity
+                if iframe > 0:
+                    ohx, ohy = hxy[iframe-1,0,nfly], hxy[iframe-1,1,nfly]
+                    dist_head = get_distance([ohx, ohy], [hx, hy])
+                    dist_tail = get_distance([ohx, ohy], [tx, ty])
+                    if dist_tail < dist_head:
+                        hxy[iframe,0,nfly], hxy[iframe,1,nfly] = tx, ty
+                        txy[iframe,0,nfly], txy[iframe,1,nfly] = hx, hy
+                ### draw onto frames
+                if show:
+                    for i in range(100):
+                        nx, ny, ox, oy = xy[iframe-i,0,nfly], xy[iframe-i,1,nfly], xy[iframe-i-1,0,nfly], xy[iframe-i-1,1,nfly]
+                        if not np.isnan(nx) and not np.isnan(ox):
+                            cv2.line(frame, (int(nx), int(ny)), (int(ox), int(oy)),(255,0,255),2)
+                    ellipse = cv2.fitEllipse(cnt)
+                    cv2.ellipse(frame,ellipse,(0,255,0),1)
+                    #cv2.circle(frame,(int(hxy[iframe,0,nfly]), int(hxy[iframe,1,nfly])),3,[255,255,0],-1)
+        if show:
+            if iframe%1==0:
+                resized_image = cv2.resize(frame, (700,700), interpolation = cv2.INTER_CUBIC)
+                cv2.imshow('Frame', resized_image)
+                k = cv2.waitKey(10) & 0xff
+                if k == 27:
+                    break
+    cap.stop()
+    cv2.destroyAllWindows()
+    return xy, hxy, txy
+
+"""
+Retracking videos
+"""
+class Retracking:
+    def __init__(self, video, start_frame=0, background_frames=10, adaptation_rate=0., threshold_value=30, threshold_type=cv2.THRESH_BINARY, subtraction_method='Dark'):
+        self.cap = VideoCapture(video, start_frame)
+        self.sf = start_frame
+        ### setting up
+        self.bgfr = background_frames
+        self.alpha = adaptation_rate
+        self.thr_val = threshold_value
+        self.thr_type = threshold_type
+        self.sm = subtraction_method
+        ### arrays
+        ret, frame = self.cap.read()
+        self.im = np.zeros(frame.shape, dtype=frame.dtype)
+        self.diff = np.zeros(frame.shape, dtype=frame.dtype)
+        self.bg = np.zeros(frame.shape, dtype=np.float32)
+        self.out = np.zeros(frame.shape, dtype=frame.dtype)
+        self.outgray = cv2.cvtColor(self.out,cv2.COLOR_BGR2GRAY).astype(np.uint8)
+        self.sf = start_frame
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+    def run(self, nframes, show=False):
+        from pytrack_analysis.geometry import get_distance
+        ### data arrays
+        xy = np.zeros((nframes, 2, 4))
+        hxy = np.zeros((nframes, 2, 4))
+        txy = np.zeros((nframes, 2, 4))
+        ###
+        image = self.im
+        difference = self.diff
+        background = self.bg
+        output = self.out
+        outputgray = self.outgray
+        ### set up background
+        for iframe in range(self.bgfr):
+            ret, frame = self.cap.read()
+            background += frame
+            if iframe == self.bgfr-1:
+                background /= self.bgfr
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.sf)
+        for iframe in range(nframes):
+            if iframe%1000==0:
+                print('frame:', iframe)
+            ret, frame = self.cap.read()
+            if frame is None:
+                break
+            ### set up background
+            image = frame.copy()
+            if self.sm == 'Bright':
+                difference = image - background
+            elif self.sm == 'Dark':
+                difference = background - image
+            else:
+                difference = np.abs(image - background)
+            if self.alpha > 0:
+                background = self.alpha * image + (1 - self.alpha) * background
+            ret, output = cv2.threshold(difference, self.thr_val, 255, self.thr_type)
+            outputgray = cv2.cvtColor(output,cv2.COLOR_BGR2GRAY).astype(np.uint8)
+            im2, contours, hierarchy = cv2.findContours(outputgray,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+            #cv2.drawContours(output,contours,-1,(0,255,0),1)
+            for fly, cnt in enumerate(contours):
+                if len(cnt) > 10:
+                    (x,y),(mi,ma), angle = cv2.fitEllipse(cnt)
+                    if x < 700 and y < 700:
+                        nfly = 0
+                    elif x > 700 and y < 700:
+                        nfly = 1
+                    elif x < 700 and y > 700:
+                        nfly = 2
+                    else:
+                        nfly = 3
+                    xy[iframe,0,nfly], xy[iframe,1,nfly] = x, y
+                    ### compute head and tail position (NOT validated)
+                    angle = np.radians(angle)+np.pi/2
+                    hx, hy = x+0.5*ma*np.cos(angle), y+0.5*ma*np.sin(angle)
+                    tx, ty = x-0.5*ma*np.cos(angle), y-0.5*ma*np.sin(angle)
+                    hxy[iframe,0,nfly], hxy[iframe,1,nfly] = hx, hy
+                    txy[iframe,0,nfly], txy[iframe,1,nfly] = tx, ty
+                    ### check continuity
+                    if iframe > 0:
+                        ohx, ohy = hxy[iframe-1,0,nfly], hxy[iframe-1,1,nfly]
+                        dist_head = get_distance([ohx, ohy], [hx, hy])
+                        dist_tail = get_distance([ohx, ohy], [tx, ty])
+                        if dist_tail < dist_head:
+                            hxy[iframe,0,nfly], hxy[iframe,1,nfly] = tx, ty
+                            txy[iframe,0,nfly], txy[iframe,1,nfly] = hx, hy
+                    ### draw onto frames
+                    if show:
+                        for i in range(100):
+                            nx, ny, ox, oy = xy[iframe-i,0,nfly], xy[iframe-i,1,nfly], xy[iframe-i-1,0,nfly], xy[iframe-i-1,1,nfly]
+                            cv2.line(frame, (int(nx), int(ny)), (int(ox), int(oy)),(255,0,255),2)
+                        ellipse = cv2.fitEllipse(cnt)
+                        cv2.ellipse(frame,ellipse,(0,255,0),1)
+                        cv2.circle(frame,(int(hxy[iframe,0,nfly]), int(hxy[iframe,1,nfly])),3,[255,255,0],-1)
+            if show:
+                if iframe%30==0:
+                    resized_image = cv2.resize(frame, (500,500), interpolation = cv2.INTER_CUBIC)
+                    cv2.imshow('Frame', resized_image)
+                    k = cv2.waitKey(1) & 0xff
+                    if k == 27:
+                        break
+        self.cap.stop()
+        cv2.destroyAllWindows()
+        return xy, hxy, txy
+
 
 """
 Writes overlay
