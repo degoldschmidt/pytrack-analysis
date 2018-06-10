@@ -106,7 +106,7 @@ def main():
         return 1
     ### go through all session
     for iv, video in enumerate(raw_data.videos):
-        if iv > 28:
+        if iv > 0:
             continue
         Nflies = 4
         print('\n{}: {}'.format(iv, video.name))
@@ -125,7 +125,7 @@ def main():
         if not op.isfile(_bodyfile):
             #retrack = Retracking(video.fullpath, start_frame=video.data.first_frame)
             #body, head, tail = retrack.run(video.data.nframes, show=True)
-            body, head, tail = retrack(video.fullpath, video.data.nframes, start_frame=video.data.first_frame)
+            body, head, tail, area = retrack(video.fullpath, 10000, start_frame=video.data.first_frame, show=True)
             ### save data
             bodydf = pd.DataFrame({ 'x0': body[:, 0, 0], 'y0': body[:, 1, 0],
                                     'x1': body[:, 0, 1], 'y1': body[:, 1, 1],
@@ -139,9 +139,11 @@ def main():
                     })
             bodydf.index = bodydf.index + video.data.first_frame
             headdf.index = headdf.index + video.data.first_frame
-            bodydf.to_csv(_bodyfile, index_label='frame')
-            headdf.to_csv(_headfile, index_label='frame')
-            print(bodydf.head(20))
+            #bodydf.to_csv(_bodyfile, index_label='frame')
+            #headdf.to_csv(_headfile, index_label='frame')
+            for fly in range(4):
+                print('fly {}:'.format(fly), bodydf['x{}'.format(fly)].isnull().sum(), bodydf['y{}'.format(fly)].isnull().sum())
+                print(np.amax(area[:,fly]), np.amin(area[:,fly]))
         else:
             bodydf = pd.read_csv(_bodyfile, index_col='frame')
             headdf = pd.read_csv(_headfile, index_col='frame')

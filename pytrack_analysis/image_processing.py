@@ -125,7 +125,7 @@ class PixelDiff:
         self.cap.stop()
         return px, tpx
 
-def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate=0., threshold_value=30, threshold_type=cv2.THRESH_BINARY, subtraction_method='Dark', skip=0, show=False, async=False):
+def retrack(video, nframes, start_frame=0, background_frames=100, adaptation_rate=0., threshold_value=15, threshold_type=cv2.THRESH_BINARY, subtraction_method='Dark', skip=0, show=False, async=False):
     from pytrack_analysis.geometry import get_distance
     if async:
         precap = VideoCaptureAsync(video, start_frame)
@@ -137,6 +137,7 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
     xy = np.zeros((nframes, 2, 4))
     hxy = np.zeros((nframes, 2, 4))
     txy = np.zeros((nframes, 2, 4))
+    a = np.zeros((nframes, 4))
     xy.fill(np.nan)
     hxy.fill(np.nan)
     txy.fill(np.nan)
@@ -144,9 +145,11 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
     if async:
         precap.start()
     ### set up background
-    for iframe in range(background_frames):
+    #for iframe in range(background_frames):
+    for ii,iframe in enumerate(np.random.choice(nframes, background_frames)):
+        precap.set(cv2.CAP_PROP_POS_FRAMES, start_frame+iframe)
         ret, frame = precap.read()
-        if iframe == 0:
+        if ii == 0:
             ### arrays
             image = np.zeros(frame.shape, dtype=frame.dtype)
             difference = np.zeros(frame.shape, dtype=frame.dtype)
@@ -154,8 +157,12 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
             output = np.zeros(frame.shape, dtype=frame.dtype)
             outputgray = cv2.cvtColor(output,cv2.COLOR_BGR2GRAY).astype(np.uint8)
         background += frame
-        if iframe == background_frames-1:
+        if ii == background_frames-1:
             background /= background_frames
+    if show:
+        resized_image = cv2.resize(background.astype(np.uint8), (700,700), interpolation = cv2.INTER_CUBIC)
+        cv2.imshow('Frame', resized_image)
+        cv2.waitKey(0)
     precap.stop()
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame+skip)
     if async:
@@ -180,12 +187,19 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
         outputgray = cv2.cvtColor(output,cv2.COLOR_BGR2GRAY).astype(np.uint8)
         im2, contours, hierarchy = cv2.findContours(outputgray,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-        contours = [cnt for cnt in contours if len(cnt)>18 and len(cnt)<75]
-        contours = sorted(contours, key=len, reverse=True)
+
+        contours = [cnt for cnt in contours if len(cnt)<100] #len(cnt)>18 and
+        if len([cnt for cnt in contours if len(cnt)>18]) > 4:
+            contours = [cnt for cnt in contours if len(cnt)<75]
+        contours = sorted(contours, key=len, reverse=True)[:4]
         ##print([len(cnt) for cnt in contours])
+        mask = np.zeros(frame.shape[:2], np.uint8)
+        #cv2.drawContours(mask, contours[:4], -1, (255), -1)
         for fly, cnt in enumerate(contours[:4]):
-            if len(cnt) > 10:
+            if len(cnt) > 5:
                 (x,y),(mi,ma), angle = cv2.fitEllipse(cnt)
+                ellipse = cv2.fitEllipse(cnt)
+                cv2.ellipse(mask, ellipse,(255),-1)
                 if x < 700 and y < 700:
                     nfly = 0
                 elif x > 700 and y < 700:
@@ -195,6 +209,7 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
                 else:
                     nfly = 3
                 xy[iframe,0,nfly], xy[iframe,1,nfly] = x, y
+                a[iframe, nfly] = len(cnt)
                 ### compute head and tail position (NOT validated)
                 angle = np.radians(angle)+np.pi/2
                 hx, hy = x+0.5*ma*np.cos(angle), y+0.5*ma*np.sin(angle)
@@ -213,21 +228,51 @@ def retrack(video, nframes, start_frame=0, background_frames=10, adaptation_rate
                 if show:
                     for i in range(100):
                         nx, ny, ox, oy = xy[iframe-i,0,nfly], xy[iframe-i,1,nfly], xy[iframe-i-1,0,nfly], xy[iframe-i-1,1,nfly]
-                        if not np.isnan(nx) and not np.isnan(ox):
-                            cv2.line(frame, (int(nx), int(ny)), (int(ox), int(oy)),(255,0,255),2)
-                    ellipse = cv2.fitEllipse(cnt)
-                    cv2.ellipse(frame,ellipse,(0,255,0),1)
+                        #if not np.isnan(nx) and not np.isnan(ox):
+                            #cv2.line(frame, (int(nx), int(ny)), (int(ox), int(oy)),(255,0,255),2)
+                    #ellipse = cv2.fitEllipse(cnt)
+                    #cv2.ellipse(frame,ellipse,(0,255,0),1)
                     #cv2.circle(frame,(int(hxy[iframe,0,nfly]), int(hxy[iframe,1,nfly])),3,[255,255,0],-1)
         if show:
-            if iframe%1==0:
-                resized_image = cv2.resize(frame, (700,700), interpolation = cv2.INTER_CUBIC)
+            if iframe%10==0:
+                image_res = cv2.bitwise_and(frame, frame, mask = mask)
+                mask = cv2.bitwise_not(mask)
+                bk = np.full(frame.shape, 255, dtype=np.uint8)  # white bk
+                bk_masked = cv2.bitwise_and(bk, bk, mask=mask)
+                final = cv2.bitwise_or(image_res, bk_masked)
+                newframe = np.zeros((200,200,3), dtype=np.uint8)
+                thisx = int(round(xy[iframe,0,0]))
+                thisy = int(round(xy[iframe,1,0]))
+                thisangle = np.arctan2(txy[iframe,1,0]-hxy[iframe,1,0], txy[iframe,0,0]-hxy[iframe,0,0])
+                M = cv2.getRotationMatrix2D((xy[iframe,0,0], xy[iframe,1,0]), -thisangle,1)
+                dst = cv2.warpAffine(final,M,(frame.shape[0],frame.shape[1]))
+                newframe[:100,:100,:] = dst[thisy-50:thisy+50, thisx-50:thisx+50,:]
+                thisx = int(round(xy[iframe,0,1]))
+                thisy = int(round(xy[iframe,1,1]))
+                thisangle = np.arctan2(txy[iframe,1,1]-hxy[iframe,1,1], txy[iframe,0,1]-hxy[iframe,0,1])
+                M = cv2.getRotationMatrix2D((xy[iframe,0,1], xy[iframe,1,1]),np.degrees(-thisangle),1)
+                dst = cv2.warpAffine(final,M,(frame.shape[0],frame.shape[1]))
+                newframe[100:,:100,:] = dst[thisy-50:thisy+50, thisx-50:thisx+50,:]
+                thisx = int(round(xy[iframe,0,2]))
+                thisy = int(round(xy[iframe,1,2]))
+                thisangle = np.arctan2(txy[iframe,1,2]-hxy[iframe,1,2], txy[iframe,0,2]-hxy[iframe,0,2])
+                M = cv2.getRotationMatrix2D((xy[iframe,0,2], xy[iframe,1,2]),np.degrees(-thisangle),1)
+                dst = cv2.warpAffine(final,M,(frame.shape[0],frame.shape[1]))
+                newframe[:100,100:,:] = dst[thisy-50:thisy+50, thisx-50:thisx+50,:]
+                thisx = int(round(xy[iframe,0,3]))
+                thisy = int(round(xy[iframe,1,3]))
+                thisangle = np.arctan2(txy[iframe,1,3]-hxy[iframe,1,3], txy[iframe,0,3]-hxy[iframe,0,3])
+                M = cv2.getRotationMatrix2D((xy[iframe,0,3], xy[iframe,1,3]),np.degrees(-thisangle),1)
+                dst = cv2.warpAffine(final,M,(frame.shape[0],frame.shape[1]))
+                newframe[100:,100:,:] = dst[thisy-50:thisy+50, thisx-50:thisx+50,:]
+                resized_image = cv2.resize(newframe, (700,700), interpolation = cv2.INTER_CUBIC)
                 cv2.imshow('Frame', resized_image)
-                k = cv2.waitKey(10) & 0xff
+                k = cv2.waitKey(1) & 0xff
                 if k == 27:
                     break
     cap.stop()
     cv2.destroyAllWindows()
-    return xy, hxy, txy
+    return xy, hxy, txy, a
 
 """
 Retracking videos
@@ -326,7 +371,7 @@ class Retracking:
                         cv2.ellipse(frame,ellipse,(0,255,0),1)
                         cv2.circle(frame,(int(hxy[iframe,0,nfly]), int(hxy[iframe,1,nfly])),3,[255,255,0],-1)
             if show:
-                if iframe%30==0:
+                if iframe%1==0:
                     resized_image = cv2.resize(frame, (500,500), interpolation = cv2.INTER_CUBIC)
                     cv2.imshow('Frame', resized_image)
                     k = cv2.waitKey(1) & 0xff
