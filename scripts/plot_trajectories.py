@@ -52,6 +52,8 @@ def main():
 
     for i_ses, ses in enumerate(sessions[:1]):
         ### getting data
+        yamlfile = op.join(rawfolder, ses+'.yaml')
+        meta = read_yaml(yamlfile)
         dfs = []
         for module in ['kinematics', 'classifier']:
             infolder = op.join(_result, module)
@@ -60,7 +62,7 @@ def main():
         df = pd.concat(dfs, sort=True)
 
         ax = f.axes[i_ses]
-        ax = plot.arena(video.arena[i], video.spots[i], ax=ax)
+        ax = plot.arena(meta["arena"], meta["food_spots"], ax=ax)
         x, y, etho = np.array(df['head_x']), np.array(df['head_y']), np.array(df['etho'])
         ends = 108100
         ax.plot(x[:ends], y[:ends], '.', c='#747474', ms=5, alpha=0.5)
