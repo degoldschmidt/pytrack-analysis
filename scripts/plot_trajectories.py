@@ -43,11 +43,12 @@ def main():
 
     rawfolder = op.join(_base, 'pytrack_res', 'post_tracking')
     experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
-    sessions = [_file for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
+    sessions = [_file[:-4] for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
     return 1
-    infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
-    infolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
+    for ses in sessions:
+        infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
+        infolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
 
     for _file in _files:
         try:
