@@ -53,8 +53,8 @@ def main():
             infolder = op.join(_result, module)
             _file = "{}_{}.csv".format(ses, module)
             dfs.append(pd.read_csv(op.join(infolder, _file), index_col='frame'))
-        df = pd.concat(dfs)
-        print(df.head(10))
+        df = pd.concat(dfs, sort=True)
+        print(df['frame_dt'].head(10))
     return 1
 
     for _file in _files:
