@@ -47,7 +47,10 @@ def main():
     sessions = [_file[:-4] for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
 
+    f, axes = plt.subplots(nrows=len(sessions)/4, ncols=4,figsize=(nrows, ncols))
+
     for ses in sessions[:1]:
+        ### getting data
         dfs = []
         for module in ['kinematics', 'classifier']:
             infolder = op.join(_result, module)
@@ -55,6 +58,11 @@ def main():
             dfs.append(pd.read_csv(op.join(infolder, _file), index_col='frame'))
         df = pd.concat(dfs, sort=True)
         print(df['frame_dt'].head(10))
+
+    ### saving files
+    plt.tight_layout()
+    _file = os.path.join(_base, 'plots', "trajectories.png")
+    plt.savefig(_file+'.png', dpi=600)
     return 1
 
     for _file in _files:
@@ -86,12 +94,7 @@ def main():
         ax.set_xlabel(xlab)
         ax.set_ylabel(ylab)
 
-    ### saving files
-    plt.tight_layout()
-    _file = os.path.join(_base, "{}_swarmbox".format(_prop['outfile']))
-    if _suf is not None:
-        _file+"_{}.{}".format(_suf, _prop['outextension'])
-    plt.savefig(_file+'.png', dpi=_prop['dpi'])
+
 
 if __name__ == '__main__':
     # runs as benchmark test
