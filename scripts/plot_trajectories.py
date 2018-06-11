@@ -41,7 +41,7 @@ def main():
     #parser.add_argument('--suffix', type=str)
     _base = parser.parse_args().basedir
 
-    rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
+    rawfolder = op.join(_base, 'pytrack_res', 'post_tracking')
     experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
     sessions = [_file for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
