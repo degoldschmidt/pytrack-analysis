@@ -45,10 +45,12 @@ def main():
     experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
     sessions = [_file[:-4] for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
-    return 1
+
     for ses in sessions:
+        for each in ['kinematics']
         infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
         infolder = op.join(BASEDIR, 'pytrack_res', 'kinematics')
+    return 1
 
     for _file in _files:
         try:
