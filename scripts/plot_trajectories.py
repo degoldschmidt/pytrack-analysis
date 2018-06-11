@@ -47,7 +47,7 @@ def main():
     sessions = [_file[:-4] for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
 
-    f, axes = plt.subplots(nrows=len(sessions)/4, ncols=4,figsize=(nrows, ncols))
+    f, axes = plt.subplots(len(sessions)/4, 4,figsize=(nrows, ncols))
 
     for ses in sessions[:1]:
         ### getting data
@@ -57,7 +57,6 @@ def main():
             _file = "{}_{}.csv".format(ses, module)
             dfs.append(pd.read_csv(op.join(infolder, _file), index_col='frame'))
         df = pd.concat(dfs, sort=True)
-        print(df['frame_dt'].head(10))
 
     ### saving files
     plt.tight_layout()
