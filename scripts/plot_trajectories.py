@@ -47,7 +47,7 @@ def main():
     sessions = [_file[:-4] for _file in os.listdir(rawfolder) if experiment in _file and _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)]
     print(sessions)
 
-    nrows, ncols = len(sessions)/4, 4
+    nrows, ncols = int(len(sessions)/4), 4
     f, axes = plt.subplots(nrows=nrows, ncols=ncols,figsize=(nrows, ncols))
 
     for ses in sessions[:1]:
