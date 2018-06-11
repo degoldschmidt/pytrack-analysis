@@ -48,7 +48,7 @@ def main():
     print(sessions)
 
     nrows, ncols = int(len(sessions)/4), 4
-    f, axes = plt.subplots(nrows=nrows, ncols=ncols,figsize=(ncols, nrows))
+    f, axes = plt.subplots(nrows=nrows, ncols=ncols,figsize=(4*ncols, 4*nrows))
 
     for i_ses, ses in enumerate(sessions[:1]):
         ### getting data
@@ -65,7 +65,7 @@ def main():
         ax = plot.arena(meta["arena"], meta["food_spots"], ax=ax)
         x, y, etho = np.array(df['head_x']), np.array(df['head_y']), np.array(df['etho'])
         ends = 108100
-        ax.plot(x[:ends], y[:ends], '.', c='#747474', ms=5, alpha=0.5)
+        #ax.plot(x[:ends], y[:ends], '.', c='#747474', alpha=0.5)
 
     ### saving files
     plt.tight_layout()
