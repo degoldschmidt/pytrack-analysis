@@ -159,7 +159,7 @@ class Kinematics(Node):
         data.append(self.meta['arena']['name'])
         data.append(self.outdf['smm_head_speed'].mean())
         data.append(self.outdf['smm_body_speed'].mean())
-        data.append(np.cumsum(np.array(self.outdf['displacements']))[-1])
+        data.append(np.array(self.outdf['displacements'].cumsum())[-1])
         data.append(self.outdf['min_dpatch'].mean())
         data.append(self.outdf['dcenter'].mean())
         data.append(np.abs(self.outdf['angular_speed']).mean())

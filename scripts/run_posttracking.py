@@ -40,9 +40,9 @@ def remove_mistrack(x, y, ma, mi, thr=100.*0.0333, forced=False):
     ynew[area > 10] = np.nan
     xnew[area < 2] = np.nan
     ynew[area < 2] = np.nan
-    print(displ)
+    #print(displ)
     ides = np.where(displ > thr)[0]
-    print(ides)
+    #print(ides)
     """
     for jj, each in enumerate(ides):
         if jj == 0:
