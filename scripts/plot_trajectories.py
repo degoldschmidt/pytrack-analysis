@@ -52,9 +52,9 @@ def main():
         for module in ['kinematics', 'classifier']:
             infolder = op.join(_result, module)
             _file = "{}_{}.csv".format(ses, module)
-            df = pd.read_csv(op.join(infolder, _file), index_col='frame')
-            print(df.head(10))
-            dfs.append(df)
+            dfs.append(pd.read_csv(op.join(infolder, _file), index_col='frame'))
+        df = pd.concat(dfs)
+        print(df.head(10))
     return 1
 
     for _file in _files:
