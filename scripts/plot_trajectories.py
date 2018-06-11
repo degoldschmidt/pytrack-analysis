@@ -61,7 +61,7 @@ def main():
 
     ### saving files
     plt.tight_layout()
-    _file = os.path.join(_base, 'plots', "trajectories.png")
+    _file = os.path.join(_result, 'plots', "trajectories")
     plt.savefig(_file+'.png', dpi=600)
     return 1
 
