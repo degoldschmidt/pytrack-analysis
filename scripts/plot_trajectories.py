@@ -48,9 +48,9 @@ def main():
     print(sessions)
 
     nrows, ncols = int(len(sessions)/4), 4
-    f, axes = plt.subplots(nrows=nrows, ncols=ncols,figsize=(nrows, ncols))
+    f, axes = plt.subplots(nrows=nrows, ncols=ncols,figsize=(ncols, nrows))
 
-    for ses in sessions[:1]:
+    for i_ses, ses in enumerate(sessions[:1]):
         ### getting data
         dfs = []
         for module in ['kinematics', 'classifier']:
@@ -58,6 +58,12 @@ def main():
             _file = "{}_{}.csv".format(ses, module)
             dfs.append(pd.read_csv(op.join(infolder, _file), index_col='frame'))
         df = pd.concat(dfs, sort=True)
+
+        ax = f.axes[i_ses]
+        ax = plot.arena(video.arena[i], video.spots[i], ax=ax)
+        x, y, etho = np.array(df['head_x']), np.array(df['head_y']), np.array(df['etho'])
+        ends = 108100
+        ax.plot(x[:ends], y[:ends], '.', c='#747474', ms=5, alpha=0.5)
 
     ### saving files
     plt.tight_layout()
