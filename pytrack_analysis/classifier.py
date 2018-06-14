@@ -17,6 +17,7 @@ class Classifier(Node):
         """
         Node.__init__(self, _df, _meta)
         ### data check
+        self.spots = _meta['food_spots']
         self.keys = [head[0], head[1], h_speed, b_speed, sm_speed, turn, time, dt]
         self.all_spots = [dpatch+'_'+str(ix) for ix in range(len(_meta['food_spots']))]
         self.statcols = ['session', 'day', 'daytime', 'condition', 'position', 'head_speed', 'body_speed', 'distance', 'min_dpatch', 'dcenter', 'abs_turn_rate', 'major', 'minor', 'mistracks']
@@ -28,8 +29,12 @@ class Classifier(Node):
         amin = np.amin(self.aps, axis=1) # all patches minimum distance
         imin = np.argmin(self.aps, axis=1) # number of patch with minimum distance
         smin = np.zeros(imin.shape)
-        smin[imin<6] = 1
-        smin[imin>=6] = 2
+        for i in range(len(self.spots)):
+            if self.spots[i]['substr'] == 'yeast':
+                sub = 1
+            elif self.spots[i]['substr'] == 'sucrose':
+                sub = 2
+            smin[imin==i] = sub
         substrate_dict = {'yeast':1, 'sucrose': 2}
         substrates = np.array([substrate_dict[each_spot['substr']] for each_spot in self.meta['food_spots']])
 
@@ -59,9 +64,7 @@ class Classifier(Node):
         visits[ethogram == 4] = 1
         visits[ethogram == 5] = 2
         visit_index[visits == 1] = imin[visits == 1]
-        if np.any(visit_index[visits == 1] >= 6): print('wtf')
         visit_index[visits == 2] = imin[visits == 2]
-        if np.any(visit_index[visits == 2] < 6): print('wtf')
 
         encounters[amin <= 3] = substrates[imin[amin <= 3]]
         encounter_index[amin <= 3] = imin[amin <= 3]
@@ -92,8 +95,6 @@ class Classifier(Node):
         visits = self.two_pixel_rule(visits, self.head_pos, join=[1,2])
         encounters = self.two_pixel_rule(encounters, self.head_pos, join=[1,2])
 
-        if np.any(visit_index[visits == 1] >= 6): print('wtf')
-        if np.any(visit_index[visits == 2] < 6): print('wtf')
         if np.any(visit_index[visits > 0] == -1): print('wtf')
 
         return ethogram, visits, visit_index, encounters, encounter_index

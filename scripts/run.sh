@@ -38,3 +38,11 @@ if [ "$2" = "all" ] || [ "$2" = "segments" ]; then
       python3 run_segmentation.py "$1"
     fi
 fi
+
+if [ "$2" = "all" ] || [ "$2" = "stats" ]; then
+    if [ "$3" = "overwrite" ]; then
+      python3 run_stats.py "$1" --overwrite
+    else
+      python3 run_stats.py "$1"
+    fi
+fi

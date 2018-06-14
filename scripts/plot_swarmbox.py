@@ -64,12 +64,23 @@ def main():
         _x, _y, _hue, _order, _hue_order = _prop['x'], _prop['y'], _prop['hue'], _prop['order'], _prop['hue_order']
         ### PLOTTING
         ax = plot.swarmbox(x=_x, y=_y, hue=_hue, data=rdata, order=_order, hue_order=_hue_order, palette=mypal, ax=ax)
+        for each in rdata[_x].unique():
+            x1, x2 = np.array(rdata.query('{} == "{}" and {} == "{}"'.format(_x, each, _hue, '18ºC'))[_y]), np.array(rdata.query('{} == "{}" and {} == "{}"'.format(_x, each, _hue, '30ºC'))[_y])
+            print(each, len(x1), len(x2))
+            from scipy.stats import ranksums
+            stat, p = ranksums(x1, x2)
+            print(p)
+
         xlab = textwrap.fill(_prop['xlabel'][j], 14, break_long_words=False)
         ylab = textwrap.fill(_prop['ylabel'][j], 14, break_long_words=False)
         title = textwrap.fill(_prop['suptitle'][j], 36, break_long_words=False)
         ax.set_title(title, fontsize=6, fontweight='bold', loc='left')
         ax.set_xlabel(xlab)
         ax.set_ylabel(ylab)
+        if 'ymax' in _prop.keys():
+            ax.set_ylim([0, _prop['ymax'][j]])
+            ax.set_yticks(np.arange(0, _prop['ymax'][j]+0.01, _prop['ymax'][j]/2))
+        sns.despine(ax=ax, bottom=True, trim=True)
 
     ### saving files
     plt.tight_layout()

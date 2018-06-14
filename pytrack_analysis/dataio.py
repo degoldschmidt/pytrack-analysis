@@ -110,13 +110,13 @@ class Video(object):
         onlyIm = False
         self.files[key] = [op.join(self.dir, eachfile) for eachfile in sorted(os.listdir(self.dir)) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
         if key == 'arena':
-            self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
+            self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.') and not eachfile.endswith('jpg')]
             if len(self.files[key]) == 0:
                 colorprint('no file found: starting automatic arena geometry detection', color='warning')
                 self.geometry = detect_geometry(self.fullpath, self.timestr, onlyIm=onlyIm)
                 if onlyIm:
                     return True
-                self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.')]
+                self.files[key] = [op.join(self.dir, 'pytrack_res', 'arena', eachfile) for eachfile in sorted(os.listdir(op.join(self.dir, 'pytrack_res', 'arena'))) if key in eachfile and self.timestr in eachfile and not eachfile.startswith('.') and not eachfile.endswith('jpg')]
         if key == 'timestart' and len(self.files[key]) == 1:
             self.timestart = parse_timestart(op.join(self.dir, self.files['timestart'][0]))
         if len(self.files[key]) == self.required[key]:

@@ -579,8 +579,10 @@ def get_peak_matches(loc, vals, w, img_rgb, arena=None, show_all=False, show_pea
         #print('found {} patches.'.format(len(patches)))
     return patches
 
-def preview(img, title='preview geometry', topleft='', hold=False):
+def preview(img, title='preview geometry', topleft='', hold=False, write=False, writeto=None):
     preview = cv2.resize(img, (700, 700))
+    if write:
+        cv2.imwrite(writeto, preview)
     font = cv2.FONT_HERSHEY_SIMPLEX
     if hold:
         toff = 0

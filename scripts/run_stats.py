@@ -3,7 +3,7 @@ import os.path as op
 from pytrack_analysis.profile import get_profile
 from pytrack_analysis.database import Experiment
 import pytrack_analysis.preprocessing as prp
-from pytrack_analysis import Stats
+#from pytrack_analysis import Stats
 from pytrack_analysis import Multibench
 from pytrack_analysis.yamlio import read_yaml
 
@@ -43,8 +43,8 @@ def main():
      * stats:      list for stats
     """
     rawfolder = op.join(BASEDIR, 'pytrack_res', 'post_tracking')
-    infolder = op.join(BASEDIR, 'pytrack_res', 'classifier')
-    outfolder = op.join(BASEDIR, 'pytrack_res', 'segments')
+    infolder = op.join(BASEDIR, 'pytrack_res', 'segments')
+    outfolder = op.join(BASEDIR, 'pytrack_res', 'stats')
     if not op.isdir(outfolder):
         os.mkdir(outfolder)
     experiment = [_file for _file in os.listdir(rawfolder) if _file.endswith('csv') and not _file.startswith('.') and _file[:-3]+'yaml' in os.listdir(rawfolder)][0][:4]
@@ -52,25 +52,40 @@ def main():
     print(sorted(sessions))
     n_ses = len(sessions)
     stats = []
-    _in, _out = 'classifier', 'segments'
-
+    states = {  'etho': {4: 'yeast micromovements', 5: 'sucrose micromovements'},
+                'visit': {1: 'yeast visit', 2: 'sucrose visit'},
+                'encounter': {1: 'yeast encounter', 2: 'sucrose encounter'},
+        }
+    outdfs = {key: pd.DataFrame({'session':[],'condition':[], 'substrate': [], 'total':[],'mean':[],'median':[],'frequency':[],'number':[]}) for key in states.keys()}
 
     ### GO THROUGH SESSIONS
     for i_ses, each in enumerate(sorted(sessions)):
         ### Loading data
+        session = each[:-4]
         try:
-            csv_file = os.path.join(infolder,  each[:-4]+'_'+_in+'.csv')
-            df = pd.read_csv(csv_file, index_col='frame')
-            yamlfile = op.join(rawfolder, each[:-3]+'yaml')
+            yamlfile = op.join(rawfolder, session+'.yaml')
             meta = read_yaml(yamlfile)
-            segm = Segments(df, meta)
-            dfs = segm.run(save_as=outfolder, ret=True)
+            meta['session'] = session
+            for _in in states.keys():
+                csv_file = op.join(infolder,  '{}_{}_{}.csv'.format(session, op.basename(infolder), _in))
+                in_df = pd.read_csv(csv_file, index_col='segment')
+                for state, val in states[_in].items():
+                    df = in_df.query('state == {}'.format(state)).query('duration > 0.6')
+                    outdfs[_in] = outdfs[_in].append({  'session': session,
+                                                        'condition': meta['condition'],
+                                                        'substrate': val.split(' ')[0],
+                                                        'total': df['duration'].sum()/60.,
+                                                        'mean': df['duration'].mean()/60.,
+                                                        'median': df['duration'].median()/60.,
+                                                        'frequency': 60.*len(df.index)/in_df.query('state != {}'.format(state))['duration'].sum(),
+                                                        'number': len(df.index)}, ignore_index=True)
+                    outdfs[_in]['genotype'], outdfs[_in]['temperature'] = outdfs[_in]['condition'].str.split(' ', 1).str
         except FileNotFoundError:
             print(csv_file+ ' not found!')
-    for each in dfs.keys():
-        print(each)
-        print(dfs[each].head(15))
-        print()
+    for _in in states.keys():
+        outdfs[_in].to_csv(op.join(outfolder, _in+'_stats.csv'), index_label='id')
+        #print(_in,':')
+        #print(outdfs[_in])
     ### delete objects
 
 if __name__ == '__main__':

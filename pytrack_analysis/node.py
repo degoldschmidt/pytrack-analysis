@@ -16,8 +16,7 @@ __version__ = get_distribution('pytrack_analysis').version
 Node class: generic class for processing data
 """
 class Node(object):
-
-    def __init__(self, _df, _meta):
+    def __init__(self, *args):
         """
         Initializes the class. Setting up internal variables for input data; setting up logging.
         """
@@ -26,9 +25,10 @@ class Node(object):
         self.print_header = True
 
         ## reference to session (not a copy!!!)
-        self.df = _df
-        self.meta = _meta
-        self.session_name = self.meta['datafile'].replace('\\', '/').split('/')[-1].split('.')[0]
+        if len(args) == 2:
+            self.df = _df
+            self.meta = _meta
+            self.session_name = self.meta['datafile'].replace('\\', '/').split('/')[-1].split('.')[0]
         self.name = (self.__class__.__name__).lower()
 
     def __repr__(self):
