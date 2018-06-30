@@ -272,11 +272,11 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
                 size=5, edgecolor="gray", linewidth=0, colors=None, ax=None, boxonly=False, **kwargs):
     # default parameters
     defs = {
-                'ps':   1.5,          # pointsize for swarmplot (3)
+                'ps':   2,          # pointsize for swarmplot (3)
                 'pc':   '#666666',  # pointcolor for swarmplot
                 'w':    .65,         # boxwidth for boxplot (0.35)
                 'lw':   1,        # linewidth for boxplot
-                'sat':  0.5,         # saturation for boxplot
+                'sat':  1,         # saturation for boxplot
                 'mlw':  0.3,        # width for median lines
     }
 
@@ -286,24 +286,22 @@ def swarmbox(x=None, y=None, hue=None, data=None, order=None, hue_order=None, m_
     # actual plotting using seaborn functions
     # boxplot
     ax = sns.boxplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order,
-                        orient=orient, color=color, palette=palette, saturation=defs['sat'],
-                        linewidth=defs['lw'], ax=ax, boxprops=dict(lw=0.0), whiskerprops={'linewidth':0}, capprops={'linewidth':0}, showfliers=False, **kwargs)
+                        orient=orient, color=color, palette=palette, saturation=defs['sat'], width=defs['w'],
+                        linewidth=defs['lw'], medianprops={'color': '#000000', 'lw': 1.5}, ax=ax, boxprops=dict(lw=0.0), whiskerprops={'linewidth':0}, capprops={'linewidth':0}, showfliers=False, **kwargs)
     #ax = sns.boxplot(x=x, y=y, hue=hue, data=data, palette=my_pal, showfliers=False, boxprops=dict(lw=1))
     # swarmplot
     if not boxonly:
-        sns.stripplot(x=x, y=y, hue=hue, data=data, jitter=1.0, size=defs['ps'], dodge=True, color=".3", alpha=.75, ax=ax)
-        """
-        ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True, palette=palette,linewidth=1,edgecolor='gray',
+        #sns.stripplot(x=x, y=y, hue=hue, data=data, jitter=1.0, size=defs['ps'], dodge=True, color=".3", alpha=.75, ax=ax)
+        ax = sns.swarmplot(x=x, y=y, hue=hue, data=data, order=order, hue_order=hue_order, dodge=True, linewidth=0, color='#666666',
                      orient=orient, size=defs['ps'], ax=ax, **kwargs)
-        """
 
     ## figure aesthetics
     ax.tick_params('x', length=0, width=0, which='major')
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(30)
+    #for tick in ax.get_xticklabels():
+    #    tick.set_rotation(30)
     sns.despine(ax=ax, bottom=True, trim=True)
-    ax.legend_.remove()
-
+    if ax.legend_ is not None:
+        ax.legend_.remove()
     return ax
 
 """
